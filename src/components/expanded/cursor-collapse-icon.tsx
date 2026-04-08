@@ -21,10 +21,11 @@ const ICON_OFFSET = 24; // Equal offset right and below cursor
 
 interface CursorCollapseIconProps {
   onDismiss: () => void;
+  hidden?: boolean;
   children: React.ReactNode;
 }
 
-export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconProps) {
+export function CursorCollapseIcon({ onDismiss, hidden, children }: CursorCollapseIconProps) {
   const [hovering, setHovering] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const originRef = useRef({ x: 0, y: 0 });
@@ -50,8 +51,8 @@ export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconPr
 
   return (
     <div
-      className="absolute inset-0 cursor-pointer"
-      onClick={onDismiss}
+      className={`absolute inset-0 ${hidden ? "pointer-events-none" : "cursor-pointer"}`}
+      onClick={hidden ? undefined : onDismiss}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -59,7 +60,7 @@ export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconPr
       {children}
 
       <AnimatePresence>
-        {hovering && (
+        {hovering && !hidden && (
           <motion.div
             className="pointer-events-none fixed z-50"
             initial={{

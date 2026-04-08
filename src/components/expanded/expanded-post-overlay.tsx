@@ -86,13 +86,13 @@ export function ExpandedPostOverlay() {
   const commentLeft = margin + cardWidth + gap;
   const commentWidth = vw * 0.40;
 
-  // Comment card slides from behind the experiment card
-  const commentSlideX = -(commentLeft - margin - cardWidth * 0.5);
+  // Comment card starts fully behind the experiment card's right edge
+  const commentSlideX = -(gap + commentWidth);
 
   return (
     <div className="fixed inset-0 z-40">
       {/* Backdrop */}
-      <CursorCollapseIcon onDismiss={dismiss}>
+      <CursorCollapseIcon onDismiss={dismiss} hidden={closing}>
         <motion.div
           className="absolute inset-0 bg-[var(--page-bg)]"
           initial={{ opacity: 0 }}
