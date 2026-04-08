@@ -47,7 +47,7 @@ export function ExpandedCard({
         width: sourceRect.width,
         height: sourceRect.height,
         borderRadius: 8,
-        opacity: 0,
+        opacity: 1,
       }
     : {
         top: targetRect.top,

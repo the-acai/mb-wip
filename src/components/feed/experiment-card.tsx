@@ -110,6 +110,7 @@ export function ExperimentCard({
           created_at: post.created_at,
           author: post.author,
           imageUrl: thumbnailUrl ?? null,
+          imageAspect: orientation === "portrait" ? 2 / 3 : 3 / 2,
         },
         {
           top: rect.top,

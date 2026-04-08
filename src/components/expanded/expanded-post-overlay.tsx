@@ -77,10 +77,14 @@ export function ExpandedPostOverlay() {
   const vh = window.innerHeight;
   const margin = vw * 0.0833;
   const gap = 24;
+  const captionRowHeight = 48; // badge + gap below image
 
-  // Full card target (image + caption, same flex layout as grid card)
+  // Compute card height from the image's natural aspect ratio
   const cardWidth = vw * 0.38;
-  const totalCardHeight = Math.min(vh - 120, 1020);
+  const imageHeight = cardWidth / postData.imageAspect;
+  const naturalCardHeight = imageHeight + captionRowHeight;
+  const maxCardHeight = vh - 120;
+  const totalCardHeight = Math.min(naturalCardHeight, maxCardHeight);
   const cardTop = (vh - totalCardHeight) / 2;
 
   // Comment panel position

@@ -22,6 +22,8 @@ export interface ExpandedPostData {
     avatar_url: string | null;
   };
   imageUrl: string | null;
+  /** width / height of the image area (e.g. 1.5 for 3:2 landscape, 0.667 for 2:3 portrait) */
+  imageAspect: number;
 }
 
 interface ExpansionContextValue {
