@@ -22,28 +22,26 @@ interface Comment {
   reactions: { emoji: string; user_id: string }[];
 }
 
-interface ExpandedPostOverlayProps {
-  postId: string;
-}
-
-export function ExpandedPostOverlay({ postId }: ExpandedPostOverlayProps) {
+export function ExpandedPostOverlay() {
   const router = useRouter();
-  const { sourceRect, postData } = useExpansion();
+  const { sourceRect, postData, clear } = useExpansion();
   const [comments, setComments] = useState<Comment[]>([]);
 
   // Fetch comments client-side (non-blocking)
   useEffect(() => {
+    if (!postData) return;
     const supabase = createClient();
-    getComments(supabase, postId).then((data) => {
+    getComments(supabase, postData.id).then((data) => {
       if (data) setComments(data as Comment[]);
     });
-  }, [postId]);
+  }, [postData]);
 
   const dismiss = useCallback(() => {
+    clear();
     router.back();
-  }, [router]);
+  }, [router, clear]);
 
-  // Escape key to dismiss
+  // Escape key
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") dismiss();
@@ -61,19 +59,21 @@ export function ExpandedPostOverlay({ postId }: ExpandedPostOverlayProps) {
     };
   }, []);
 
-  // If context is missing (e.g. direct URL), bail to full page
-  if (!postData) {
-    return null;
-  }
+  if (!postData) return null;
 
-  // Compute comment panel position from viewport
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const margin = vw * 0.0833;
   const gap = 24;
+  const captionHeight = 48; // badge row height + gap
+
+  // Image target: fills the card area minus caption space
   const cardWidth = vw * 0.38;
-  const cardHeight = Math.min(vh - 120, 1020);
-  const cardTop = (vh - cardHeight) / 2;
+  const totalCardHeight = Math.min(vh - 120, 1020);
+  const cardTop = (vh - totalCardHeight) / 2;
+  const imageHeight = totalCardHeight - captionHeight;
+
+  // Comment panel position
   const commentLeft = margin + cardWidth + gap;
   const commentWidth = vw * 0.40;
 
@@ -90,15 +90,20 @@ export function ExpandedPostOverlay({ postId }: ExpandedPostOverlayProps) {
         />
       </CursorCollapseIcon>
 
-      {/* Expanded card — FLIP animated from source rect */}
+      {/* Expanded card — image FLIP + caption fade-in */}
       <ExpandedCard
         postData={postData}
         sourceRect={sourceRect}
-        targetRect={{
+        imageTargetRect={{
           top: cardTop,
           left: margin,
           width: cardWidth,
-          height: cardHeight,
+          height: imageHeight,
+        }}
+        captionTargetRect={{
+          top: cardTop + imageHeight + 16,
+          left: margin,
+          width: cardWidth,
         }}
       />
 
@@ -109,7 +114,7 @@ export function ExpandedPostOverlay({ postId }: ExpandedPostOverlayProps) {
           top: cardTop,
           left: commentLeft,
           width: commentWidth,
-          maxHeight: cardHeight,
+          maxHeight: totalCardHeight,
         }}
         initial={{ y: 60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -121,7 +126,7 @@ export function ExpandedPostOverlay({ postId }: ExpandedPostOverlayProps) {
           delay: 0.15,
         }}
       >
-        <ExpandedCommentCard postId={postId} initialComments={comments} />
+        <ExpandedCommentCard postId={postData.id} initialComments={comments} />
       </motion.div>
     </div>
   );

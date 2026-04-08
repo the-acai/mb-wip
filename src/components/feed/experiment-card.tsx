@@ -82,9 +82,9 @@ export function ExperimentCard({
   delay = 0,
   spring = defaultSpring,
 }: ExperimentCardProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { captureSource } = useExpansion();
+  const { captureSource, postData } = useExpansion();
 
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
@@ -97,10 +97,13 @@ export function ExperimentCard({
 
   const aspectRatio = orientation === "portrait" ? "2/3" : "3/2";
 
+  // This card is currently expanded — hide it but keep its space
+  const isLifted = postData?.id === post.id;
+
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (cardRef.current) {
-      const rect = cardRef.current.getBoundingClientRect();
+    if (imageRef.current) {
+      const rect = imageRef.current.getBoundingClientRect();
       captureSource(
         {
           id: post.id,
@@ -123,7 +126,10 @@ export function ExperimentCard({
 
   return (
     <motion.div
-      style={{ transformStyle: "preserve-3d" }}
+      style={{
+        transformStyle: "preserve-3d",
+        visibility: isLifted ? "hidden" : "visible",
+      }}
       initial={{
         opacity: 0,
         y: spring.y,
@@ -151,11 +157,12 @@ export function ExperimentCard({
         filter: { duration: 0.6, ease: "easeOut", delay },
       }}
     >
-      <div ref={cardRef} onClick={handleClick} className="group block cursor-pointer">
+      <div onClick={handleClick} className="group block cursor-pointer">
         <div className="flex flex-col gap-4">
           {/* Image */}
           {thumbnailUrl ? (
             <div
+              ref={imageRef}
               className="relative overflow-hidden rounded-lg bg-white"
               style={{ aspectRatio }}
             >
@@ -169,6 +176,7 @@ export function ExperimentCard({
             </div>
           ) : (
             <div
+              ref={imageRef}
               className="flex items-center justify-center overflow-hidden rounded-lg bg-white text-[var(--text-caption)]"
               style={{ aspectRatio }}
             >
