@@ -74,20 +74,25 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
   };
 
   const resolveParentFromMention = (body: string): { parentId?: string; cleanBody: string } => {
-    const mentionMatch = body.match(/^@(\w+)\s/);
-    if (!mentionMatch) return { cleanBody: body };
+    if (!body.startsWith("@")) return { cleanBody: body };
 
-    const mentionedName = mentionMatch[1].toLowerCase();
-    const matchingComment = [...comments]
-      .reverse()
-      .find((c) => {
-        const name = (c.author.full_name || c.author.email.split("@")[0]).toLowerCase();
-        return name === mentionedName;
-      });
-
-    if (matchingComment) {
-      return { parentId: matchingComment.id, cleanBody: body };
+    // Build a set of known author display names from existing comments
+    const authorNames = new Map<string, Comment>();
+    for (const c of [...comments].reverse()) {
+      const name = getAuthorName(c).toLowerCase();
+      if (!authorNames.has(name)) {
+        authorNames.set(name, c);
+      }
     }
+
+    // Check if the comment starts with @<known author name> (case-insensitive)
+    const textAfterAt = body.slice(1).toLowerCase();
+    for (const [name, comment] of authorNames) {
+      if (textAfterAt.startsWith(name + " ") || textAfterAt === name) {
+        return { parentId: comment.id, cleanBody: body };
+      }
+    }
+
     return { cleanBody: body };
   };
 
@@ -129,7 +134,11 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
             >
               <ExpandedCommentItem comment={comment} />
               {nextColor && (
-                <ThreadLine colorTop={currentColor} colorBottom={nextColor} />
+                <ThreadLine
+                  colorTop={currentColor}
+                  colorBottom={nextColor}
+                  delay={(i + 1) * STAGGER_MS / 1000 + 0.15}
+                />
               )}
             </motion.div>
           );
