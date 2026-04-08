@@ -21,7 +21,7 @@ interface Comment {
   reactions: { emoji: string; user_id: string }[];
 }
 
-// ~40% faster spring, matching expanded-card.tsx
+// Same spring as the card expansion
 const EXPANSION_SPRING = {
   type: "spring" as const,
   mass: 1.2,
@@ -30,7 +30,7 @@ const EXPANSION_SPRING = {
 };
 
 export function ExpandedPostOverlay() {
-  const { sourceRect, postData, closing, startClose, clear } = useExpansion();
+  const { sourceRect, postData, closing, startClose, finishClose } = useExpansion();
   const [comments, setComments] = useState<Comment[]>([]);
 
   // Fetch comments client-side (non-blocking)
@@ -42,16 +42,11 @@ export function ExpandedPostOverlay() {
     });
   }, [postData]);
 
-  // Dismiss: start close animation, then clear after it settles
+  // Manual dismiss: needs history.back() after animation completes
   const dismiss = useCallback(() => {
     if (closing) return;
-    startClose();
-    // Wait for spring to settle, then clear state and update URL
-    setTimeout(() => {
-      clear();
-      window.history.back();
-    }, 500);
-  }, [closing, startClose, clear]);
+    startClose(true);
+  }, [closing, startClose]);
 
   // Escape key
   useEffect(() => {
@@ -77,9 +72,9 @@ export function ExpandedPostOverlay() {
   const vh = window.innerHeight;
   const margin = vw * 0.0833;
   const gap = 24;
-  const captionRowHeight = 48; // badge + gap below image
+  const captionRowHeight = 48;
 
-  // Compute card height from the image's natural aspect ratio
+  // Card target sized to preserve image aspect ratio
   const cardWidth = vw * 0.38;
   const imageHeight = cardWidth / postData.imageAspect;
   const naturalCardHeight = imageHeight + captionRowHeight;
@@ -90,6 +85,9 @@ export function ExpandedPostOverlay() {
   // Comment panel position
   const commentLeft = margin + cardWidth + gap;
   const commentWidth = vw * 0.40;
+
+  // Comment card slides from behind the experiment card
+  const commentSlideX = -(commentLeft - margin - cardWidth * 0.5);
 
   return (
     <div className="fixed inset-0 z-40">
@@ -103,7 +101,28 @@ export function ExpandedPostOverlay() {
         />
       </CursorCollapseIcon>
 
-      {/* Expanded card — single container FLIP (image + caption) */}
+      {/* Comment card — slides from behind experiment card (lower z) */}
+      <motion.div
+        className="pointer-events-auto absolute"
+        style={{
+          top: cardTop,
+          left: commentLeft,
+          width: commentWidth,
+          maxHeight: totalCardHeight,
+          zIndex: 0,
+        }}
+        initial={{ x: commentSlideX, scale: 0.96, opacity: 0 }}
+        animate={{
+          x: closing ? commentSlideX : 0,
+          scale: closing ? 0.96 : 1,
+          opacity: closing ? 0 : 1,
+        }}
+        transition={EXPANSION_SPRING}
+      >
+        <ExpandedCommentCard postId={postData.id} initialComments={comments} />
+      </motion.div>
+
+      {/* Expanded card — on top of comment card (higher z) */}
       <ExpandedCard
         postData={postData}
         sourceRect={sourceRect}
@@ -114,23 +133,8 @@ export function ExpandedPostOverlay() {
           height: totalCardHeight,
         }}
         closing={closing}
+        onCloseComplete={finishClose}
       />
-
-      {/* Comment card */}
-      <motion.div
-        className="pointer-events-auto absolute"
-        style={{
-          top: cardTop,
-          left: commentLeft,
-          width: commentWidth,
-          maxHeight: totalCardHeight,
-        }}
-        initial={{ y: 60, opacity: 0 }}
-        animate={{ y: closing ? 60 : 0, opacity: closing ? 0 : 1 }}
-        transition={EXPANSION_SPRING}
-      >
-        <ExpandedCommentCard postId={postData.id} initialComments={comments} />
-      </motion.div>
     </div>
   );
 }

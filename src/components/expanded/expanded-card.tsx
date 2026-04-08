@@ -24,6 +24,7 @@ interface ExpandedCardProps {
   sourceRect: SourceRect | null;
   targetRect: Rect;
   closing: boolean;
+  onCloseComplete: () => void;
 }
 
 export function ExpandedCard({
@@ -31,6 +32,7 @@ export function ExpandedCard({
   sourceRect,
   targetRect,
   closing,
+  onCloseComplete,
 }: ExpandedCardProps) {
   const authorName =
     postData.author?.full_name || postData.author?.email?.split("@")[0] || "Anonymous";
@@ -39,7 +41,6 @@ export function ExpandedCard({
 
   const hasSource = !!sourceRect;
 
-  // When closing, animate back to source rect; otherwise animate to target
   const animateTo = closing && hasSource
     ? {
         top: sourceRect.top,
@@ -61,6 +62,7 @@ export function ExpandedCard({
   return (
     <motion.div
       className="pointer-events-auto fixed flex flex-col gap-4 overflow-hidden will-change-[top,left,width,height]"
+      style={{ zIndex: 1 }}
       initial={
         hasSource
           ? {
@@ -85,6 +87,9 @@ export function ExpandedCard({
         default: EXPANSION_SPRING,
         opacity: { duration: 0.25, ease: "easeOut" },
       }}
+      onAnimationComplete={() => {
+        if (closing) onCloseComplete();
+      }}
     >
       {/* Image — flex-1 fills remaining space after caption */}
       <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg">
@@ -102,7 +107,7 @@ export function ExpandedCard({
         )}
       </div>
 
-      {/* Caption — moves with the container as part of the same FLIP */}
+      {/* Caption */}
       <div className="flex shrink-0 items-baseline gap-2">
         <span
           className="flex h-8 shrink-0 items-center rounded-lg px-2"
