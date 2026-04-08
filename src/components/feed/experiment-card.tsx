@@ -36,9 +36,9 @@ export interface FeedPost {
   created_at: string;
   author: {
     id: string;
-    display_name: string | null;
+    full_name: string | null;
+    email: string;
     avatar_url: string | null;
-    username: string | null;
   };
   assets: {
     id: string;
@@ -67,7 +67,7 @@ export function ExperimentCard({ post }: ExperimentCardProps) {
   const thumbnailUrl = firstImageAsset?.signed_url;
   const isGallery = post.assets?.length > 1;
   const authorName =
-    post.author?.display_name || post.author?.username || "Anonymous";
+    post.author?.full_name || post.author?.email?.split("@")[0] || "Anonymous";
   const authorInitial = authorName.charAt(0).toUpperCase();
 
   return (
