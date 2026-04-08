@@ -65,13 +65,13 @@ interface ExperimentCardProps {
 }
 
 const defaultSpring: CardSpringConfig = {
-  mass: 1.5,
-  stiffness: 80,
+  mass: 2,
+  stiffness: 100,
   damping: 16,
   y: 24,
   z: 80,
   scale: 1.06,
-  blur: 3,
+  blur: 0,
 };
 
 export function ExperimentCard({

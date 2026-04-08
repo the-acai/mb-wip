@@ -15,14 +15,14 @@ export interface SpringConfig {
 }
 
 export const DEFAULT_SPRING: SpringConfig = {
-  mass: 1.5,
-  stiffness: 80,
+  mass: 2,
+  stiffness: 100,
   damping: 16,
   y: 24,
   z: 80,
   scale: 1.06,
-  blur: 3,
-  withinRowMs: 70,
+  blur: 0,
+  withinRowMs: 80,
   rowBreathMs: 60,
 };
 

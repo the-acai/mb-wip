@@ -32,18 +32,19 @@ Cards start slightly in front of the screen (closer to viewer) and settle back i
 - `scale: 1`
 - `filter: blur(0)`
 
-**Spring config (starting point, will tune live):**
-- `mass: 1.5` — heavier feel, more deliberate settling
-- `stiffness: 80` — slower, less snappy
+**Spring config (tuned):**
+- `mass: 2` — heavy, deliberate settling
+- `stiffness: 100` — balanced responsiveness
 - `damping: 16` — controlled overshoot
+- `blur: 0` — no depth-of-field blur (clean entrance)
 
-Total animation duration ~1050ms (40% slower than typical 750ms entrance). The spring naturally overshoots in Z and scale, then settles — giving cards physical weight.
+The spring naturally overshoots in Z and scale, then settles — giving cards physical weight.
 
 ### Stagger: Jazz Phrasing
 
 Not metronomic. Cards group into rhythmic clusters by row.
 
-- **Within a row:** 70ms between cards
+- **Within a row:** 80ms between cards
 - **Between rows:** additional 60ms "breath" pause
 - Pattern: `da-da-da ... da-da-da ... da-da-da`
 
