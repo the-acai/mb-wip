@@ -1,16 +1,21 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Masonry from "react-masonry-css";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExperimentCard, type FeedPost } from "./experiment-card";
 
-const BREAKPOINT_COLS = {
-  default: 3,
-  1024: 2,
-  640: 1,
-};
+// TODO: Switch to actual image aspect ratio once width/height columns
+// are added to the assets table. For now, use a deterministic hash to
+// assign tall vs short cards for visual variety.
+function getCardVariant(postId: string): "short" | "tall" {
+  let hash = 0;
+  for (let i = 0; i < postId.length; i++) {
+    hash = postId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  // ~30% of cards are tall
+  return Math.abs(hash) % 10 < 3 ? "tall" : "short";
+}
 
 interface FeedGridProps {
   posts: FeedPost[];
@@ -19,20 +24,16 @@ interface FeedGridProps {
   onLoadMore: () => void;
 }
 
-function CardSkeleton() {
+function CardSkeleton({ tall }: { tall?: boolean }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-border/50 bg-card">
-      <Skeleton className="h-48 w-full rounded-none" />
-      <div className="flex flex-col gap-2 p-3">
-        <Skeleton className="h-4 w-3/4" />
-        <div className="flex gap-1">
-          <Skeleton className="h-4 w-12 rounded-full" />
-          <Skeleton className="h-4 w-16 rounded-full" />
-        </div>
-        <div className="flex items-center gap-2 pt-1">
-          <Skeleton className="size-5 rounded-full" />
-          <Skeleton className="h-3 w-24" />
-        </div>
+    <div className={`flex flex-col gap-4 ${tall ? "row-span-2" : ""}`}>
+      <Skeleton
+        className={`w-full rounded-lg ${tall ? "flex-1 min-h-[300px]" : ""}`}
+        style={!tall ? { aspectRatio: "933/632" } : undefined}
+      />
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-8 w-20 rounded-lg" />
+        <Skeleton className="h-5 flex-1 rounded" />
       </div>
     </div>
   );
@@ -73,19 +74,22 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
 
   return (
     <>
-      <Masonry
-        breakpointCols={BREAKPOINT_COLS}
-        className="masonry-grid"
-        columnClassName="masonry-grid-column"
+      <div
+        className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+        style={{ gridAutoRows: "minmax(200px, auto)", gridAutoFlow: "dense" }}
       >
         {posts.map((post) => (
-          <ExperimentCard key={post.id} post={post} />
+          <ExperimentCard
+            key={post.id}
+            post={post}
+            variant={getCardVariant(post.id)}
+          />
         ))}
         {loading &&
           Array.from({ length: 6 }).map((_, i) => (
-            <CardSkeleton key={`skeleton-${i}`} />
+            <CardSkeleton key={`skeleton-${i}`} tall={i % 4 === 1} />
           ))}
-      </Masonry>
+      </div>
 
       {hasMore && <div ref={sentinelRef} className="h-1" />}
     </>

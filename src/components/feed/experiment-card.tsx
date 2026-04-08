@@ -2,32 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Images } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-
-const TAG_COLORS = [
-  "bg-rose-100 text-rose-700 border-rose-200",
-  "bg-sky-100 text-sky-700 border-sky-200",
-  "bg-amber-100 text-amber-700 border-amber-200",
-  "bg-emerald-100 text-emerald-700 border-emerald-200",
-  "bg-violet-100 text-violet-700 border-violet-200",
-  "bg-orange-100 text-orange-700 border-orange-200",
-  "bg-teal-100 text-teal-700 border-teal-200",
-  "bg-pink-100 text-pink-700 border-pink-200",
-  "bg-indigo-100 text-indigo-700 border-indigo-200",
-  "bg-lime-100 text-lime-700 border-lime-200",
-];
-
-function hashTagColor(tagName: string): string {
-  let hash = 0;
-  for (let i = 0; i < tagName.length; i++) {
-    hash = tagName.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length];
-}
+import { getAuthorColor } from "@/lib/utils";
 
 export interface FeedPost {
   id: string;
@@ -58,91 +34,69 @@ export interface FeedPost {
 
 interface ExperimentCardProps {
   post: FeedPost;
+  variant: "short" | "tall";
 }
 
-export function ExperimentCard({ post }: ExperimentCardProps) {
+export function ExperimentCard({ post, variant }: ExperimentCardProps) {
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
   );
   const thumbnailUrl = firstImageAsset?.signed_url;
-  const isGallery = post.assets?.length > 1;
   const authorName =
     post.author?.full_name || post.author?.email?.split("@")[0] || "Anonymous";
-  const authorInitial = authorName.charAt(0).toUpperCase();
+  const badgeColor = getAuthorColor(authorName);
+  const caption = post.body?.slice(0, 120) || post.title;
 
   return (
-    <Link href={`/post/${post.id}`} className="group block">
-      <Card className="overflow-hidden border-0 shadow-sm transition-shadow duration-200 group-hover:shadow-md">
-        {/* Thumbnail */}
-        {thumbnailUrl && (
-          <div className="relative">
+    <Link
+      href={`/post/${post.id}`}
+      className={`group block ${variant === "tall" ? "row-span-2 h-full" : ""}`}
+    >
+      <div className={`flex flex-col gap-4 ${variant === "tall" ? "h-full" : ""}`}>
+        {/* Image */}
+        {thumbnailUrl ? (
+          <div
+            className={`relative overflow-hidden rounded-lg ${
+              variant === "tall"
+                ? "min-h-0 flex-1"
+                : "bg-white"
+            }`}
+            style={variant === "short" ? { aspectRatio: "933/632" } : undefined}
+          >
             <Image
               src={thumbnailUrl}
               alt={post.title}
-              width={400}
-              height={300}
-              className="w-full object-cover"
+              fill
+              className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
               sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
-            {isGallery && (
-              <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                <Images className="size-3" />
-                {post.assets.length}
-              </span>
-            )}
+          </div>
+        ) : (
+          <div
+            className={`flex items-center justify-center overflow-hidden rounded-lg bg-white text-[var(--text-caption)] ${
+              variant === "tall" ? "min-h-0 flex-1" : ""
+            }`}
+            style={variant === "short" ? { aspectRatio: "933/632" } : undefined}
+          >
+            <span className="font-heading text-sm">No image</span>
           </div>
         )}
 
-        <CardContent className="flex flex-col gap-2 px-3 py-3">
-          {/* Title */}
-          <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
-            {post.title}
-          </h3>
-
-          {/* Tags */}
-          {post.post_tags?.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {post.post_tags.map((pt) => (
-                <Badge
-                  key={pt.tag.id}
-                  className={cn(
-                    "h-auto rounded-full border px-1.5 py-0 text-[10px] font-medium",
-                    hashTagColor(pt.tag.name)
-                  )}
-                >
-                  {pt.tag.name}
-                </Badge>
-              ))}
-            </div>
-          )}
-
-          {/* Author line */}
-          <div className="flex items-center gap-2 pt-1">
-            <span
-              className="flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-              style={{
-                backgroundColor: `hsl(${
-                  (authorName.charCodeAt(0) * 37) % 360
-                }, 60%, 55%)`,
-              }}
-            >
-              {authorInitial}
+        {/* Caption row */}
+        <div className="flex items-baseline gap-2">
+          <span
+            className="flex h-8 shrink-0 items-center rounded-lg px-2"
+            style={{ backgroundColor: badgeColor }}
+          >
+            <span className="font-heading text-base tracking-[-0.16px] text-[var(--page-bg)]">
+              @{authorName.toLowerCase()}
             </span>
-            <span className="truncate text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{authorName}</span>
-              {post.body && (
-                <>
-                  {" "}
-                  &middot;{" "}
-                  <span className="line-clamp-1 inline">
-                    {post.body.slice(0, 80)}
-                  </span>
-                </>
-              )}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+          </span>
+          <p className="min-w-0 flex-1 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[var(--text-caption)]">
+            {caption}
+          </p>
+        </div>
+      </div>
     </Link>
   );
 }

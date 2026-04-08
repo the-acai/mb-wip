@@ -1,40 +1,39 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { buttonVariants } from "@/components/ui/button";
-import { NotificationBell } from "@/components/notifications/notification-bell";
-import { cn } from "@/lib/utils";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-background">
-        <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-            <Link href="/feed">
-              <h1 className="text-xl font-bold tracking-tight">
-                WORKS IN PROGRESS
-              </h1>
-            </Link>
-            <div className="flex items-center gap-2">
-              <Link
-                href="/post/new"
-                className={cn(buttonVariants({ size: "sm" }))}
-              >
-                SEND IT
-              </Link>
-              <Link
-                href="/post/new"
-                className={cn(buttonVariants({ size: "icon-sm", variant: "outline" }))}
-              >
-                <Plus className="h-4 w-4" />
-              </Link>
-              <NotificationBell />
-            </div>
-          </div>
+      <div className="min-h-screen bg-[var(--page-bg)]">
+        <header className="relative px-6 pt-12 pb-6">
+          <Link
+            href="/post/new"
+            className="group absolute right-6 top-[46px] flex items-center gap-0.5"
+          >
+            <span className="inline-flex h-12 items-center overflow-hidden rounded-full bg-[var(--text-dark)] px-6 transition-[padding] duration-300 ease-out group-hover:px-8">
+              {"SEND IT".split("").map((char, i) => (
+                <span
+                  key={i}
+                  className="inline-block font-heading text-base font-bold text-[var(--page-bg)] transition-transform duration-[600ms] ease-out group-hover:-translate-y-[3px]"
+                  style={{ transitionDelay: `${i * 40}ms` }}
+                >
+                  {char === " " ? "\u00A0" : char}
+                </span>
+              ))}
+            </span>
+            <span className="flex size-12 items-center justify-center rounded-full bg-[var(--text-dark)]">
+              <ArrowRight className="size-5 text-[var(--page-bg)]" />
+            </span>
+          </Link>
+          <Link href="/feed">
+            <h1 className="text-center font-heading text-[64px] font-black leading-[1.18] tracking-[-0.64px] text-[var(--text-dark)]">
+              WORKS IN PROGRESS
+            </h1>
+          </Link>
         </header>
-        <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+        <main className="px-6 pb-6">{children}</main>
       </div>
     </TooltipProvider>
   );
