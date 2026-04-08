@@ -125,7 +125,8 @@ export function ExperimentCard({
         <div className="flex flex-col gap-4">
           {/* Image */}
           {thumbnailUrl ? (
-            <div
+            <motion.div
+              layoutId={`card-image-${post.id}`}
               className="relative overflow-hidden rounded-lg bg-white"
               style={{ aspectRatio }}
             >
@@ -136,7 +137,7 @@ export function ExperimentCard({
                 className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
               />
-            </div>
+            </motion.div>
           ) : (
             <div
               className="flex items-center justify-center overflow-hidden rounded-lg bg-white text-[var(--text-caption)]"
@@ -147,7 +148,7 @@ export function ExperimentCard({
           )}
 
           {/* Caption row */}
-          <div className="flex items-baseline gap-2">
+          <motion.div layoutId={`card-caption-${post.id}`} className="flex items-baseline gap-2">
             <span
               className="flex h-8 shrink-0 items-center rounded-lg px-2"
               style={{ backgroundColor: badgeColor }}
@@ -159,7 +160,7 @@ export function ExperimentCard({
             <p className="min-w-0 flex-1 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[var(--text-caption)]">
               {caption}
             </p>
-          </div>
+          </motion.div>
         </div>
       </Link>
     </motion.div>

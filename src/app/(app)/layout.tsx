@@ -4,7 +4,13 @@ import { ArrowRight } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Providers } from "@/components/providers";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default function AppLayout({
+  children,
+  modal,
+}: {
+  children: React.ReactNode;
+  modal: React.ReactNode;
+}) {
   return (
     <Providers>
     <TooltipProvider>
@@ -36,6 +42,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
         </header>
         <main className="px-6 pb-6">{children}</main>
+        {modal}
       </div>
     </TooltipProvider>
     </Providers>
