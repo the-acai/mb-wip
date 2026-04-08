@@ -34,10 +34,9 @@ export interface FeedPost {
 
 interface ExperimentCardProps {
   post: FeedPost;
-  variant: "short" | "tall";
 }
 
-export function ExperimentCard({ post, variant }: ExperimentCardProps) {
+export function ExperimentCard({ post }: ExperimentCardProps) {
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
   );
@@ -50,18 +49,14 @@ export function ExperimentCard({ post, variant }: ExperimentCardProps) {
   return (
     <Link
       href={`/post/${post.id}`}
-      className={`group block ${variant === "tall" ? "row-span-2 h-full" : ""}`}
+      className="group block"
     >
-      <div className={`flex flex-col gap-4 ${variant === "tall" ? "h-full" : ""}`}>
+      <div className="flex flex-col gap-4">
         {/* Image */}
         {thumbnailUrl ? (
           <div
-            className={`relative overflow-hidden rounded-lg ${
-              variant === "tall"
-                ? "min-h-0 flex-1"
-                : "bg-white"
-            }`}
-            style={variant === "short" ? { aspectRatio: "933/632" } : undefined}
+            className="relative overflow-hidden rounded-lg bg-white"
+            style={{ aspectRatio: "933/632" }}
           >
             <Image
               src={thumbnailUrl}
@@ -73,10 +68,8 @@ export function ExperimentCard({ post, variant }: ExperimentCardProps) {
           </div>
         ) : (
           <div
-            className={`flex items-center justify-center overflow-hidden rounded-lg bg-white text-[var(--text-caption)] ${
-              variant === "tall" ? "min-h-0 flex-1" : ""
-            }`}
-            style={variant === "short" ? { aspectRatio: "933/632" } : undefined}
+            className="flex items-center justify-center overflow-hidden rounded-lg bg-white text-[var(--text-caption)]"
+            style={{ aspectRatio: "933/632" }}
           >
             <span className="font-heading text-sm">No image</span>
           </div>

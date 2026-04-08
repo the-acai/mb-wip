@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useCallback, useTransition } from "react";
+import { useState, useMemo } from "react";
 
-import { createClient } from "@/lib/supabase/client";
-import { getFeedPosts } from "@/lib/queries/posts";
-import { getSignedUrl } from "@/lib/queries/storage";
+import { useFeedPosts } from "@/hooks/use-feed-posts";
+import { type SortMode } from "@/lib/queries/posts";
 import { TagFilterBar } from "./tag-filter-bar";
 import { FeedGrid } from "./feed-grid";
 import type { FeedPost } from "./experiment-card";
@@ -15,102 +14,19 @@ interface Tag {
 }
 
 interface FeedClientProps {
-  initialPosts: FeedPost[];
   tags: Tag[];
-  initialHasMore: boolean;
 }
 
-export function FeedClient({
-  initialPosts,
-  tags,
-  initialHasMore,
-}: FeedClientProps) {
-  const [posts, setPosts] = useState<FeedPost[]>(initialPosts);
+export function FeedClient({ tags }: FeedClientProps) {
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(initialHasMore);
-  const [isPending, startTransition] = useTransition();
+  const [sort, setSort] = useState<SortMode>("newest");
 
-  const loadMore = useCallback(() => {
-    if (isPending) return;
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } =
+    useFeedPosts({ tag: activeTag, sort });
 
-    startTransition(async () => {
-      const supabase = createClient();
-      const lastPost = posts[posts.length - 1];
-      if (!lastPost) return;
-
-      const newPosts = await getFeedPosts(supabase, {
-        tag: activeTag ?? undefined,
-        cursor: lastPost.created_at,
-        limit: 20,
-      });
-
-      // Get signed URLs for thumbnails
-      const postsWithUrls = await Promise.all(
-        (newPosts as FeedPost[]).map(async (post) => {
-          const firstImage = post.assets?.find((a) =>
-            a.mime_type?.startsWith("image/")
-          );
-          if (firstImage && !firstImage.signed_url) {
-            try {
-              firstImage.signed_url = await getSignedUrl(
-                supabase,
-                firstImage.file_path
-              );
-            } catch {
-              // Skip if URL generation fails
-            }
-          }
-          return post;
-        })
-      );
-
-      if (postsWithUrls.length < 20) {
-        setHasMore(false);
-      }
-
-      setPosts((prev) => [...prev, ...postsWithUrls]);
-    });
-  }, [isPending, posts, activeTag]);
-
-  const handleTagChange = useCallback(
-    (tag: string | null) => {
-      setActiveTag(tag);
-      setHasMore(true);
-
-      startTransition(async () => {
-        const supabase = createClient();
-        const newPosts = await getFeedPosts(supabase, {
-          tag: tag ?? undefined,
-          limit: 20,
-        });
-
-        const postsWithUrls = await Promise.all(
-          (newPosts as FeedPost[]).map(async (post) => {
-            const firstImage = post.assets?.find((a) =>
-              a.mime_type?.startsWith("image/")
-            );
-            if (firstImage && !firstImage.signed_url) {
-              try {
-                firstImage.signed_url = await getSignedUrl(
-                  supabase,
-                  firstImage.file_path
-                );
-              } catch {
-                // Skip if URL generation fails
-              }
-            }
-            return post;
-          })
-        );
-
-        if (postsWithUrls.length < 20) {
-          setHasMore(false);
-        }
-
-        setPosts(postsWithUrls);
-      });
-    },
-    []
+  const posts = useMemo(
+    () => (data?.pages.flatMap((page) => page.posts) ?? []) as FeedPost[],
+    [data]
   );
 
   return (
@@ -118,13 +34,15 @@ export function FeedClient({
       <TagFilterBar
         tags={tags}
         activeTag={activeTag}
-        onTagChange={handleTagChange}
+        onTagChange={setActiveTag}
+        sort={sort}
+        onSortChange={setSort}
       />
       <FeedGrid
         posts={posts}
-        hasMore={hasMore}
-        loading={isPending}
-        onLoadMore={loadMore}
+        hasMore={hasNextPage}
+        loading={isFetchingNextPage || (isFetching && posts.length === 0)}
+        onLoadMore={() => fetchNextPage()}
       />
     </div>
   );

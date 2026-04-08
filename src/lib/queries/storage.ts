@@ -48,6 +48,31 @@ export async function getSignedUrl(
   return data.signedUrl;
 }
 
+/**
+ * Batch-fetch signed URLs for multiple file paths in a single request.
+ * Returns a Map of filePath -> signedUrl.
+ */
+export async function getSignedUrls(
+  supabase: SupabaseClient,
+  filePaths: string[]
+): Promise<Map<string, string>> {
+  if (filePaths.length === 0) return new Map();
+
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrls(filePaths, 3600);
+
+  if (error) throw error;
+
+  const urlMap = new Map<string, string>();
+  for (const item of data ?? []) {
+    if (item.signedUrl && item.path) {
+      urlMap.set(item.path, item.signedUrl);
+    }
+  }
+  return urlMap;
+}
+
 export async function deleteFile(
   supabase: SupabaseClient,
   filePath: string

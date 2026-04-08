@@ -1,21 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback } from "react";
+import { VirtuosoGrid } from "react-virtuoso";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExperimentCard, type FeedPost } from "./experiment-card";
-
-// TODO: Switch to actual image aspect ratio once width/height columns
-// are added to the assets table. For now, use a deterministic hash to
-// assign tall vs short cards for visual variety.
-function getCardVariant(postId: string): "short" | "tall" {
-  let hash = 0;
-  for (let i = 0; i < postId.length; i++) {
-    hash = postId.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  // ~30% of cards are tall
-  return Math.abs(hash) % 10 < 3 ? "tall" : "short";
-}
 
 interface FeedGridProps {
   posts: FeedPost[];
@@ -24,12 +13,12 @@ interface FeedGridProps {
   onLoadMore: () => void;
 }
 
-function CardSkeleton({ tall }: { tall?: boolean }) {
+function CardSkeleton() {
   return (
-    <div className={`flex flex-col gap-4 ${tall ? "row-span-2" : ""}`}>
+    <div className="flex flex-col gap-4">
       <Skeleton
-        className={`w-full rounded-lg ${tall ? "flex-1 min-h-[300px]" : ""}`}
-        style={!tall ? { aspectRatio: "933/632" } : undefined}
+        className="w-full rounded-lg"
+        style={{ aspectRatio: "933/632" }}
       />
       <div className="flex items-center gap-2">
         <Skeleton className="h-8 w-20 rounded-lg" />
@@ -39,25 +28,22 @@ function CardSkeleton({ tall }: { tall?: boolean }) {
   );
 }
 
+function LoadingFooter() {
+  return (
+    <div className="grid grid-cols-1 gap-6 pt-6 md:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <CardSkeleton key={`skeleton-${i}`} />
+      ))}
+    </div>
+  );
+}
+
 export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps) {
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel || !hasMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !loading) {
-          onLoadMore();
-        }
-      },
-      { rootMargin: "200px" }
-    );
-
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [hasMore, loading, onLoadMore]);
+  const handleEndReached = useCallback(() => {
+    if (!loading && hasMore) {
+      onLoadMore();
+    }
+  }, [loading, hasMore, onLoadMore]);
 
   if (posts.length === 0 && !loading) {
     return (
@@ -72,26 +58,32 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
     );
   }
 
-  return (
-    <>
-      <div
-        className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
-        style={{ gridAutoRows: "minmax(200px, auto)", gridAutoFlow: "dense" }}
-      >
-        {posts.map((post) => (
-          <ExperimentCard
-            key={post.id}
-            post={post}
-            variant={getCardVariant(post.id)}
-          />
+  if (posts.length === 0 && loading) {
+    return (
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <CardSkeleton key={`skeleton-${i}`} />
         ))}
-        {loading &&
-          Array.from({ length: 6 }).map((_, i) => (
-            <CardSkeleton key={`skeleton-${i}`} tall={i % 4 === 1} />
-          ))}
       </div>
+    );
+  }
 
-      {hasMore && <div ref={sentinelRef} className="h-1" />}
-    </>
+  return (
+    <VirtuosoGrid
+      useWindowScroll
+      data={posts}
+      endReached={handleEndReached}
+      increaseViewportBy={400}
+      overscan={200}
+      listClassName="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+      itemClassName=""
+      itemContent={(index, post) => (
+        <ExperimentCard key={post.id} post={post} />
+      )}
+      computeItemKey={(index, post) => post.id}
+      components={{
+        Footer: loading ? LoadingFooter : undefined,
+      }}
+    />
   );
 }

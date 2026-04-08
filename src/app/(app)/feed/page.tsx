@@ -1,45 +1,60 @@
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/server";
 import { getFeedPosts } from "@/lib/queries/posts";
 import { getAllTags } from "@/lib/queries/tags";
-import { getSignedUrl } from "@/lib/queries/storage";
+import { getSignedUrls } from "@/lib/queries/storage";
 import { FeedClient } from "@/components/feed/feed-client";
 import type { FeedPost } from "@/components/feed/experiment-card";
 
 export default async function FeedPage() {
   const supabase = await createClient();
+  const queryClient = new QueryClient();
 
-  const [rawPosts, tags] = await Promise.all([
-    getFeedPosts(supabase, { limit: 20 }),
-    getAllTags(supabase),
-  ]);
+  const tags = (await getAllTags(supabase)) ?? [];
 
-  // Batch-fetch signed URLs for the first image asset of each post
-  const posts: FeedPost[] = await Promise.all(
-    (rawPosts as FeedPost[]).map(async (post) => {
-      const firstImage = post.assets?.find((a) =>
-        a.mime_type?.startsWith("image/")
-      );
-      if (firstImage) {
+  // Prefetch the default feed (newest, no tag filter)
+  await queryClient.prefetchInfiniteQuery({
+    queryKey: ["feed", { tag: null, sort: "newest" }],
+    queryFn: async () => {
+      const result = await getFeedPosts(supabase, { limit: 20 });
+      const posts = result.posts as FeedPost[];
+
+      // Batch-fetch signed URLs
+      const imagePaths = posts
+        .map(
+          (p) =>
+            p.assets?.find((a) => a.mime_type?.startsWith("image/"))?.file_path
+        )
+        .filter((p): p is string => !!p);
+
+      if (imagePaths.length > 0) {
         try {
-          firstImage.signed_url = await getSignedUrl(
-            supabase,
-            firstImage.file_path
-          );
+          const urlMap = await getSignedUrls(supabase, imagePaths);
+          for (const post of posts) {
+            const firstImage = post.assets?.find((a) =>
+              a.mime_type?.startsWith("image/")
+            );
+            if (firstImage && urlMap.has(firstImage.file_path)) {
+              firstImage.signed_url = urlMap.get(firstImage.file_path);
+            }
+          }
         } catch {
-          // If signed URL generation fails, skip the thumbnail
+          // Skip if batch fetch fails
         }
       }
-      return post;
-    })
-  );
 
-  const hasMore = posts.length >= 20;
+      return { posts, nextCursor: result.nextCursor };
+    },
+    initialPageParam: undefined,
+  });
 
   return (
-    <FeedClient
-      initialPosts={posts}
-      tags={tags ?? []}
-      initialHasMore={hasMore}
-    />
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <FeedClient tags={tags} />
+    </HydrationBoundary>
   );
 }

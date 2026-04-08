@@ -2,9 +2,11 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Providers } from "@/components/providers";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
+    <Providers>
     <TooltipProvider>
       <div className="min-h-screen bg-[var(--page-bg)]">
         <header className="relative px-6 pt-12 pb-6">
@@ -36,5 +38,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="px-6 pb-6">{children}</main>
       </div>
     </TooltipProvider>
+    </Providers>
   );
 }

@@ -1,12 +1,53 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
+export type SortMode = "newest" | "most_reactions";
+
+export interface FeedCursor {
+  created_at?: string;
+  sort_value?: number;
+  id?: string;
+}
+
+export interface FeedPageResult {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  posts: any[];
+  nextCursor: FeedCursor | null;
+}
+
 export async function getFeedPosts(
   supabase: SupabaseClient,
-  options: { tag?: string; cursor?: string; limit?: number } = {}
-) {
+  options: {
+    tag?: string;
+    cursor?: FeedCursor;
+    limit?: number;
+    sort?: SortMode;
+  } = {}
+): Promise<FeedPageResult> {
   const limit = options.limit ?? 20;
+  const sort = options.sort ?? "newest";
 
-  let query = supabase
+  // Step 1: Use RPC to get sorted/filtered post IDs
+  const { data: idRows, error: rpcError } = await supabase.rpc(
+    "get_feed_posts",
+    {
+      p_tag_name: options.tag ?? null,
+      p_sort: sort,
+      p_cursor_created_at: options.cursor?.created_at ?? null,
+      p_cursor_sort_value: options.cursor?.sort_value ?? null,
+      p_cursor_id: options.cursor?.id ?? null,
+      p_limit: limit,
+    }
+  );
+
+  if (rpcError) throw rpcError;
+  if (!idRows || idRows.length === 0) {
+    return { posts: [], nextCursor: null };
+  }
+
+  const ids = idRows.map((r: { post_id: string }) => r.post_id);
+
+  // Step 2: Fetch full post data for those IDs
+  const { data, error } = await supabase
     .from("posts")
     .select(
       `
@@ -18,26 +59,35 @@ export async function getFeedPosts(
       reactions(count)
     `
     )
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .in("id", ids);
 
-  if (options.cursor) {
-    query = query.lt("created_at", options.cursor);
-  }
-
-  const { data, error } = await query;
   if (error) throw error;
 
-  // Filter by tag client-side (Supabase doesn't support filtering on nested joins easily)
-  if (options.tag && data) {
-    return data.filter((post: Record<string, unknown>) =>
-      (post.post_tags as { tag: { name: string } }[])?.some(
-        (pt) => pt.tag?.name === options.tag
-      )
-    );
+  // Step 3: Re-sort to match RPC order (`.in()` doesn't preserve order)
+  const orderMap = new Map<string, number>(ids.map((id: string, i: number) => [id, i]));
+  const posts = (data ?? []).sort(
+    (a: { id: string }, b: { id: string }) =>
+      (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0)
+  );
+
+  // Step 4: Build next cursor
+  let nextCursor: FeedCursor | null = null;
+  if (posts.length >= limit) {
+    const last = posts[posts.length - 1] as {
+      id: string;
+      created_at: string;
+      reactions: { count: number }[];
+    };
+    nextCursor = {
+      created_at: last.created_at,
+      id: last.id,
+    };
+    if (sort === "most_reactions") {
+      nextCursor.sort_value = last.reactions?.[0]?.count ?? 0;
+    }
   }
 
-  return data;
+  return { posts, nextCursor };
 }
 
 export async function getPost(supabase: SupabaseClient, id: string) {
