@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 
 import { ExpandedCard } from "./expanded-card";
@@ -23,7 +22,6 @@ interface Comment {
 }
 
 export function ExpandedPostOverlay() {
-  const router = useRouter();
   const { sourceRect, postData, clear } = useExpansion();
   const [comments, setComments] = useState<Comment[]>([]);
 
@@ -38,8 +36,8 @@ export function ExpandedPostOverlay() {
 
   const dismiss = useCallback(() => {
     clear();
-    router.back();
-  }, [router, clear]);
+    window.history.back();
+  }, [clear]);
 
   // Escape key
   useEffect(() => {

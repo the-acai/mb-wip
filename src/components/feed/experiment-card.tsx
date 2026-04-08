@@ -2,7 +2,6 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 
 import { getAuthorColor } from "@/lib/utils";
@@ -83,7 +82,6 @@ export function ExperimentCard({
   spring = defaultSpring,
 }: ExperimentCardProps) {
   const imageRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const { captureSource, postData } = useExpansion();
 
   const firstImageAsset = post.assets?.find((a) =>
@@ -121,7 +119,7 @@ export function ExperimentCard({
         }
       );
     }
-    router.push(`/post/${post.id}`);
+    window.history.pushState(null, "", `/post/${post.id}`);
   };
 
   return (
