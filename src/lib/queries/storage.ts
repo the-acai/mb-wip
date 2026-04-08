@@ -2,6 +2,24 @@ import { SupabaseClient } from "@supabase/supabase-js";
 
 const BUCKET = "experiment-assets";
 
+function getImageDimensions(
+  file: File
+): Promise<{ width: number; height: number } | null> {
+  if (!file.type.startsWith("image/")) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(img.src);
+      resolve(null);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export async function uploadFile(
   supabase: SupabaseClient,
   file: File,
@@ -11,20 +29,23 @@ export async function uploadFile(
   const ext = file.name.split(".").pop();
   const filePath = `${userId}/${postId}/${crypto.randomUUID()}.${ext}`;
 
-  const { data, error } = await supabase.storage
-    .from(BUCKET)
-    .upload(filePath, file, {
+  const [uploadResult, dimensions] = await Promise.all([
+    supabase.storage.from(BUCKET).upload(filePath, file, {
       cacheControl: "3600",
       contentType: file.type,
       upsert: false,
-    });
+    }),
+    getImageDimensions(file),
+  ]);
 
-  if (error) throw error;
+  if (uploadResult.error) throw uploadResult.error;
 
   return {
-    file_path: data.path,
+    file_path: uploadResult.data.path,
     mime_type: file.type,
     size_bytes: file.size,
+    width: dimensions?.width ?? null,
+    height: dimensions?.height ?? null,
   };
 }
 

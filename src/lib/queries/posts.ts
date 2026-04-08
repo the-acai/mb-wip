@@ -93,7 +93,7 @@ export async function createPost(
     body?: string;
     visibility?: string;
     tags?: string[];
-    assets?: { file_path: string; mime_type: string; size_bytes: number }[];
+    assets?: { file_path: string; mime_type: string; size_bytes: number; width?: number | null; height?: number | null }[];
   }
 ) {
   const {
@@ -141,6 +141,8 @@ export async function createPost(
         file_path: asset.file_path,
         mime_type: asset.mime_type,
         size_bytes: asset.size_bytes,
+        width: asset.width ?? null,
+        height: asset.height ?? null,
         display_order: i,
       }))
     );

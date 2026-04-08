@@ -20,6 +20,8 @@ export interface FeedPost {
     id: string;
     file_path: string;
     mime_type: string;
+    width?: number | null;
+    height?: number | null;
     signed_url?: string;
   }[];
   post_tags: {
@@ -32,11 +34,22 @@ export interface FeedPost {
   reactions: { count: number }[];
 }
 
-interface ExperimentCardProps {
-  post: FeedPost;
+export type Orientation = "landscape" | "portrait";
+
+export function getPostOrientation(post: FeedPost): Orientation {
+  const firstImage = post.assets?.find((a) => a.mime_type?.startsWith("image/"));
+  if (firstImage?.width && firstImage?.height && firstImage.height > firstImage.width) {
+    return "portrait";
+  }
+  return "landscape";
 }
 
-export function ExperimentCard({ post }: ExperimentCardProps) {
+interface ExperimentCardProps {
+  post: FeedPost;
+  orientation: Orientation;
+}
+
+export function ExperimentCard({ post, orientation }: ExperimentCardProps) {
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
   );
@@ -46,17 +59,16 @@ export function ExperimentCard({ post }: ExperimentCardProps) {
   const badgeColor = getAuthorColor(authorName);
   const caption = post.body?.slice(0, 120) || post.title;
 
+  const aspectRatio = orientation === "portrait" ? "2/3" : "3/2";
+
   return (
-    <Link
-      href={`/post/${post.id}`}
-      className="group block"
-    >
+    <Link href={`/post/${post.id}`} className="group block">
       <div className="flex flex-col gap-4">
         {/* Image */}
         {thumbnailUrl ? (
           <div
             className="relative overflow-hidden rounded-lg bg-white"
-            style={{ aspectRatio: "933/632" }}
+            style={{ aspectRatio }}
           >
             <Image
               src={thumbnailUrl}
@@ -69,7 +81,7 @@ export function ExperimentCard({ post }: ExperimentCardProps) {
         ) : (
           <div
             className="flex items-center justify-center overflow-hidden rounded-lg bg-white text-[var(--text-caption)]"
-            style={{ aspectRatio: "933/632" }}
+            style={{ aspectRatio }}
           >
             <span className="font-heading text-sm">No image</span>
           </div>

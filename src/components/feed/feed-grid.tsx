@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback } from "react";
-import { VirtuosoGrid } from "react-virtuoso";
+import { useEffect, useRef } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExperimentCard, type FeedPost } from "./experiment-card";
+import {
+  ExperimentCard,
+  getPostOrientation,
+  type FeedPost,
+} from "./experiment-card";
 
 interface FeedGridProps {
   posts: FeedPost[];
@@ -16,10 +19,7 @@ interface FeedGridProps {
 function CardSkeleton() {
   return (
     <div className="flex flex-col gap-4">
-      <Skeleton
-        className="w-full rounded-lg"
-        style={{ aspectRatio: "933/632" }}
-      />
+      <Skeleton className="w-full rounded-lg" style={{ aspectRatio: "3/2" }} />
       <div className="flex items-center gap-2">
         <Skeleton className="h-8 w-20 rounded-lg" />
         <Skeleton className="h-5 flex-1 rounded" />
@@ -28,22 +28,25 @@ function CardSkeleton() {
   );
 }
 
-function LoadingFooter() {
-  return (
-    <div className="grid grid-cols-1 gap-6 pt-6 md:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <CardSkeleton key={`skeleton-${i}`} />
-      ))}
-    </div>
-  );
-}
-
 export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps) {
-  const handleEndReached = useCallback(() => {
-    if (!loading && hasMore) {
-      onLoadMore();
-    }
-  }, [loading, hasMore, onLoadMore]);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          onLoadMore();
+        }
+      },
+      { rootMargin: "400px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loading, onLoadMore]);
 
   if (posts.length === 0 && !loading) {
     return (
@@ -68,22 +71,36 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
     );
   }
 
+  const orientations = posts.map(getPostOrientation);
+
   return (
-    <VirtuosoGrid
-      useWindowScroll
-      data={posts}
-      endReached={handleEndReached}
-      increaseViewportBy={400}
-      overscan={200}
-      listClassName="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
-      itemClassName=""
-      itemContent={(index, post) => (
-        <ExperimentCard key={post.id} post={post} />
-      )}
-      computeItemKey={(index, post) => post.id}
-      components={{
-        Footer: loading ? LoadingFooter : undefined,
-      }}
-    />
+    <>
+      <div
+        className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+        style={{ gridAutoFlow: "dense" }}
+      >
+        {posts.map((post, i) => {
+          const orientation = orientations[i];
+          const isPortrait = orientation === "portrait";
+          return (
+            <div
+              key={post.id}
+              style={isPortrait ? { gridRow: "span 2" } : undefined}
+            >
+              <ExperimentCard post={post} orientation={orientation} />
+            </div>
+          );
+        })}
+
+        {loading &&
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={`skeleton-${i}`}>
+              <CardSkeleton />
+            </div>
+          ))}
+      </div>
+
+      <div ref={sentinelRef} className="h-1" />
+    </>
   );
 }
