@@ -45,20 +45,41 @@ export function getPostOrientation(post: FeedPost): Orientation {
   return "landscape";
 }
 
+export interface CardSpringConfig {
+  mass: number;
+  stiffness: number;
+  damping: number;
+  y: number;
+  z: number;
+  scale: number;
+  blur: number;
+}
+
 interface ExperimentCardProps {
   post: FeedPost;
   orientation: Orientation;
   /** Stagger delay in seconds */
   delay?: number;
+  /** Spring config (passed from tuner or defaults) */
+  spring?: CardSpringConfig;
 }
 
-const cardSpring = {
+const defaultSpring: CardSpringConfig = {
   mass: 1.5,
   stiffness: 80,
   damping: 16,
+  y: 24,
+  z: 80,
+  scale: 1.06,
+  blur: 3,
 };
 
-export function ExperimentCard({ post, orientation, delay = 0 }: ExperimentCardProps) {
+export function ExperimentCard({
+  post,
+  orientation,
+  delay = 0,
+  spring = defaultSpring,
+}: ExperimentCardProps) {
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
   );
@@ -72,10 +93,33 @@ export function ExperimentCard({ post, orientation, delay = 0 }: ExperimentCardP
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24, z: 80, scale: 1.06, filter: "blur(3px)" }}
-      whileInView={{ opacity: 1, y: 0, z: 0, scale: 1, filter: "blur(0px)" }}
+      style={{ transformStyle: "preserve-3d" }}
+      initial={{
+        opacity: 0,
+        y: spring.y,
+        z: spring.z,
+        scale: spring.scale,
+        filter: `blur(${spring.blur}px)`,
+      }}
+      whileInView={{
+        opacity: 1,
+        y: 0,
+        z: 0,
+        scale: 1,
+        filter: "blur(0px)",
+      }}
       viewport={{ once: true, amount: 0.15 }}
-      transition={{ ...cardSpring, delay }}
+      transition={{
+        default: {
+          type: "spring",
+          mass: spring.mass,
+          stiffness: spring.stiffness,
+          damping: spring.damping,
+          delay,
+        },
+        opacity: { duration: 0.4, ease: "easeOut", delay },
+        filter: { duration: 0.6, ease: "easeOut", delay },
+      }}
     >
       <Link href={`/post/${post.id}`} className="group block">
         <div className="flex flex-col gap-4">

@@ -1,32 +1,34 @@
 "use client";
 
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ExperimentCard,
   getPostOrientation,
   type FeedPost,
+  type CardSpringConfig,
 } from "./experiment-card";
+import { SpringTuner, DEFAULT_SPRING, type SpringConfig } from "./spring-tuner";
 
-/** Jazz-phrasing stagger: 70ms within a row, +60ms breath between rows. */
-const WITHIN_ROW_MS = 70;
-const ROW_BREATH_MS = 60;
-const COLS = 3;
-
-function computeStaggerDelays(count: number): number[] {
+function computeStaggerDelays(
+  count: number,
+  withinRowMs: number,
+  rowBreathMs: number
+): number[] {
+  const COLS = 3;
   const delays: number[] = [];
   let time = 0;
   let colInRow = 0;
 
   for (let i = 0; i < count; i++) {
-    delays.push(time / 1000); // convert to seconds for Motion
+    delays.push(time / 1000);
     colInRow++;
     if (colInRow >= COLS) {
       colInRow = 0;
-      time += WITHIN_ROW_MS + ROW_BREATH_MS;
+      time += withinRowMs + rowBreathMs;
     } else {
-      time += WITHIN_ROW_MS;
+      time += withinRowMs;
     }
   }
   return delays;
@@ -53,6 +55,12 @@ function CardSkeleton() {
 
 export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const [springConfig, setSpringConfig] = useState<SpringConfig>(DEFAULT_SPRING);
+  const [replayKey, setReplayKey] = useState(0);
+
+  const handleReplay = useCallback(() => {
+    setReplayKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -95,11 +103,26 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
   }
 
   const orientations = posts.map(getPostOrientation);
-  const delays = useMemo(() => computeStaggerDelays(posts.length), [posts.length]);
+  const delays = computeStaggerDelays(
+    posts.length,
+    springConfig.withinRowMs,
+    springConfig.rowBreathMs
+  );
+
+  const cardSpring: CardSpringConfig = {
+    mass: springConfig.mass,
+    stiffness: springConfig.stiffness,
+    damping: springConfig.damping,
+    y: springConfig.y,
+    z: springConfig.z,
+    scale: springConfig.scale,
+    blur: springConfig.blur,
+  };
 
   return (
     <>
       <div
+        key={replayKey}
         className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
         style={{
           gridAutoFlow: "dense",
@@ -113,12 +136,16 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
           return (
             <div
               key={post.id}
-              style={isPortrait ? { gridRow: "span 2" } : undefined}
+              style={{
+                ...(isPortrait ? { gridRow: "span 2" } : {}),
+                transformStyle: "preserve-3d",
+              }}
             >
               <ExperimentCard
                 post={post}
                 orientation={orientation}
                 delay={delays[i]}
+                spring={cardSpring}
               />
             </div>
           );
@@ -133,6 +160,12 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
       </div>
 
       <div ref={sentinelRef} className="h-1" />
+
+      <SpringTuner
+        config={springConfig}
+        onChange={setSpringConfig}
+        onReplay={handleReplay}
+      />
     </>
   );
 }
