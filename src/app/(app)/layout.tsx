@@ -18,8 +18,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {"SEND IT".split("").map((char, i) => (
                 <span
                   key={i}
-                  className="inline-block font-heading text-base font-bold text-[var(--page-bg)] transition-transform duration-[600ms] ease-out group-hover:-translate-y-[3px]"
-                  style={{ transitionDelay: `${i * 40}ms` }}
+                  className="inline-block font-heading text-base font-bold text-[var(--page-bg)] group-hover:animate-[letter-bounce_600ms_ease-out]"
+                  style={{ animationDelay: `${i * 40}ms` }}
                 >
                   {char === " " ? "\u00A0" : char}
                 </span>
