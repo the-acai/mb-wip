@@ -83,7 +83,7 @@ export function ExperimentCard({
 }: ExperimentCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const preloaded = useRef(false);
-  const { captureSource, postData } = useExpansion();
+  const { captureSource, prefetchComments, postData } = useExpansion();
 
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
@@ -124,12 +124,16 @@ export function ExperimentCard({
     window.history.pushState(null, "", `/post/${post.id}`);
   };
 
-  // Preload the raw image URL on hover so it's cached before the FLIP
+  // Preload image + comments on hover so they're ready before the FLIP
   const handleMouseEnter = () => {
-    if (preloaded.current || !thumbnailUrl) return;
-    preloaded.current = true;
-    const img = new window.Image();
-    img.src = thumbnailUrl;
+    if (!preloaded.current) {
+      preloaded.current = true;
+      if (thumbnailUrl) {
+        const img = new window.Image();
+        img.src = thumbnailUrl;
+      }
+      prefetchComments(post.id);
+    }
   };
 
   return (

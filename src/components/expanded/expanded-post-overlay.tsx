@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 
 import { ExpandedCard } from "./expanded-card";
 import { ExpandedCommentCard } from "./expanded-comment-card";
 import { CursorCollapseIcon } from "./cursor-collapse-icon";
 import { useExpansion } from "./expansion-context";
-import { createClient } from "@/lib/supabase/client";
-import { getComments } from "@/lib/queries/comments";
 
 interface Comment {
   id: string;
@@ -30,17 +28,15 @@ const EXPANSION_SPRING = {
 };
 
 export function ExpandedPostOverlay() {
-  const { sourceRect, postData, closing, startClose, finishClose } = useExpansion();
-  const [comments, setComments] = useState<Comment[]>([]);
+  const { sourceRect, postData, closing, commentCache, prefetchComments, startClose, finishClose } = useExpansion();
 
-  // Fetch comments client-side (non-blocking)
+  // Read from cache, trigger fetch if miss
+  const cachedComments = postData ? (commentCache.get(postData.id) ?? []) : [];
   useEffect(() => {
-    if (!postData) return;
-    const supabase = createClient();
-    getComments(supabase, postData.id).then((data) => {
-      if (data) setComments(data as Comment[]);
-    });
-  }, [postData]);
+    if (postData && !commentCache.has(postData.id)) {
+      prefetchComments(postData.id);
+    }
+  }, [postData, commentCache, prefetchComments]);
 
   // Manual dismiss: needs history.back() after animation completes
   const dismiss = useCallback(() => {
@@ -122,7 +118,7 @@ export function ExpandedPostOverlay() {
           opacity: closing ? { duration: 0.1, ease: "easeOut" } : EXPANSION_SPRING,
         }}
       >
-        <ExpandedCommentCard postId={postData.id} initialComments={comments} />
+        <ExpandedCommentCard postId={postData.id} initialComments={cachedComments as Comment[]} />
       </motion.div>
 
       {/* Expanded card — on top of comment card (higher z) */}

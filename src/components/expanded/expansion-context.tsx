@@ -1,6 +1,8 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { getComments } from "@/lib/queries/comments";
 
 export interface SourceRect {
   top: number;
@@ -26,14 +28,17 @@ export interface ExpandedPostData {
   imageAspect: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type CommentData = any[];
+
 interface ExpansionContextValue {
   sourceRect: SourceRect | null;
   postData: ExpandedPostData | null;
   closing: boolean;
+  commentCache: Map<string, CommentData>;
   captureSource: (data: ExpandedPostData, rect: SourceRect) => void;
-  /** Start close animation. Pass true if history.back() is needed after. */
+  prefetchComments: (postId: string) => void;
   startClose: (needsHistoryBack: boolean) => void;
-  /** Called when close animation finishes — clears state and optionally reverts URL. */
   finishClose: () => void;
   clear: () => void;
 }
@@ -42,7 +47,9 @@ const ExpansionContext = createContext<ExpansionContextValue>({
   sourceRect: null,
   postData: null,
   closing: false,
+  commentCache: new Map(),
   captureSource: () => {},
+  prefetchComments: () => {},
   startClose: () => {},
   finishClose: () => {},
   clear: () => {},
@@ -53,6 +60,19 @@ export function ExpansionProvider({ children }: { children: ReactNode }) {
   const [postData, setPostData] = useState<ExpandedPostData | null>(null);
   const [closing, setClosing] = useState(false);
   const [needsHistoryBack, setNeedsHistoryBack] = useState(false);
+  const [commentCache, setCommentCache] = useState<Map<string, CommentData>>(new Map());
+  const fetchingRef = useRef<Set<string>>(new Set());
+
+  const prefetchComments = useCallback((postId: string) => {
+    if (fetchingRef.current.has(postId)) return;
+    fetchingRef.current.add(postId);
+    const supabase = createClient();
+    getComments(supabase, postId).then((data) => {
+      if (data) {
+        setCommentCache((prev) => new Map(prev).set(postId, data));
+      }
+    });
+  }, []);
 
   const captureSource = useCallback((data: ExpandedPostData, rect: SourceRect) => {
     setPostData(data);
@@ -80,7 +100,10 @@ export function ExpansionProvider({ children }: { children: ReactNode }) {
   }, [needsHistoryBack, clear]);
 
   return (
-    <ExpansionContext value={{ sourceRect, postData, closing, captureSource, startClose, finishClose, clear }}>
+    <ExpansionContext value={{
+      sourceRect, postData, closing, commentCache,
+      captureSource, prefetchComments, startClose, finishClose, clear,
+    }}>
       {children}
     </ExpansionContext>
   );

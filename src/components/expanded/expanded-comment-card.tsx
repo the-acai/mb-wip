@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
 import { createComment } from "@/lib/queries/comments";
 import { useRealtimeComments } from "@/hooks/use-realtime-comments";
@@ -24,8 +24,8 @@ interface Comment {
 
 const COMMENT_SPRING = {
   type: "spring" as const,
-  mass: 2,
-  stiffness: 100,
+  mass: 1.2,
+  stiffness: 170,
   damping: 16,
 };
 
@@ -38,10 +38,6 @@ interface ExpandedCommentCardProps {
 
 export function ExpandedCommentCard({ postId, initialComments }: ExpandedCommentCardProps) {
   const [comments, setComments] = useState<Comment[]>(initialComments);
-  const [submittingComment, setSubmittingComment] = useState<{
-    body: string;
-    authorName: string;
-  } | null>(null);
   const supabase = createClient();
   const { user } = useUser();
   const commentListRef = useRef<HTMLDivElement>(null);
@@ -59,7 +55,6 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
       if (prev.some((c) => c.id === comment.id)) return prev;
       return [...prev, comment];
     });
-    setSubmittingComment(null);
   }, []);
 
   const handleDelete = useCallback((commentId: string) => {
@@ -68,13 +63,9 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
 
   useRealtimeComments(postId, handleInsert, handleDelete);
 
-  // Build flat comment list (top-level only for now, matching Figma design)
   const topLevel = comments.filter((c) => !c.parent_comment_id);
 
   const handleSubmit = async (body: string, parentId?: string) => {
-    const authorName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "you";
-    setSubmittingComment({ body, authorName });
-
     await createComment(supabase, {
       post_id: postId,
       body,
@@ -82,13 +73,11 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
     });
   };
 
-  // Find parent comment by @mention
   const resolveParentFromMention = (body: string): { parentId?: string; cleanBody: string } => {
     const mentionMatch = body.match(/^@(\w+)\s/);
     if (!mentionMatch) return { cleanBody: body };
 
     const mentionedName = mentionMatch[1].toLowerCase();
-    // Find most recent comment by that author
     const matchingComment = [...comments]
       .reverse()
       .find((c) => {
@@ -107,20 +96,14 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
     await handleSubmit(cleanBody, parentId);
   };
 
-  // Compute thread line data — pairs of consecutive comments with their colors
   const getAuthorName = (c: Comment) =>
     c.author.full_name || c.author.email.split("@")[0] || "Anonymous";
 
   return (
     <motion.div
       className="flex max-h-[calc(100vh-120px)] flex-col gap-8 rounded-2xl bg-white p-6"
-      initial={{ y: 60, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 60, opacity: 0 }}
-      transition={{
-        ...COMMENT_SPRING,
-        delay: 0.15,
-      }}
+      layout
+      transition={COMMENT_SPRING}
     >
       {/* Comment list */}
       <div ref={commentListRef} className="relative flex flex-1 flex-col gap-8 overflow-y-auto">
@@ -135,11 +118,13 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
             <motion.div
               key={comment.id}
               className="relative"
+              layout
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{
-                ...COMMENT_SPRING,
-                delay: 0.15 + (i * STAGGER_MS) / 1000,
+                default: COMMENT_SPRING,
+                layout: COMMENT_SPRING,
+                delay: i * STAGGER_MS / 1000,
               }}
             >
               <ExpandedCommentItem comment={comment} />
@@ -149,36 +134,6 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
             </motion.div>
           );
         })}
-
-        {/* Animating new comment */}
-        <AnimatePresence>
-          {submittingComment && (
-            <motion.div
-              className="relative"
-              initial={{ y: 40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={COMMENT_SPRING}
-            >
-              <ExpandedCommentItem
-                comment={{
-                  id: "pending",
-                  post_id: postId,
-                  author_id: user?.id || "",
-                  parent_comment_id: null,
-                  body: submittingComment.body,
-                  created_at: new Date().toISOString(),
-                  author: {
-                    full_name: submittingComment.authorName,
-                    email: user?.email || "",
-                    avatar_url: null,
-                  },
-                  reactions: [],
-                }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* Comment input */}
