@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -8,6 +8,29 @@ import {
   getPostOrientation,
   type FeedPost,
 } from "./experiment-card";
+
+/** Jazz-phrasing stagger: 70ms within a row, +60ms breath between rows. */
+const WITHIN_ROW_MS = 70;
+const ROW_BREATH_MS = 60;
+const COLS = 3;
+
+function computeStaggerDelays(count: number): number[] {
+  const delays: number[] = [];
+  let time = 0;
+  let colInRow = 0;
+
+  for (let i = 0; i < count; i++) {
+    delays.push(time / 1000); // convert to seconds for Motion
+    colInRow++;
+    if (colInRow >= COLS) {
+      colInRow = 0;
+      time += WITHIN_ROW_MS + ROW_BREATH_MS;
+    } else {
+      time += WITHIN_ROW_MS;
+    }
+  }
+  return delays;
+}
 
 interface FeedGridProps {
   posts: FeedPost[];
@@ -72,12 +95,17 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
   }
 
   const orientations = posts.map(getPostOrientation);
+  const delays = useMemo(() => computeStaggerDelays(posts.length), [posts.length]);
 
   return (
     <>
       <div
         className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
-        style={{ gridAutoFlow: "dense" }}
+        style={{
+          gridAutoFlow: "dense",
+          perspective: "1000px",
+          transformStyle: "preserve-3d",
+        }}
       >
         {posts.map((post, i) => {
           const orientation = orientations[i];
@@ -87,7 +115,11 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
               key={post.id}
               style={isPortrait ? { gridRow: "span 2" } : undefined}
             >
-              <ExperimentCard post={post} orientation={orientation} />
+              <ExperimentCard
+                post={post}
+                orientation={orientation}
+                delay={delays[i]}
+              />
             </div>
           );
         })}

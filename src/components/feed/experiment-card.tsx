@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { motion } from "motion/react";
 
 import { getAuthorColor } from "@/lib/utils";
 
@@ -47,9 +48,17 @@ export function getPostOrientation(post: FeedPost): Orientation {
 interface ExperimentCardProps {
   post: FeedPost;
   orientation: Orientation;
+  /** Stagger delay in seconds */
+  delay?: number;
 }
 
-export function ExperimentCard({ post, orientation }: ExperimentCardProps) {
+const cardSpring = {
+  mass: 1.5,
+  stiffness: 80,
+  damping: 16,
+};
+
+export function ExperimentCard({ post, orientation, delay = 0 }: ExperimentCardProps) {
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
   );
@@ -62,46 +71,53 @@ export function ExperimentCard({ post, orientation }: ExperimentCardProps) {
   const aspectRatio = orientation === "portrait" ? "2/3" : "3/2";
 
   return (
-    <Link href={`/post/${post.id}`} className="group block">
-      <div className="flex flex-col gap-4">
-        {/* Image */}
-        {thumbnailUrl ? (
-          <div
-            className="relative overflow-hidden rounded-lg bg-white"
-            style={{ aspectRatio }}
-          >
-            <Image
-              src={thumbnailUrl}
-              alt={post.title}
-              fill
-              className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            />
-          </div>
-        ) : (
-          <div
-            className="flex items-center justify-center overflow-hidden rounded-lg bg-white text-[var(--text-caption)]"
-            style={{ aspectRatio }}
-          >
-            <span className="font-heading text-sm">No image</span>
-          </div>
-        )}
+    <motion.div
+      initial={{ opacity: 0, y: 24, z: 80, scale: 1.06, filter: "blur(3px)" }}
+      whileInView={{ opacity: 1, y: 0, z: 0, scale: 1, filter: "blur(0px)" }}
+      viewport={{ once: true, amount: 0.15 }}
+      transition={{ ...cardSpring, delay }}
+    >
+      <Link href={`/post/${post.id}`} className="group block">
+        <div className="flex flex-col gap-4">
+          {/* Image */}
+          {thumbnailUrl ? (
+            <div
+              className="relative overflow-hidden rounded-lg bg-white"
+              style={{ aspectRatio }}
+            >
+              <Image
+                src={thumbnailUrl}
+                alt={post.title}
+                fill
+                className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              />
+            </div>
+          ) : (
+            <div
+              className="flex items-center justify-center overflow-hidden rounded-lg bg-white text-[var(--text-caption)]"
+              style={{ aspectRatio }}
+            >
+              <span className="font-heading text-sm">No image</span>
+            </div>
+          )}
 
-        {/* Caption row */}
-        <div className="flex items-baseline gap-2">
-          <span
-            className="flex h-8 shrink-0 items-center rounded-lg px-2"
-            style={{ backgroundColor: badgeColor }}
-          >
-            <span className="font-heading text-base tracking-[-0.16px] text-[var(--page-bg)]">
-              @{authorName.toLowerCase()}
+          {/* Caption row */}
+          <div className="flex items-baseline gap-2">
+            <span
+              className="flex h-8 shrink-0 items-center rounded-lg px-2"
+              style={{ backgroundColor: badgeColor }}
+            >
+              <span className="font-heading text-base tracking-[-0.16px] text-[var(--page-bg)]">
+                @{authorName.toLowerCase()}
+              </span>
             </span>
-          </span>
-          <p className="min-w-0 flex-1 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[var(--text-caption)]">
-            {caption}
-          </p>
+            <p className="min-w-0 flex-1 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[var(--text-caption)]">
+              {caption}
+            </p>
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </motion.div>
   );
 }
