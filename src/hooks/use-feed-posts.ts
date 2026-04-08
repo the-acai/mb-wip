@@ -4,7 +4,6 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
   getFeedPosts,
-  type SortMode,
   type FeedCursor,
   type FeedPageResult,
 } from "@/lib/queries/posts";
@@ -14,24 +13,20 @@ import type { FeedPost } from "@/components/feed/experiment-card";
 
 interface UseFeedPostsOptions {
   tag?: string | null;
-  sort: SortMode;
 }
 
 async function fetchFeedPage({
   pageParam,
   tag,
-  sort,
 }: {
   pageParam: FeedCursor | undefined;
   tag?: string | null;
-  sort: SortMode;
 }): Promise<FeedPageResult & { posts: FeedPost[] }> {
   const supabase = createClient();
   const result = await getFeedPosts(supabase, {
     tag: tag ?? undefined,
     cursor: pageParam,
     limit: 20,
-    sort,
   });
 
   const posts = result.posts as FeedPost[];
@@ -75,10 +70,10 @@ async function fetchFeedPage({
   return { posts, nextCursor: result.nextCursor };
 }
 
-export function useFeedPosts({ tag, sort }: UseFeedPostsOptions) {
+export function useFeedPosts({ tag }: UseFeedPostsOptions) {
   return useInfiniteQuery({
-    queryKey: ["feed", { tag: tag ?? null, sort }],
-    queryFn: ({ pageParam }) => fetchFeedPage({ pageParam, tag, sort }),
+    queryKey: ["feed", { tag: tag ?? null }],
+    queryFn: ({ pageParam }) => fetchFeedPage({ pageParam, tag }),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     initialPageParam: undefined as FeedCursor | undefined,
   });

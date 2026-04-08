@@ -1,11 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
-export type SortMode = "newest" | "most_reactions";
-
 export interface FeedCursor {
-  created_at?: string;
-  sort_value?: number;
-  id?: string;
+  created_at: string;
 }
 
 export interface FeedPageResult {
@@ -16,25 +12,16 @@ export interface FeedPageResult {
 
 export async function getFeedPosts(
   supabase: SupabaseClient,
-  options: {
-    tag?: string;
-    cursor?: FeedCursor;
-    limit?: number;
-    sort?: SortMode;
-  } = {}
+  options: { tag?: string; cursor?: FeedCursor; limit?: number } = {}
 ): Promise<FeedPageResult> {
   const limit = options.limit ?? 20;
-  const sort = options.sort ?? "newest";
 
-  // Step 1: Use RPC to get sorted/filtered post IDs
+  // Use RPC to get sorted/filtered post IDs (handles tag filtering server-side)
   const { data: idRows, error: rpcError } = await supabase.rpc(
     "get_feed_posts",
     {
       p_tag_name: options.tag ?? null,
-      p_sort: sort,
       p_cursor_created_at: options.cursor?.created_at ?? null,
-      p_cursor_sort_value: options.cursor?.sort_value ?? null,
-      p_cursor_id: options.cursor?.id ?? null,
       p_limit: limit,
     }
   );
@@ -46,7 +33,7 @@ export async function getFeedPosts(
 
   const ids = idRows.map((r: { post_id: string }) => r.post_id);
 
-  // Step 2: Fetch full post data for those IDs
+  // Fetch full post data for those IDs
   const { data, error } = await supabase
     .from("posts")
     .select(
@@ -63,28 +50,18 @@ export async function getFeedPosts(
 
   if (error) throw error;
 
-  // Step 3: Re-sort to match RPC order (`.in()` doesn't preserve order)
+  // Re-sort to match RPC order (`.in()` doesn't preserve order)
   const orderMap = new Map<string, number>(ids.map((id: string, i: number) => [id, i]));
   const posts = (data ?? []).sort(
     (a: { id: string }, b: { id: string }) =>
       (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0)
   );
 
-  // Step 4: Build next cursor
+  // Build next cursor
   let nextCursor: FeedCursor | null = null;
   if (posts.length >= limit) {
-    const last = posts[posts.length - 1] as {
-      id: string;
-      created_at: string;
-      reactions: { count: number }[];
-    };
-    nextCursor = {
-      created_at: last.created_at,
-      id: last.id,
-    };
-    if (sort === "most_reactions") {
-      nextCursor.sort_value = last.reactions?.[0]?.count ?? 0;
-    }
+    const last = posts[posts.length - 1] as { created_at: string };
+    nextCursor = { created_at: last.created_at };
   }
 
   return { posts, nextCursor };

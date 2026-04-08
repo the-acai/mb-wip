@@ -18,7 +18,7 @@ export default async function FeedPage() {
 
   // Prefetch the default feed (newest, no tag filter)
   await queryClient.prefetchInfiniteQuery({
-    queryKey: ["feed", { tag: null, sort: "newest" }],
+    queryKey: ["feed", { tag: null }],
     queryFn: async () => {
       const result = await getFeedPosts(supabase, { limit: 20 });
       const posts = result.posts as FeedPost[];

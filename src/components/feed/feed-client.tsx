@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 
 import { useFeedPosts } from "@/hooks/use-feed-posts";
-import { type SortMode } from "@/lib/queries/posts";
 import { TagFilterBar } from "./tag-filter-bar";
 import { FeedGrid } from "./feed-grid";
 import type { FeedPost } from "./experiment-card";
@@ -19,10 +18,9 @@ interface FeedClientProps {
 
 export function FeedClient({ tags }: FeedClientProps) {
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortMode>("newest");
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } =
-    useFeedPosts({ tag: activeTag, sort });
+    useFeedPosts({ tag: activeTag });
 
   const posts = useMemo(
     () => (data?.pages.flatMap((page) => page.posts) ?? []) as FeedPost[],
@@ -35,8 +33,6 @@ export function FeedClient({ tags }: FeedClientProps) {
         tags={tags}
         activeTag={activeTag}
         onTagChange={setActiveTag}
-        sort={sort}
-        onSortChange={setSort}
       />
       <FeedGrid
         posts={posts}
