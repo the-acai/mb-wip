@@ -117,7 +117,10 @@ export function ExpandedPostOverlay() {
           scale: closing ? 0.96 : 1,
           opacity: closing ? 0 : 1,
         }}
-        transition={EXPANSION_SPRING}
+        transition={{
+          default: EXPANSION_SPRING,
+          opacity: closing ? { duration: 0.1, ease: "easeOut" } : EXPANSION_SPRING,
+        }}
       >
         <ExpandedCommentCard postId={postData.id} initialComments={comments} />
       </motion.div>
