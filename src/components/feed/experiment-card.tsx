@@ -101,12 +101,22 @@ export function ExperimentCard({
     e.preventDefault();
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
-      captureSource(post.id, {
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-      });
+      captureSource(
+        {
+          id: post.id,
+          title: post.title,
+          body: post.body,
+          created_at: post.created_at,
+          author: post.author,
+          imageUrl: thumbnailUrl ?? null,
+        },
+        {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        }
+      );
     }
     router.push(`/post/${post.id}`);
   };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
 import { createComment } from "@/lib/queries/comments";
@@ -45,6 +45,13 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
   const supabase = createClient();
   const { user } = useUser();
   const commentListRef = useRef<HTMLDivElement>(null);
+
+  // Sync when initialComments arrives asynchronously
+  useEffect(() => {
+    if (initialComments.length > 0) {
+      setComments(initialComments);
+    }
+  }, [initialComments]);
 
   const handleInsert = useCallback((newComment: Record<string, unknown>) => {
     const comment = newComment as unknown as Comment;

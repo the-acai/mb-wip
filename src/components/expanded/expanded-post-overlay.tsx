@@ -1,34 +1,15 @@
 "use client";
 
-import { useEffect, useCallback, useMemo } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 
 import { ExpandedCard } from "./expanded-card";
 import { ExpandedCommentCard } from "./expanded-comment-card";
 import { CursorCollapseIcon } from "./cursor-collapse-icon";
 import { useExpansion } from "./expansion-context";
-
-interface PostData {
-  id: string;
-  title: string;
-  body: string | null;
-  created_at: string;
-  author: {
-    id: string;
-    full_name: string | null;
-    email: string;
-    avatar_url: string | null;
-  };
-  assets: {
-    file_path: string;
-    mime_type: string;
-    width?: number | null;
-    height?: number | null;
-    signed_url?: string;
-  }[];
-  post_tags: { tag: { id: string; name: string } }[];
-}
+import { createClient } from "@/lib/supabase/client";
+import { getComments } from "@/lib/queries/comments";
 
 interface Comment {
   id: string;
@@ -42,45 +23,25 @@ interface Comment {
 }
 
 interface ExpandedPostOverlayProps {
-  post: PostData;
-  initialComments: Comment[];
+  postId: string;
 }
 
-/** Compute the target rects for the expanded card and comment panel from viewport */
-function computeTargetRects(vw: number, vh: number) {
-  const margin = vw * 0.0833;
-  const gap = 24;
-  const cardHeight = Math.min(vh - 120, 1020);
-  const cardTop = (vh - cardHeight) / 2;
-
-  // Card: left-aligned within the margin, ~38vw wide
-  const cardWidth = vw * 0.38;
-  const cardLeft = margin;
-
-  // Comment panel: to the right of the card
-  const commentWidth = vw * 0.40;
-  const commentLeft = cardLeft + cardWidth + gap;
-  const commentTop = cardTop;
-
-  return {
-    card: { top: cardTop, left: cardLeft, width: cardWidth, height: cardHeight },
-    comment: { top: commentTop, left: commentLeft, width: commentWidth, height: cardHeight },
-  };
-}
-
-export function ExpandedPostOverlay({ post, initialComments }: ExpandedPostOverlayProps) {
+export function ExpandedPostOverlay({ postId }: ExpandedPostOverlayProps) {
   const router = useRouter();
-  const { sourceRect } = useExpansion();
+  const { sourceRect, postData } = useExpansion();
+  const [comments, setComments] = useState<Comment[]>([]);
+
+  // Fetch comments client-side (non-blocking)
+  useEffect(() => {
+    const supabase = createClient();
+    getComments(supabase, postId).then((data) => {
+      if (data) setComments(data as Comment[]);
+    });
+  }, [postId]);
 
   const dismiss = useCallback(() => {
     router.back();
   }, [router]);
-
-  // Compute target rects once on mount (client-only component)
-  const targets = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    return computeTargetRects(window.innerWidth, window.innerHeight);
-  }, []);
 
   // Escape key to dismiss
   useEffect(() => {
@@ -100,42 +61,68 @@ export function ExpandedPostOverlay({ post, initialComments }: ExpandedPostOverl
     };
   }, []);
 
-  if (!targets) return null;
+  // If context is missing (e.g. direct URL), bail to full page
+  if (!postData) {
+    return null;
+  }
+
+  // Compute comment panel position from viewport
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const margin = vw * 0.0833;
+  const gap = 24;
+  const cardWidth = vw * 0.38;
+  const cardHeight = Math.min(vh - 120, 1020);
+  const cardTop = (vh - cardHeight) / 2;
+  const commentLeft = margin + cardWidth + gap;
+  const commentWidth = vw * 0.40;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-40">
-        {/* Backdrop */}
-        <CursorCollapseIcon onDismiss={dismiss}>
-          <motion.div
-            className="absolute inset-0 bg-[var(--page-bg)]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.96 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-          />
-        </CursorCollapseIcon>
-
-        {/* Expanded card — absolutely positioned, FLIP animated */}
-        <ExpandedCard
-          post={post}
-          targetRect={targets.card}
-          sourceRect={sourceRect}
+    <div className="fixed inset-0 z-40">
+      {/* Backdrop */}
+      <CursorCollapseIcon onDismiss={dismiss}>
+        <motion.div
+          className="absolute inset-0 bg-[var(--page-bg)]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.96 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
         />
+      </CursorCollapseIcon>
 
-        {/* Comment card — absolutely positioned, slides up */}
-        <div
-          className="pointer-events-auto absolute"
-          style={{
-            top: targets.comment.top,
-            left: targets.comment.left,
-            width: targets.comment.width,
-            maxHeight: targets.comment.height,
-          }}
-        >
-          <ExpandedCommentCard postId={post.id} initialComments={initialComments} />
-        </div>
-      </div>
-    </AnimatePresence>
+      {/* Expanded card — FLIP animated from source rect */}
+      <ExpandedCard
+        postData={postData}
+        sourceRect={sourceRect}
+        targetRect={{
+          top: cardTop,
+          left: margin,
+          width: cardWidth,
+          height: cardHeight,
+        }}
+      />
+
+      {/* Comment card */}
+      <motion.div
+        className="pointer-events-auto absolute"
+        style={{
+          top: cardTop,
+          left: commentLeft,
+          width: commentWidth,
+          maxHeight: cardHeight,
+        }}
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{
+          type: "spring",
+          mass: 2,
+          stiffness: 100,
+          damping: 16,
+          delay: 0.15,
+        }}
+      >
+        <ExpandedCommentCard postId={postId} initialComments={comments} />
+      </motion.div>
+    </div>
   );
 }

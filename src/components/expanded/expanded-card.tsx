@@ -1,30 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "motion/react";
 import { getAuthorColor } from "@/lib/utils";
-import type { SourceRect } from "./expansion-context";
-
-interface PostData {
-  id: string;
-  title: string;
-  body: string | null;
-  created_at: string;
-  author: {
-    id: string;
-    full_name: string | null;
-    email: string;
-    avatar_url: string | null;
-  };
-  assets: {
-    file_path: string;
-    mime_type: string;
-    width?: number | null;
-    height?: number | null;
-    signed_url?: string;
-  }[];
-  post_tags: { tag: { id: string; name: string } }[];
-}
+import type { SourceRect, ExpandedPostData } from "./expansion-context";
 
 interface TargetRect {
   top: number;
@@ -41,97 +19,76 @@ const EXPANSION_SPRING = {
 };
 
 interface ExpandedCardProps {
-  post: PostData;
+  postData: ExpandedPostData;
   targetRect: TargetRect;
   sourceRect: SourceRect | null;
 }
 
-export function ExpandedCard({ post, targetRect, sourceRect }: ExpandedCardProps) {
-  const firstImageAsset = post.assets?.find((a) =>
-    a.mime_type?.startsWith("image/")
-  );
-  const imageUrl = firstImageAsset?.signed_url;
+export function ExpandedCard({ postData, targetRect, sourceRect }: ExpandedCardProps) {
   const authorName =
-    post.author?.full_name || post.author?.email?.split("@")[0] || "Anonymous";
+    postData.author?.full_name || postData.author?.email?.split("@")[0] || "Anonymous";
   const badgeColor = getAuthorColor(authorName);
-  const caption = post.body?.slice(0, 120) || post.title;
+  const caption = postData.body?.slice(0, 120) || postData.title;
 
-  // Compute FLIP: transform that maps the target rect onto the source rect
   const hasSource = !!sourceRect;
-  let initialX = 0,
-    initialY = 0,
-    initialScaleX = 1,
-    initialScaleY = 1;
-
-  if (hasSource) {
-    const targetCenterX = targetRect.left + targetRect.width / 2;
-    const targetCenterY = targetRect.top + targetRect.height / 2;
-    const sourceCenterX = sourceRect.left + sourceRect.width / 2;
-    const sourceCenterY = sourceRect.top + sourceRect.height / 2;
-
-    initialX = sourceCenterX - targetCenterX;
-    initialY = sourceCenterY - targetCenterY;
-    initialScaleX = sourceRect.width / targetRect.width;
-    initialScaleY = sourceRect.height / targetRect.height;
-  }
 
   return (
     <motion.div
-      className="pointer-events-auto absolute flex flex-col gap-4 will-change-transform"
-      style={{
+      className="pointer-events-auto fixed flex flex-col gap-4 overflow-hidden"
+      style={{ willChange: "top, left, width, height, border-radius" }}
+      initial={
+        hasSource
+          ? {
+              top: sourceRect.top,
+              left: sourceRect.left,
+              width: sourceRect.width,
+              height: sourceRect.height,
+              borderRadius: 8,
+            }
+          : {
+              top: targetRect.top,
+              left: targetRect.left,
+              width: targetRect.width,
+              height: targetRect.height,
+              borderRadius: 16,
+              opacity: 0,
+            }
+      }
+      animate={{
         top: targetRect.top,
         left: targetRect.left,
         width: targetRect.width,
         height: targetRect.height,
-        transformOrigin: "center center",
-      }}
-      initial={
-        hasSource
-          ? {
-              x: initialX,
-              y: initialY,
-              scaleX: initialScaleX,
-              scaleY: initialScaleY,
-              borderRadius: 8,
-              opacity: 1,
-            }
-          : { opacity: 0, y: 40 }
-      }
-      animate={{
-        x: 0,
-        y: 0,
-        scaleX: 1,
-        scaleY: 1,
         borderRadius: 16,
         opacity: 1,
       }}
       exit={
         hasSource
           ? {
-              x: initialX,
-              y: initialY,
-              scaleX: initialScaleX,
-              scaleY: initialScaleY,
+              top: sourceRect.top,
+              left: sourceRect.left,
+              width: sourceRect.width,
+              height: sourceRect.height,
               borderRadius: 8,
               opacity: 0,
             }
-          : { opacity: 0, y: 40 }
+          : {
+              opacity: 0,
+            }
       }
       transition={{
         default: EXPANSION_SPRING,
-        opacity: { duration: 0.25, ease: "easeOut" },
+        opacity: { duration: 0.3, ease: "easeOut" },
       }}
     >
-      {/* Image */}
+      {/* Image — fills all available space, resizes naturally with the container */}
       <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl">
-        {imageUrl ? (
-          <Image
-            src={imageUrl}
-            alt={post.title}
-            fill
-            className="object-cover"
-            sizes="38vw"
-            priority
+        {postData.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={postData.imageUrl}
+            alt={postData.title}
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
           <div className="flex h-full items-center justify-center bg-white text-[var(--text-caption)]">
@@ -142,7 +99,7 @@ export function ExpandedCard({ post, targetRect, sourceRect }: ExpandedCardProps
 
       {/* Caption row */}
       <motion.div
-        className="flex items-baseline gap-2"
+        className="flex shrink-0 items-baseline gap-2"
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...EXPANSION_SPRING, delay: 0.1 }}
