@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Providers } from "@/components/providers";
 import { ExpansionProvider } from "@/components/expanded/expansion-context";
+import { OverlayPortal } from "@/components/expanded/overlay-portal";
 
 export default function AppLayout({
   children,
@@ -45,6 +46,7 @@ export default function AppLayout({
         </header>
         <main className="px-6 pb-6">{children}</main>
         {modal}
+        <OverlayPortal />
       </div>
     </TooltipProvider>
     </ExpansionProvider>
