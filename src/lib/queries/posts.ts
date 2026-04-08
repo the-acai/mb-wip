@@ -47,7 +47,7 @@ export async function getPost(supabase: SupabaseClient, id: string) {
       `
       *,
       author:profiles!author_id(*),
-      assets(* order(display_order)),
+      assets(*),
       post_tags(tag:tags(*)),
       reactions(*)
     `
