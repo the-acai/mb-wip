@@ -27,33 +27,44 @@ export interface ExpandedPostData {
 interface ExpansionContextValue {
   sourceRect: SourceRect | null;
   postData: ExpandedPostData | null;
+  closing: boolean;
   captureSource: (data: ExpandedPostData, rect: SourceRect) => void;
+  startClose: () => void;
   clear: () => void;
 }
 
 const ExpansionContext = createContext<ExpansionContextValue>({
   sourceRect: null,
   postData: null,
+  closing: false,
   captureSource: () => {},
+  startClose: () => {},
   clear: () => {},
 });
 
 export function ExpansionProvider({ children }: { children: ReactNode }) {
   const [sourceRect, setSourceRect] = useState<SourceRect | null>(null);
   const [postData, setPostData] = useState<ExpandedPostData | null>(null);
+  const [closing, setClosing] = useState(false);
 
   const captureSource = useCallback((data: ExpandedPostData, rect: SourceRect) => {
     setPostData(data);
     setSourceRect(rect);
+    setClosing(false);
+  }, []);
+
+  const startClose = useCallback(() => {
+    setClosing(true);
   }, []);
 
   const clear = useCallback(() => {
     setSourceRect(null);
     setPostData(null);
+    setClosing(false);
   }, []);
 
   return (
-    <ExpansionContext value={{ sourceRect, postData, captureSource, clear }}>
+    <ExpansionContext value={{ sourceRect, postData, closing, captureSource, startClose, clear }}>
       {children}
     </ExpansionContext>
   );

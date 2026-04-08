@@ -81,7 +81,7 @@ export function ExperimentCard({
   delay = 0,
   spring = defaultSpring,
 }: ExperimentCardProps) {
-  const imageRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const { captureSource, postData } = useExpansion();
 
   const firstImageAsset = post.assets?.find((a) =>
@@ -100,8 +100,8 @@ export function ExperimentCard({
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (imageRef.current) {
-      const rect = imageRef.current.getBoundingClientRect();
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
       captureSource(
         {
           id: post.id,
@@ -155,12 +155,11 @@ export function ExperimentCard({
         filter: { duration: 0.6, ease: "easeOut", delay },
       }}
     >
-      <div onClick={handleClick} className="group block cursor-pointer">
+      <div ref={cardRef} onClick={handleClick} className="group block cursor-pointer">
         <div className="flex flex-col gap-4">
           {/* Image */}
           {thumbnailUrl ? (
             <div
-              ref={imageRef}
               className="relative overflow-hidden rounded-lg bg-white"
               style={{ aspectRatio }}
             >
@@ -174,7 +173,6 @@ export function ExperimentCard({
             </div>
           ) : (
             <div
-              ref={imageRef}
               className="flex items-center justify-center overflow-hidden rounded-lg bg-white text-[var(--text-caption)]"
               style={{ aspectRatio }}
             >

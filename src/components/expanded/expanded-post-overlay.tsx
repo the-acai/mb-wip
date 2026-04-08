@@ -21,8 +21,16 @@ interface Comment {
   reactions: { emoji: string; user_id: string }[];
 }
 
+// ~40% faster spring, matching expanded-card.tsx
+const EXPANSION_SPRING = {
+  type: "spring" as const,
+  mass: 1.2,
+  stiffness: 170,
+  damping: 16,
+};
+
 export function ExpandedPostOverlay() {
-  const { sourceRect, postData, clear } = useExpansion();
+  const { sourceRect, postData, closing, startClose, clear } = useExpansion();
   const [comments, setComments] = useState<Comment[]>([]);
 
   // Fetch comments client-side (non-blocking)
@@ -34,10 +42,16 @@ export function ExpandedPostOverlay() {
     });
   }, [postData]);
 
+  // Dismiss: start close animation, then clear after it settles
   const dismiss = useCallback(() => {
-    clear();
-    window.history.back();
-  }, [clear]);
+    if (closing) return;
+    startClose();
+    // Wait for spring to settle, then clear state and update URL
+    setTimeout(() => {
+      clear();
+      window.history.back();
+    }, 500);
+  }, [closing, startClose, clear]);
 
   // Escape key
   useEffect(() => {
@@ -63,13 +77,11 @@ export function ExpandedPostOverlay() {
   const vh = window.innerHeight;
   const margin = vw * 0.0833;
   const gap = 24;
-  const captionHeight = 48; // badge row height + gap
 
-  // Image target: fills the card area minus caption space
+  // Full card target (image + caption, same flex layout as grid card)
   const cardWidth = vw * 0.38;
   const totalCardHeight = Math.min(vh - 120, 1020);
   const cardTop = (vh - totalCardHeight) / 2;
-  const imageHeight = totalCardHeight - captionHeight;
 
   // Comment panel position
   const commentLeft = margin + cardWidth + gap;
@@ -82,27 +94,22 @@ export function ExpandedPostOverlay() {
         <motion.div
           className="absolute inset-0 bg-[var(--page-bg)]"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.96 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
+          animate={{ opacity: closing ? 0 : 0.96 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
         />
       </CursorCollapseIcon>
 
-      {/* Expanded card — image FLIP + caption fade-in */}
+      {/* Expanded card — single container FLIP (image + caption) */}
       <ExpandedCard
         postData={postData}
         sourceRect={sourceRect}
-        imageTargetRect={{
+        targetRect={{
           top: cardTop,
           left: margin,
           width: cardWidth,
-          height: imageHeight,
+          height: totalCardHeight,
         }}
-        captionTargetRect={{
-          top: cardTop + imageHeight + 16,
-          left: margin,
-          width: cardWidth,
-        }}
+        closing={closing}
       />
 
       {/* Comment card */}
@@ -115,14 +122,8 @@ export function ExpandedPostOverlay() {
           maxHeight: totalCardHeight,
         }}
         initial={{ y: 60, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{
-          type: "spring",
-          mass: 2,
-          stiffness: 100,
-          damping: 16,
-          delay: 0.15,
-        }}
+        animate={{ y: closing ? 60 : 0, opacity: closing ? 0 : 1 }}
+        transition={EXPANSION_SPRING}
       >
         <ExpandedCommentCard postId={postData.id} initialComments={comments} />
       </motion.div>
