@@ -82,6 +82,7 @@ export function ExperimentCard({
   spring = defaultSpring,
 }: ExperimentCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const preloaded = useRef(false);
   const { captureSource, postData } = useExpansion();
 
   const firstImageAsset = post.assets?.find((a) =>
@@ -123,8 +124,17 @@ export function ExperimentCard({
     window.history.pushState(null, "", `/post/${post.id}`);
   };
 
+  // Preload the raw image URL on hover so it's cached before the FLIP
+  const handleMouseEnter = () => {
+    if (preloaded.current || !thumbnailUrl) return;
+    preloaded.current = true;
+    const img = new window.Image();
+    img.src = thumbnailUrl;
+  };
+
   return (
     <motion.div
+      onMouseEnter={handleMouseEnter}
       style={{
         transformStyle: "preserve-3d",
         visibility: isLifted ? "hidden" : "visible",
