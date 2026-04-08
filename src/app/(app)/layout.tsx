@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Providers } from "@/components/providers";
+import { ExpansionProvider } from "@/components/expanded/expansion-context";
 
 export default function AppLayout({
   children,
@@ -13,6 +14,7 @@ export default function AppLayout({
 }) {
   return (
     <Providers>
+    <ExpansionProvider>
     <TooltipProvider>
       <div className="min-h-screen bg-[var(--page-bg)]">
         <header className="relative px-6 pt-12 pb-6">
@@ -45,6 +47,7 @@ export default function AppLayout({
         {modal}
       </div>
     </TooltipProvider>
+    </ExpansionProvider>
     </Providers>
   );
 }

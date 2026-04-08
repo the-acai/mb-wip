@@ -1,10 +1,12 @@
 "use client";
 
+import { useRef } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 
 import { getAuthorColor } from "@/lib/utils";
+import { useExpansion } from "@/components/expanded/expansion-context";
 
 export interface FeedPost {
   id: string;
@@ -80,6 +82,10 @@ export function ExperimentCard({
   delay = 0,
   spring = defaultSpring,
 }: ExperimentCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const { captureSource } = useExpansion();
+
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
   );
@@ -90,6 +96,20 @@ export function ExperimentCard({
   const caption = post.body?.slice(0, 120) || post.title;
 
   const aspectRatio = orientation === "portrait" ? "2/3" : "3/2";
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      captureSource(post.id, {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      });
+    }
+    router.push(`/post/${post.id}`);
+  };
 
   return (
     <motion.div
@@ -121,12 +141,11 @@ export function ExperimentCard({
         filter: { duration: 0.6, ease: "easeOut", delay },
       }}
     >
-      <Link href={`/post/${post.id}`} className="group block">
+      <div ref={cardRef} onClick={handleClick} className="group block cursor-pointer">
         <div className="flex flex-col gap-4">
           {/* Image */}
           {thumbnailUrl ? (
-            <motion.div
-              layoutId={`card-image-${post.id}`}
+            <div
               className="relative overflow-hidden rounded-lg bg-white"
               style={{ aspectRatio }}
             >
@@ -137,7 +156,7 @@ export function ExperimentCard({
                 className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
               />
-            </motion.div>
+            </div>
           ) : (
             <div
               className="flex items-center justify-center overflow-hidden rounded-lg bg-white text-[var(--text-caption)]"
@@ -148,7 +167,7 @@ export function ExperimentCard({
           )}
 
           {/* Caption row */}
-          <motion.div layoutId={`card-caption-${post.id}`} className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-2">
             <span
               className="flex h-8 shrink-0 items-center rounded-lg px-2"
               style={{ backgroundColor: badgeColor }}
@@ -160,9 +179,9 @@ export function ExperimentCard({
             <p className="min-w-0 flex-1 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[var(--text-caption)]">
               {caption}
             </p>
-          </motion.div>
+          </div>
         </div>
-      </Link>
+      </div>
     </motion.div>
   );
 }

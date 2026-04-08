@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { motion } from "motion/react";
 import { getAuthorColor } from "@/lib/utils";
+import type { SourceRect } from "./expansion-context";
 
 interface PostData {
   id: string;
@@ -25,6 +26,13 @@ interface PostData {
   post_tags: { tag: { id: string; name: string } }[];
 }
 
+interface TargetRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
 const EXPANSION_SPRING = {
   type: "spring" as const,
   mass: 2,
@@ -32,7 +40,13 @@ const EXPANSION_SPRING = {
   damping: 16,
 };
 
-export function ExpandedCard({ post }: { post: PostData }) {
+interface ExpandedCardProps {
+  post: PostData;
+  targetRect: TargetRect;
+  sourceRect: SourceRect | null;
+}
+
+export function ExpandedCard({ post, targetRect, sourceRect }: ExpandedCardProps) {
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
   );
@@ -42,20 +56,74 @@ export function ExpandedCard({ post }: { post: PostData }) {
   const badgeColor = getAuthorColor(authorName);
   const caption = post.body?.slice(0, 120) || post.title;
 
+  // Compute FLIP: transform that maps the target rect onto the source rect
+  const hasSource = !!sourceRect;
+  let initialX = 0,
+    initialY = 0,
+    initialScaleX = 1,
+    initialScaleY = 1;
+
+  if (hasSource) {
+    const targetCenterX = targetRect.left + targetRect.width / 2;
+    const targetCenterY = targetRect.top + targetRect.height / 2;
+    const sourceCenterX = sourceRect.left + sourceRect.width / 2;
+    const sourceCenterY = sourceRect.top + sourceRect.height / 2;
+
+    initialX = sourceCenterX - targetCenterX;
+    initialY = sourceCenterY - targetCenterY;
+    initialScaleX = sourceRect.width / targetRect.width;
+    initialScaleY = sourceRect.height / targetRect.height;
+  }
+
   return (
     <motion.div
-      className="flex h-[calc(100vh-120px)] max-h-[1020px] flex-col gap-4"
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 24 }}
-      transition={EXPANSION_SPRING}
+      className="pointer-events-auto absolute flex flex-col gap-4 will-change-transform"
+      style={{
+        top: targetRect.top,
+        left: targetRect.left,
+        width: targetRect.width,
+        height: targetRect.height,
+        transformOrigin: "center center",
+      }}
+      initial={
+        hasSource
+          ? {
+              x: initialX,
+              y: initialY,
+              scaleX: initialScaleX,
+              scaleY: initialScaleY,
+              borderRadius: 8,
+              opacity: 1,
+            }
+          : { opacity: 0, y: 40 }
+      }
+      animate={{
+        x: 0,
+        y: 0,
+        scaleX: 1,
+        scaleY: 1,
+        borderRadius: 16,
+        opacity: 1,
+      }}
+      exit={
+        hasSource
+          ? {
+              x: initialX,
+              y: initialY,
+              scaleX: initialScaleX,
+              scaleY: initialScaleY,
+              borderRadius: 8,
+              opacity: 0,
+            }
+          : { opacity: 0, y: 40 }
+      }
+      transition={{
+        default: EXPANSION_SPRING,
+        opacity: { duration: 0.25, ease: "easeOut" },
+      }}
     >
       {/* Image */}
-      <motion.div
-        layoutId={`card-image-${post.id}`}
-        className="relative min-h-0 flex-1 overflow-hidden rounded-2xl"
-        transition={EXPANSION_SPRING}
-      >
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl">
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -70,13 +138,14 @@ export function ExpandedCard({ post }: { post: PostData }) {
             <span className="font-heading text-sm">No image</span>
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* Caption row */}
       <motion.div
-        layoutId={`card-caption-${post.id}`}
         className="flex items-baseline gap-2"
-        transition={EXPANSION_SPRING}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ ...EXPANSION_SPRING, delay: 0.1 }}
       >
         <span
           className="flex h-8 shrink-0 items-center rounded-lg px-2"
