@@ -128,6 +128,16 @@ void main() {
   float mask = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV).r);
 
   if (mask > 0.01) {
+    // --- Emboss: derive bump normal from mask edges ---
+    vec2 texel = 1.0 / u_resolution;
+    float mL = texture2D(u_textMask, maskUV + vec2(-texel.x, 0.0)).r;
+    float mR = texture2D(u_textMask, maskUV + vec2( texel.x, 0.0)).r;
+    float mD = texture2D(u_textMask, maskUV + vec2(0.0, -texel.y)).r;
+    float mU = texture2D(u_textMask, maskUV + vec2(0.0,  texel.y)).r;
+    // Gradient of the mask = slope of the "raised" foil surface
+    float bumpStrength = 0.6;
+    vec3 embossN = normalize(N + vec3((mL - mR) * bumpStrength, (mD - mU) * bumpStrength, 0.0));
+
     // Position sweep (vertical-primary) + interactive shift from tilt/cursor
     float angle = (uv.x * 0.3 + uv.y * 0.8) * 3.0
                 + u_tilt.x * 6.0
@@ -148,15 +158,15 @@ void main() {
     vec3 grey = vec3(dot(holoColor, vec3(0.299, 0.587, 0.114)));
     holoColor = mix(grey, holoColor, 1.5);
 
-    // Fresnel-like edge brightening
-    float fresnel = 1.0 + 0.5 * pow(1.0 - abs(dot(N, V)), 3.0);
+    // Fresnel using embossed normal
+    float fresnel = 1.0 + 0.5 * pow(1.0 - abs(dot(embossN, V)), 3.0);
 
     // Metallic sheen mixed with holographic color
     vec3 metallic = vec3(0.5, 0.48, 0.55);
     vec3 foilColor = mix(metallic, holoColor, 0.8) * fresnel;
 
-    // Specular on foil (also roughness-modulated for sparkle on text)
-    float foilSpec = pow(max(dot(N, H1), 0.0), 20.0) * 0.35;
+    // Specular on foil using embossed normal for raised-edge highlights
+    float foilSpec = pow(max(dot(embossN, H1), 0.0), 20.0) * 0.35;
     foilColor += foilSpec;
 
     cardColor = mix(cardColor, foilColor, mask * 0.97);
