@@ -80,7 +80,7 @@ void main() {
   float timeOffset = u_time * 0.001;
 
   // Two noise octaves that slowly evolve — sparkles drift and twinkle
-  float t = u_time * 0.06; // slow, breathing pace
+  float t = u_time * 12.0; // visible sparkle evolution
   float n1 = snoise(px * 0.3 + vec2(t * 0.7, t * 0.5));
   float n2 = snoise(px * 0.7 + vec2(t * -0.4, t * 0.6) + 42.0);
   float sparkleNoise = max(n1, n2);
