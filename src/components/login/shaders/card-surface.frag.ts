@@ -114,36 +114,38 @@ void main() {
   float mask = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV).r);
 
   if (mask > 0.01) {
-    // Diffraction grating: green-cyan at top, blue-purple center, pink at bottom
-    // Position sweep is primarily vertical for a top-to-bottom color gradient
-    float angle = (uv.x * 0.3 + uv.y * 0.8) * 2.5
-                + u_tilt.x * 6.0
-                + u_tilt.y * 3.5
-                + (u_cursor.x - 0.5) * 3.0
-                + (u_cursor.y - 0.5) * 1.5;
+    // Interactive angle: position sweep + tilt + cursor
+    float angle = (uv.x * 0.3 + (1.0 - uv.y) * 0.8) * 1.0
+                + u_tilt.x * 1.5
+                + u_tilt.y * 0.8
+                + (u_cursor.x - 0.5) * 0.7
+                + (u_cursor.y - 0.5) * 0.4;
 
-    // Offset so rest view: top≈490nm(cyan), center≈430nm(violet), bottom≈650nm(pink)
-    float wavelength = mod(angle * 50.0 + 290.0, 400.0) + 380.0;
-    vec3 holoColor = wavelengthToRGB(wavelength);
+    // Custom color ramp: cyan → blue → violet → magenta → pink
+    // Maps angle [0,1] to the desired palette. fract wraps for continuous sweep.
+    float t = fract(angle);
+    vec3 holoColor;
+    if (t < 0.2) {
+      holoColor = mix(vec3(0.2, 0.9, 0.6), vec3(0.25, 0.7, 1.0), t / 0.2); // green-cyan → cyan-blue
+    } else if (t < 0.4) {
+      holoColor = mix(vec3(0.25, 0.7, 1.0), vec3(0.4, 0.3, 1.0), (t - 0.2) / 0.2); // cyan-blue → blue
+    } else if (t < 0.6) {
+      holoColor = mix(vec3(0.4, 0.3, 1.0), vec3(0.65, 0.2, 0.9), (t - 0.4) / 0.2); // blue → violet
+    } else if (t < 0.8) {
+      holoColor = mix(vec3(0.65, 0.2, 0.9), vec3(0.95, 0.2, 0.65), (t - 0.6) / 0.2); // violet → magenta
+    } else {
+      holoColor = mix(vec3(0.95, 0.2, 0.65), vec3(0.2, 0.9, 0.6), (t - 0.8) / 0.2); // magenta → green (wrap)
+    }
 
-    // Second order for depth/richness
-    float wavelength2 = mod(angle * 75.0 + 120.0, 400.0) + 380.0;
-    vec3 holoColor2 = wavelengthToRGB(wavelength2);
-    holoColor = mix(holoColor, holoColor2, 0.2);
+    // Fresnel-like edge brightening
+    float fresnel = 1.0 + 0.5 * pow(1.0 - abs(dot(N, V)), 3.0);
 
-    // Boost saturation: push colors away from grey
-    vec3 grey = vec3(dot(holoColor, vec3(0.299, 0.587, 0.114)));
-    holoColor = mix(grey, holoColor, 1.4); // 1.4 = 40% saturation boost
-
-    // Fresnel-like edge brightening (stronger)
-    float fresnel = 1.0 + 0.6 * pow(1.0 - abs(dot(N, V)), 3.0);
-
-    // Darker metallic base so colors pop against card
-    vec3 metallic = vec3(0.55, 0.52, 0.6);
-    vec3 foilColor = mix(metallic, holoColor, 0.75) * fresnel;
+    // Metallic sheen mixed with holographic color
+    vec3 metallic = vec3(0.5, 0.48, 0.55);
+    vec3 foilColor = mix(metallic, holoColor, 0.8) * fresnel;
 
     // Specular highlight on foil
-    float foilSpec = pow(max(dot(N, H1), 0.0), 20.0) * 0.4;
+    float foilSpec = pow(max(dot(N, H1), 0.0), 20.0) * 0.35;
     foilColor += foilSpec;
 
     cardColor = mix(cardColor, foilColor, mask * 0.97);
