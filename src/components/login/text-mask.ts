@@ -1,6 +1,7 @@
 /**
  * Renders card text + matchbox logo as a white-on-black luminance mask
  * for the holographic shader. All sizes are proportional to card dimensions.
+ * Renders at 4x resolution for crisp antialiased edges.
  */
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -15,18 +16,30 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 export async function generateTextMask(
   width: number,
   height: number,
-  dpr: number = Math.min(window.devicePixelRatio, 2)
 ): Promise<HTMLCanvasElement> {
+  // Render at 4x for smooth antialiased text edges
+  const scale = 4;
   const canvas = document.createElement("canvas");
-  canvas.width = width * dpr;
-  canvas.height = height * dpr;
+  canvas.width = width * scale;
+  canvas.height = height * scale;
   const ctx = canvas.getContext("2d")!;
-  ctx.scale(dpr, dpr);
+  ctx.scale(scale, scale);
 
-  // Wait for Parabolica font
-  await document.fonts.ready;
-  const fontLoaded = document.fonts.check("1em parabolica");
-  const fontFamily = fontLoaded ? "parabolica" : "sans-serif";
+  // Force-load Parabolica Black weight before rendering
+  let fontFamily = "sans-serif";
+  try {
+    await document.fonts.load('900 36px parabolica');
+    // Verify it actually loaded by checking glyph availability
+    const testCanvas = document.createElement("canvas");
+    const testCtx = testCanvas.getContext("2d")!;
+    testCtx.font = '900 36px parabolica';
+    const w1 = testCtx.measureText("W").width;
+    testCtx.font = '900 36px sans-serif';
+    const w2 = testCtx.measureText("W").width;
+    if (w1 !== w2) fontFamily = "parabolica";
+  } catch {
+    // Fall back to sans-serif
+  }
 
   // Scale factor relative to the original 432px design width
   const s = width / 432;

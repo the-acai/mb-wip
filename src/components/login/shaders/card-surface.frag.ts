@@ -110,23 +110,24 @@ void main() {
   // --- Layer 3: Holographic foil (text regions only) ---
   // Flip Y axis to correct WebGL texture coordinate mismatch with canvas 2D
   vec2 maskUV = vec2(uv.x, 1.0 - uv.y);
-  float mask = texture2D(u_textMask, maskUV).r;
+  // Smoothstep for antialiased text edges
+  float mask = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV).r);
 
-  if (mask > 0.1) {
-    // Diffraction grating: blue/purple/pink hero at rest, green/yellow at fringes
-    float angle = (uv.x + uv.y * 0.5) * 2.5
+  if (mask > 0.01) {
+    // Diffraction grating: green-cyan at top, blue-purple center, pink at bottom
+    // Position sweep is primarily vertical for a top-to-bottom color gradient
+    float angle = (uv.x * 0.3 + uv.y * 0.8) * 2.5
                 + u_tilt.x * 6.0
                 + u_tilt.y * 3.5
                 + (u_cursor.x - 0.5) * 3.0
                 + (u_cursor.y - 0.5) * 1.5;
 
-    // At rest (angle≈1.25 from position term), sweep covers blue-purple-green
-    // Tilting/hovering shifts into pink and yellow at fringes
-    float wavelength = mod(angle * 50.0 + 330.0, 400.0) + 380.0;
+    // Offset so rest view: top≈490nm(cyan), center≈430nm(violet), bottom≈650nm(pink)
+    float wavelength = mod(angle * 50.0 + 290.0, 400.0) + 380.0;
     vec3 holoColor = wavelengthToRGB(wavelength);
 
     // Second order for depth/richness
-    float wavelength2 = mod(angle * 75.0 + 150.0, 400.0) + 380.0;
+    float wavelength2 = mod(angle * 75.0 + 120.0, 400.0) + 380.0;
     vec3 holoColor2 = wavelengthToRGB(wavelength2);
     holoColor = mix(holoColor, holoColor2, 0.2);
 
