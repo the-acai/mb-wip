@@ -120,12 +120,13 @@ void main() {
                 + (u_cursor.x - 0.5) * 3.0
                 + (u_cursor.y - 0.5) * 1.5;
 
-    // Offset so tilt=0 + cursor=center shows blue-purple-green sweep
-    float wavelength = mod(angle * 50.0 + 80.0, 400.0) + 380.0;
+    // At rest (angle≈1.25 from position term), sweep covers blue-purple-green
+    // Tilting/hovering shifts into pink and yellow at fringes
+    float wavelength = mod(angle * 50.0 + 330.0, 400.0) + 380.0;
     vec3 holoColor = wavelengthToRGB(wavelength);
 
     // Second order for depth/richness
-    float wavelength2 = mod(angle * 75.0 + 200.0, 400.0) + 380.0;
+    float wavelength2 = mod(angle * 75.0 + 150.0, 400.0) + 380.0;
     vec3 holoColor2 = wavelengthToRGB(wavelength2);
     holoColor = mix(holoColor, holoColor2, 0.2);
 
