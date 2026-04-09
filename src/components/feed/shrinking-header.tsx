@@ -15,6 +15,15 @@ export function ShrinkingHeader() {
   // Scroll-driven transforms — all motion values, zero re-renders
   const fontSize = useTransform(scrollYProgress, [0, 1], [64, 24]);
   const opacity = useTransform(scrollYProgress, [0, 0.6, 1], [1, 0.8, 1]);
+
+  // Start centered in the 40svh space, translate up to top-4 as user scrolls
+  const y = useTransform(scrollYProgress, (v) => {
+    const center = window.innerHeight * 0.2; // middle of 40svh
+    const fs = 64 - v * 40; // current interpolated font size
+    const halfText = (fs * 1.18) / 2; // half the line height
+    return (1 - v) * (center - 16 - halfText); // 16 = top-4
+  });
+
   const blendMode = useTransform(scrollYProgress, (v) =>
     v > 0.5 ? "difference" : "normal"
   );
@@ -22,13 +31,13 @@ export function ShrinkingHeader() {
   return (
     <>
       {/* Spacer — defines the scroll range for the shrink animation */}
-      <div ref={headerRef} className="flex items-center justify-center px-6" style={{ height: "40svh" }} />
+      <div ref={headerRef} className="px-6" style={{ height: "40svh" }} />
 
-      {/* Fixed headline — always on screen, shrinks as spacer scrolls out */}
+      {/* Fixed headline — starts centered, shrinks + translates up on scroll */}
       <Link href="/feed" className="fixed top-4 left-0 right-0 z-40 pointer-events-auto">
         <motion.h1
           className="text-center font-heading font-black leading-[1.18] tracking-[-0.01em] text-[var(--text-dark)] pointer-events-auto"
-          style={{ fontSize, opacity, mixBlendMode: blendMode as never }}
+          style={{ fontSize, opacity, y, mixBlendMode: blendMode as never }}
         >
           WORKS IN PROGRESS
         </motion.h1>
