@@ -53,6 +53,7 @@ export function LoginCard({
     cursorY: 0.5,
   });
   const [webglFailed, setWebglFailed] = useState(false);
+  const oauthFiredRef = useRef(false);
 
   // --- Hover-based tilt (position-based, works without dragging) ---
   const hoverTiltX = useMotionValue(0);
@@ -171,7 +172,13 @@ export function LoginCard({
       transition={phase === "consuming" ? CONSUME_SPRING : ENTRANCE_SPRING}
       onAnimationComplete={() => {
         if (phase === "entering") onPhaseChange("idle");
-        if (phase === "consuming") onConsume();
+      }}
+      onUpdate={(latest) => {
+        // Fire OAuth the moment the card is visually gone, don't wait for spring settle
+        if (phase === "consuming" && !oauthFiredRef.current && typeof latest.opacity === "number" && latest.opacity < 0.1) {
+          oauthFiredRef.current = true;
+          onConsume();
+        }
       }}
       style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
     >

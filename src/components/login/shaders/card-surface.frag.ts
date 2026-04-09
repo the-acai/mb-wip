@@ -79,16 +79,20 @@ void main() {
   // --- Layer 1: Glitter sparkle (scattered bright pinpoints on dark field) ---
   float timeOffset = u_time * 0.001;
 
-  // Two noise octaves that slowly evolve — sparkles drift and twinkle
-  float t = u_time * 12.0; // visible sparkle evolution
-  float n1 = snoise(px * 0.3 + vec2(t * 0.7, t * 0.5));
-  float n2 = snoise(px * 0.7 + vec2(t * -0.4, t * 0.6) + 42.0);
-  float sparkleNoise = max(n1, n2);
+  // Evolving sparkle: crossfade between two static noise fields over time
+  // so sparkles fade in/out in place rather than scrolling
+  float t = u_time * 0.4; // slow evolution cycle
+  float blend = sin(t) * 0.5 + 0.5; // oscillates 0→1→0
+
+  // Two fixed noise fields (no time in coordinates = no scrolling)
+  float nA = max(snoise(px * 0.3), snoise(px * 0.7 + 42.0));
+  float nB = max(snoise(px * 0.3 + 200.0), snoise(px * 0.7 + 317.0));
+  float sparkleNoise = mix(nA, nB, blend);
 
   // Hard threshold: only the top ~8% of noise peaks become sparkles
   float sparkle = smoothstep(0.55, 0.75, sparkleNoise);
-  // Subtle density variation so some areas are more sparkly
-  float densityMod = snoise(px * 0.015 + t * 0.1) * 0.3 + 0.7;
+  // Subtle density variation
+  float densityMod = snoise(px * 0.015) * 0.3 + 0.7;
   sparkle *= densityMod;
 
   vec3 cardColor = vec3(0.035) + sparkle * 0.18; // near-black base + bright dots
