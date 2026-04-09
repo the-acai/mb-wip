@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Providers } from "@/components/providers";
 import { ExpansionProvider } from "@/components/expanded/expansion-context";
 import { OverlayPortal } from "@/components/expanded/overlay-portal";
+import { ShrinkingHeader } from "@/components/feed/shrinking-header";
 
 export default function AppLayout({
   children,
@@ -18,13 +19,7 @@ export default function AppLayout({
     <ExpansionProvider>
     <TooltipProvider>
       <div className="min-h-screen bg-[var(--page-bg)]">
-        <header className="relative px-6 pt-12 pb-6">
-          <Link href="/feed">
-            <h1 className="text-center font-heading text-[64px] font-black leading-[1.18] tracking-[-0.64px] text-[var(--text-dark)]">
-              WORKS IN PROGRESS
-            </h1>
-          </Link>
-        </header>
+        <ShrinkingHeader />
         <main className="px-6 pb-[calc(64px+4rem)]">{children}</main>
         <Link
           href="/post/new"
