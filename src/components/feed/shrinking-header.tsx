@@ -5,7 +5,7 @@ import { motion, useScroll, useTransform } from "motion/react";
 import Link from "next/link";
 
 export function ShrinkingHeader() {
-  const headerRef = useRef<HTMLElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
 
   const { scrollYProgress } = useScroll({
     target: headerRef,
@@ -20,19 +20,19 @@ export function ShrinkingHeader() {
   );
 
   return (
-    <header
-      ref={headerRef}
-      className="flex items-center justify-center px-6"
-      style={{ height: "40svh" }}
-    >
-      <Link href="/feed" className="sticky top-4 z-40 block w-full">
+    <>
+      {/* Spacer — defines the scroll range for the shrink animation */}
+      <div ref={headerRef} className="flex items-center justify-center px-6" style={{ height: "40svh" }} />
+
+      {/* Fixed headline — always on screen, shrinks as spacer scrolls out */}
+      <Link href="/feed" className="fixed top-4 left-0 right-0 z-40 pointer-events-auto">
         <motion.h1
-          className="text-center font-heading font-black leading-[1.18] tracking-[-0.01em] text-[var(--text-dark)]"
+          className="text-center font-heading font-black leading-[1.18] tracking-[-0.01em] text-[var(--text-dark)] pointer-events-auto"
           style={{ fontSize, opacity, mixBlendMode: blendMode as never }}
         >
           WORKS IN PROGRESS
         </motion.h1>
       </Link>
-    </header>
+    </>
   );
 }
