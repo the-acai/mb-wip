@@ -199,7 +199,7 @@ export function LoginCard({
         onPointerMove={handlePointerMove}
         onPointerLeave={handlePointerLeave}
       >
-        <div className="w-full h-full rounded-2xl bg-[#0e0e0e] overflow-hidden relative">
+        <div className="w-full h-full rounded-2xl bg-[#090909] overflow-hidden relative">
           <canvas
             ref={canvasRef}
             className="absolute inset-0 w-full h-full"

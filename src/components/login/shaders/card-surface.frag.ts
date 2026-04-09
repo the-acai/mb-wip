@@ -86,8 +86,8 @@ void main() {
   // Fine tooth: per-pixel detail
   float grainFine = snoise(px * 1.2 + timeOffset * 0.4) * 0.35;
 
-  float grain = (density + grainMed + grainFine) * 0.025;
-  vec3 cardColor = vec3(0.055) + grain; // near-black base
+  float grain = (density + grainMed + grainFine) * 0.015;
+  vec3 cardColor = vec3(0.035) + grain; // near-black base
 
   // --- Layer 2: Surface lighting ---
   // Card surface normal tilted by u_tilt
@@ -98,14 +98,14 @@ void main() {
   vec3 L1 = normalize(vec3(0.0, -0.3, 1.0));
   vec3 H1 = normalize(L1 + V);
   float spec1 = pow(max(dot(N, H1), 0.0), 64.0);
-  cardColor += spec1 * 0.15;
+  cardColor += spec1 * 0.06;
 
   // Secondary cursor-following light
   vec2 cursorOffset = (u_cursor - 0.5) * 2.0;
   vec3 L2 = normalize(vec3(cursorOffset.x * 0.6, cursorOffset.y * -0.6, 1.0));
   vec3 H2 = normalize(L2 + V);
   float spec2 = pow(max(dot(N, H2), 0.0), 32.0);
-  cardColor += spec2 * 0.08;
+  cardColor += spec2 * 0.04;
 
   // --- Layer 3: Holographic foil (text regions only) ---
   // Flip Y axis to correct WebGL texture coordinate mismatch with canvas 2D
