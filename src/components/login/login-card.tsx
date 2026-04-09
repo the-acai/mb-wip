@@ -1,20 +1,27 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import {
   motion,
-  useMotionValue,
   useVelocity,
   useTransform,
   useSpring,
   type MotionValue,
 } from "motion/react";
+import {
+  createHolographicShader,
+  type UniformState,
+} from "./holographic-shader";
+import { generateTextMask } from "./text-mask";
 
 type Phase = "entering" | "idle" | "dragging" | "consuming";
 
 const ENTRANCE_SPRING = { type: "spring" as const, mass: 1.2, stiffness: 170, damping: 16 };
 const CONSUME_SPRING = { type: "spring" as const, mass: 0.6, stiffness: 400, damping: 30 };
 const TILT_SPRING = { mass: 0.3, stiffness: 200, damping: 20 };
+
+const CARD_WIDTH = 432;
+const CARD_HEIGHT = 757;
 
 interface LoginCardProps {
   x: MotionValue<number>;
@@ -34,7 +41,15 @@ export function LoginCard({
   distanceToBottom,
 }: LoginCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const consumedRef = useRef(false);
+  const uniformStateRef = useRef<UniformState>({
+    tiltX: 0,
+    tiltY: 0,
+    cursorX: 0.5,
+    cursorY: 0.5,
+  });
+  const [webglFailed, setWebglFailed] = useState(false);
 
   // Velocity-based 3D tilt
   const vx = useVelocity(x);
@@ -43,6 +58,49 @@ export function LoginCard({
   const rawRotateX = useTransform(vy, [-1500, 0, 1500], [-10, 0, 10]);
   const rotateY = useSpring(rawRotateY, TILT_SPRING);
   const rotateX = useSpring(rawRotateX, TILT_SPRING);
+
+  // Sync tilt spring values to shader uniforms (no re-renders)
+  useEffect(() => {
+    const unsubY = rotateY.on("change", (v) => {
+      uniformStateRef.current.tiltX = (v * Math.PI) / 180;
+    });
+    const unsubX = rotateX.on("change", (v) => {
+      uniformStateRef.current.tiltY = (v * Math.PI) / 180;
+    });
+    return () => { unsubY(); unsubX(); };
+  }, [rotateY, rotateX]);
+
+  // Initialize WebGL shader
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let controller: { destroy(): void } | null = null;
+
+    async function init() {
+      try {
+        const mask = await generateTextMask(CARD_WIDTH, CARD_HEIGHT);
+        controller = createHolographicShader(
+          canvas!,
+          mask,
+          uniformStateRef.current
+        );
+      } catch (e) {
+        console.warn("WebGL shader init failed:", e);
+        setWebglFailed(true);
+      }
+    }
+
+    init();
+    return () => { controller?.destroy(); };
+  }, []);
+
+  // Cursor tracking for shader
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    uniformStateRef.current.cursorX = (e.clientX - rect.left) / rect.width;
+    uniformStateRef.current.cursorY = 1.0 - (e.clientY - rect.top) / rect.height;
+  }, []);
 
   // Check if card bottom has reached viewport bottom during drag
   const handleDrag = useCallback(() => {
@@ -60,10 +118,7 @@ export function LoginCard({
     }
   }, [phase]);
 
-  // Determine initial/animate values based on phase
   const isDraggable = phase === "idle" || phase === "dragging";
-
-  // Window height for entrance offset (measured once)
   const windowH = typeof window !== "undefined" ? window.innerHeight : 900;
 
   return (
@@ -76,8 +131,8 @@ export function LoginCard({
         rotateX,
         rotateY,
         transformPerspective: 800,
-        width: 432,
-        height: 757,
+        width: CARD_WIDTH,
+        height: CARD_HEIGHT,
       }}
       drag={isDraggable}
       dragMomentum={false}
@@ -93,7 +148,7 @@ export function LoginCard({
       onDragEnd={() => {
         if (phase === "dragging") onPhaseChange("idle");
       }}
-      // Entrance animation
+      onPointerMove={handlePointerMove}
       initial={{ y: windowH * 0.6, scale: 0.9, opacity: 0 }}
       animate={
         phase === "consuming"
@@ -112,38 +167,49 @@ export function LoginCard({
         }
       }}
     >
-      {/* Placeholder card visual — will be replaced by WebGL canvas in Step 3 */}
-      <div className="w-full h-full rounded-2xl bg-[#1b1b1b] overflow-hidden flex flex-col items-center justify-between py-14 px-10">
-        <p className="font-heading text-[28px] font-black tracking-tight text-white/30">
-          matchbox
-        </p>
-        <div className="text-center">
-          <p className="font-heading text-[36px] font-black leading-[1.02] tracking-tight text-white/30">
-            WORKS IN
-            <br />
-            PROGRESS
-          </p>
-        </div>
-        <div className="text-center">
-          <p className="font-heading text-[36px] font-black tracking-tight text-white/30">
-            ACCESS
-          </p>
-          <svg
-            className="mx-auto mt-2 text-white/30"
-            width="40"
-            height="20"
-            viewBox="0 0 40 20"
-            fill="none"
-          >
-            <path
-              d="M4 4L20 16L36 4"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
+      <div className="w-full h-full rounded-2xl bg-[#1b1b1b] overflow-hidden relative">
+        {/* WebGL canvas renders the holographic card surface */}
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full"
+          style={{ display: webglFailed ? "none" : "block" }}
+        />
+
+        {/* Fallback DOM text (shown if WebGL fails, or as overlay during shader load) */}
+        {webglFailed && (
+          <div className="absolute inset-0 flex flex-col items-center justify-between py-14 px-10">
+            <p className="font-heading text-[28px] font-black tracking-tight text-white/30">
+              matchbox
+            </p>
+            <div className="text-center">
+              <p className="font-heading text-[36px] font-black leading-[1.02] tracking-tight text-white/30">
+                WORKS IN
+                <br />
+                PROGRESS
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="font-heading text-[36px] font-black tracking-tight text-white/30">
+                ACCESS
+              </p>
+              <svg
+                className="mx-auto mt-2 text-white/30"
+                width="40"
+                height="20"
+                viewBox="0 0 40 20"
+                fill="none"
+              >
+                <path
+                  d="M4 4L20 16L36 4"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );
