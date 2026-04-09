@@ -73,11 +73,15 @@ vec3 wavelengthToRGB(float wavelength) {
 void main() {
   vec2 uv = v_uv;
 
-  // --- Layer 1: Paper grain ---
-  float timeOffset = u_time * 0.003;
-  float coarseNoise = snoise(uv * 8.0 + timeOffset) * 0.7;
-  float fineNoise = snoise(uv * 40.0 + timeOffset * 2.0) * 0.3;
-  float grain = (coarseNoise + fineNoise) * 0.03;
+  // Pixel coordinates for high-frequency noise
+  vec2 px = uv * u_resolution;
+
+  // --- Layer 1: Paper grain (fine, like real paper tooth) ---
+  float timeOffset = u_time * 0.002;
+  float fineGrain = snoise(px * 0.15 + timeOffset) * 0.5
+                  + snoise(px * 0.4 + timeOffset * 1.5) * 0.3
+                  + snoise(px * 1.0 + timeOffset * 0.5) * 0.2;
+  float grain = fineGrain * 0.012;
   vec3 cardColor = vec3(0.106) + grain; // #1b1b1b base
 
   // --- Layer 2: Surface lighting ---
@@ -99,35 +103,39 @@ void main() {
   cardColor += spec2 * 0.08;
 
   // --- Layer 3: Holographic foil (text regions only) ---
-  float mask = texture2D(u_textMask, uv).r;
+  // Flip both axes to correct WebGL texture coordinate mismatch with canvas 2D
+  vec2 maskUV = vec2(1.0 - uv.x, 1.0 - uv.y);
+  float mask = texture2D(u_textMask, maskUV).r;
 
   if (mask > 0.1) {
-    // Diffraction grating simulation
-    float gratingPeriod = 1.6; // micrometers
-    float incidentAngle = u_tilt.x * 2.0 + (uv.x - 0.5) * 0.4 + u_cursor.x * 0.3;
-    float verticalAngle = u_tilt.y * 1.5 + (uv.y - 0.5) * 0.2 + u_cursor.y * 0.2;
+    // Diffraction grating: smooth rainbow sweep across the card surface
+    // Primary angle depends on position + tilt + cursor for interactive shift
+    float angle = (uv.x + uv.y * 0.5) * 3.0
+                + u_tilt.x * 4.0
+                + u_tilt.y * 2.0
+                + (u_cursor.x - 0.5) * 2.0
+                + (u_cursor.y - 0.5) * 1.0;
 
-    // Compute diffracted wavelength for first order
-    float sinTheta = sin(incidentAngle + verticalAngle * 0.5);
-    float wavelength = gratingPeriod * (sinTheta + sin(0.0)) * 1000.0; // nm scale
-
-    // Map to visible range with wrapping for continuous rainbow
-    wavelength = mod(wavelength, 400.0) + 380.0;
-
+    // Map angle to wavelength for smooth spectral sweep
+    float wavelength = mod(angle * 60.0, 400.0) + 380.0;
     vec3 holoColor = wavelengthToRGB(wavelength);
 
+    // Add a second diffraction order for richness
+    float wavelength2 = mod(angle * 90.0 + 120.0, 400.0) + 380.0;
+    vec3 holoColor2 = wavelengthToRGB(wavelength2);
+    holoColor = mix(holoColor, holoColor2, 0.3);
+
     // Fresnel-like edge brightening
-    float fresnel = 1.0 + 0.5 * pow(1.0 - abs(dot(N, V)), 3.0);
+    float fresnel = 1.0 + 0.4 * pow(1.0 - abs(dot(N, V)), 3.0);
 
-    // Metallic base + rainbow
-    vec3 metallic = vec3(0.7, 0.7, 0.72); // slightly cool silver
-    vec3 foilColor = mix(metallic, holoColor, 0.6) * fresnel;
+    // Metallic base blended with rainbow
+    vec3 metallic = vec3(0.75, 0.73, 0.78);
+    vec3 foilColor = mix(metallic, holoColor, 0.55) * fresnel;
 
-    // Specular highlight on foil (brighter than card surface)
-    float foilSpec = pow(max(dot(N, H1), 0.0), 24.0) * 0.4;
+    // Specular highlight on foil
+    float foilSpec = pow(max(dot(N, H1), 0.0), 24.0) * 0.35;
     foilColor += foilSpec;
 
-    // Blend foil onto card via mask
     cardColor = mix(cardColor, foilColor, mask * 0.95);
   }
 
