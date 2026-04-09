@@ -89,13 +89,8 @@ void main() {
   float nB = max(snoise(px * 0.3 + 200.0), snoise(px * 0.7 + 317.0));
   float sparkleNoise = mix(nA, nB, blend);
 
-  // Hard threshold: only the top ~8% of noise peaks become sparkles
-  float sparkle = smoothstep(0.55, 0.75, sparkleNoise);
   // Very gradual density variation across the card (not patchy)
   float densityMod = snoise(px * 0.003) * 0.15 + 0.85;
-  sparkle *= densityMod;
-
-  vec3 cardColor = vec3(0.035) + sparkle * 0.18; // near-black base + bright dots
 
   // --- Layer 2: Surface lighting ---
   vec3 N = normalize(vec3(-sin(u_tilt.x), -sin(u_tilt.y), cos(u_tilt.x) * cos(u_tilt.y)));
@@ -105,14 +100,27 @@ void main() {
   vec3 L1 = normalize(vec3(0.0, -0.3, 1.0));
   vec3 H1 = normalize(L1 + V);
   float spec1 = pow(max(dot(N, H1), 0.0), 64.0);
-  cardColor += spec1 * 0.06;
 
-  // Secondary cursor-following light — makes sparkles shift as you move
+  // Secondary cursor-following light
   vec2 cursorOffset = (u_cursor - 0.5) * 2.0;
   vec3 L2 = normalize(vec3(cursorOffset.x * 0.6, cursorOffset.y * -0.6, 1.0));
   vec3 H2 = normalize(L2 + V);
   float spec2 = pow(max(dot(N, H2), 0.0), 32.0);
-  cardColor += spec2 * 0.04;
+
+  // Combined light intensity drives sparkle reactivity:
+  // more light = lower threshold = more sparkles catch the light
+  float lightIntensity = spec1 + spec2;
+  float thresholdLow = mix(0.55, 0.2, clamp(lightIntensity * 2.0, 0.0, 1.0));
+  float sparkle = smoothstep(thresholdLow, thresholdLow + 0.2, sparkleNoise);
+  sparkle *= densityMod;
+
+  // Sparkle brightness also scales with light
+  float sparkleBrightness = mix(0.12, 0.35, clamp(lightIntensity * 2.0, 0.0, 1.0));
+  vec3 cardColor = vec3(0.035) + sparkle * sparkleBrightness;
+
+  // Add smooth specular on top (subtle sheen separate from sparkle)
+  cardColor += spec1 * 0.04;
+  cardColor += spec2 * 0.03;
 
   // --- Layer 3: Holographic foil (text regions only) ---
   // Flip Y axis to correct WebGL texture coordinate mismatch with canvas 2D
