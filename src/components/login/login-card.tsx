@@ -165,7 +165,7 @@ export function LoginCard({
       initial={{ y: windowH * 0.6, scale: 0.9, opacity: 0 }}
       animate={
         phase === "consuming"
-          ? { y: windowH, scale: 0.95, opacity: 0 }
+          ? { y: windowH / 2 + CARD_HEIGHT / 2 + 40, scale: 0.95, opacity: 0 }
           : { y: 0, scale: 1, opacity: 1 }
       }
       transition={phase === "consuming" ? CONSUME_SPRING : ENTRANCE_SPRING}
