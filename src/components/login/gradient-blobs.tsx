@@ -69,7 +69,7 @@ export function GradientBlobs({ proximity }: GradientBlobsProps) {
             backgroundColor: blob.color,
             filter: "blur(90px)",
             mixBlendMode: "plus-lighter",
-            bottom: -blob.size * 0.3,
+            bottom: -blob.size * 0.6,
             left: `calc(50% - ${blob.size / 2}px + ${blob.offsetX}px)`,
             opacity: 0.7,
             borderRadius: "50%",
