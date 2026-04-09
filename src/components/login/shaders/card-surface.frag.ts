@@ -103,8 +103,8 @@ void main() {
   cardColor += spec2 * 0.08;
 
   // --- Layer 3: Holographic foil (text regions only) ---
-  // Flip both axes to correct WebGL texture coordinate mismatch with canvas 2D
-  vec2 maskUV = vec2(1.0 - uv.x, 1.0 - uv.y);
+  // Flip Y axis to correct WebGL texture coordinate mismatch with canvas 2D
+  vec2 maskUV = vec2(uv.x, 1.0 - uv.y);
   float mask = texture2D(u_textMask, maskUV).r;
 
   if (mask > 0.1) {
