@@ -13,10 +13,15 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+export interface TextMaskResult {
+  sharp: HTMLCanvasElement;
+  blurred: HTMLCanvasElement;
+}
+
 export async function generateTextMask(
   width: number,
   height: number,
-): Promise<HTMLCanvasElement> {
+): Promise<TextMaskResult> {
   // Render at 4x for smooth antialiased text edges
   const scale = 4;
   const canvas = document.createElement("canvas");
@@ -104,5 +109,13 @@ export async function generateTextMask(
   ctx.lineJoin = "round";
   ctx.stroke();
 
-  return canvas;
+  // Create blurred copy for smooth emboss normal derivation
+  const blurred = document.createElement("canvas");
+  blurred.width = canvas.width;
+  blurred.height = canvas.height;
+  const bCtx = blurred.getContext("2d")!;
+  bCtx.filter = "blur(6px)";
+  bCtx.drawImage(canvas, 0, 0);
+
+  return { sharp: canvas, blurred };
 }

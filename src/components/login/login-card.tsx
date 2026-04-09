@@ -104,10 +104,11 @@ export function LoginCard({
 
     async function init() {
       try {
-        const mask = await generateTextMask(CARD_WIDTH, CARD_HEIGHT);
+        const { sharp, blurred } = await generateTextMask(CARD_WIDTH, CARD_HEIGHT);
         controller = createHolographicShader(
           canvas!,
-          mask,
+          sharp,
+          blurred,
           uniformStateRef.current
         );
       } catch (e) {

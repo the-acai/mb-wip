@@ -31,6 +31,7 @@ function compileShader(
 export function createHolographicShader(
   canvas: HTMLCanvasElement,
   maskCanvas: HTMLCanvasElement,
+  embossCanvas: HTMLCanvasElement,
   uniformState: UniformState
 ): ShaderController {
   const gl = canvas.getContext("webgl", {
@@ -75,8 +76,9 @@ export function createHolographicShader(
   const uTilt = gl.getUniformLocation(program, "u_tilt");
   const uCursor = gl.getUniformLocation(program, "u_cursor");
   const uTextMask = gl.getUniformLocation(program, "u_textMask");
+  const uEmbossMask = gl.getUniformLocation(program, "u_embossMask");
 
-  // Upload text mask texture
+  // Upload sharp text mask texture (unit 0)
   const texture = gl.createTexture()!;
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -86,6 +88,17 @@ export function createHolographicShader(
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, maskCanvas);
   gl.uniform1i(uTextMask, 0);
+
+  // Upload pre-blurred emboss mask texture (unit 1)
+  const embossTexture = gl.createTexture()!;
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, embossTexture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, embossCanvas);
+  gl.uniform1i(uEmbossMask, 1);
 
   // Resize handling
   const dpr = Math.min(window.devicePixelRatio, 2);
@@ -150,6 +163,7 @@ export function createHolographicShader(
       canvas.removeEventListener("webglcontextlost", handleContextLost);
       canvas.removeEventListener("webglcontextrestored", handleContextRestored);
       gl!.deleteTexture(texture);
+      gl!.deleteTexture(embossTexture);
       gl!.deleteBuffer(buffer);
       gl!.deleteProgram(program);
       gl!.deleteShader(vertShader);

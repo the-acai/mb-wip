@@ -6,6 +6,7 @@ uniform float u_time;
 uniform vec2 u_tilt;    // radians, [-0.175, 0.175]
 uniform vec2 u_cursor;  // normalized [0,1] over card
 uniform sampler2D u_textMask;
+uniform sampler2D u_embossMask;
 
 varying vec2 v_uv;
 
@@ -128,18 +129,12 @@ void main() {
   float mask = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV).r);
 
   if (mask > 0.01) {
-    // --- Emboss: derive bump normal with wide soft sampling ---
-    vec2 px1 = 3.0 / u_resolution;
-    vec2 px2 = 6.0 / u_resolution;
-    // Wide smoothstep (0.05–0.95) for very gradual edge slope
-    float mL = (smoothstep(0.05, 0.95, texture2D(u_textMask, maskUV - vec2(px1.x, 0.0)).r)
-              + smoothstep(0.05, 0.95, texture2D(u_textMask, maskUV - vec2(px2.x, 0.0)).r)) * 0.5;
-    float mR = (smoothstep(0.05, 0.95, texture2D(u_textMask, maskUV + vec2(px1.x, 0.0)).r)
-              + smoothstep(0.05, 0.95, texture2D(u_textMask, maskUV + vec2(px2.x, 0.0)).r)) * 0.5;
-    float mD = (smoothstep(0.05, 0.95, texture2D(u_textMask, maskUV - vec2(0.0, px1.y)).r)
-              + smoothstep(0.05, 0.95, texture2D(u_textMask, maskUV - vec2(0.0, px2.y)).r)) * 0.5;
-    float mU = (smoothstep(0.05, 0.95, texture2D(u_textMask, maskUV + vec2(0.0, px1.y)).r)
-              + smoothstep(0.05, 0.95, texture2D(u_textMask, maskUV + vec2(0.0, px2.y)).r)) * 0.5;
+    // --- Emboss: derive bump normal from pre-blurred mask (inherently smooth) ---
+    vec2 texel = 2.0 / u_resolution;
+    float mL = texture2D(u_embossMask, maskUV - vec2(texel.x, 0.0)).r;
+    float mR = texture2D(u_embossMask, maskUV + vec2(texel.x, 0.0)).r;
+    float mD = texture2D(u_embossMask, maskUV - vec2(0.0, texel.y)).r;
+    float mU = texture2D(u_embossMask, maskUV + vec2(0.0, texel.y)).r;
     float bumpStrength = 0.8;
     vec3 embossN = normalize(N + vec3((mL - mR) * bumpStrength, (mD - mU) * bumpStrength, 0.0));
 
