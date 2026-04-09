@@ -19,7 +19,7 @@ import { generateTextMask } from "./text-mask";
 type Phase = "entering" | "idle" | "dragging" | "consuming";
 
 const ENTRANCE_SPRING = { type: "spring" as const, mass: 1.2, stiffness: 170, damping: 16 };
-const CONSUME_SPRING = { type: "spring" as const, mass: 1.0, stiffness: 250, damping: 18 };
+const CONSUME_SPRING = { type: "spring" as const, mass: 1.5, stiffness: 200, damping: 16 };
 const TILT_SPRING = { mass: 0.3, stiffness: 200, damping: 20 };
 const HOVER_TILT_SPRING = { mass: 0.5, stiffness: 150, damping: 18 };
 const MAX_HOVER_TILT = 6; // degrees

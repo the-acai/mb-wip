@@ -76,41 +76,38 @@ void main() {
   // Pixel coordinates for high-frequency noise
   vec2 px = uv * u_resolution;
 
-  // --- Layer 1: Paper grain as roughness map (creates glittery sparkle) ---
+  // --- Layer 1: Glitter sparkle (scattered bright pinpoints on dark field) ---
   float timeOffset = u_time * 0.001;
 
-  // Grain noise at scale visible on the smaller card (~3-6px per bump)
-  float grainRaw = snoise(px * 0.08 + timeOffset * 0.8) * 0.5
-                 + snoise(px * 0.25 + timeOffset * 0.4) * 0.5;
-  // Sharpen contrast: cube for sharp sparkle peaks against matte
-  float grainNorm = clamp(grainRaw * 0.5 + 0.5, 0.0, 1.0);
-  grainNorm = grainNorm * grainNorm * grainNorm;
-  // Wide roughness range: 0.2 (mirror sparkle) to 0.95 (fully matte)
-  float roughness = mix(0.2, 0.95, grainNorm);
-  // Specular exponent: smooth grains = intense pinpoints, rough = invisible
-  float specPower = mix(300.0, 6.0, roughness);
+  // Two noise octaves at different scales for varied sparkle density
+  float n1 = snoise(px * 0.3 + timeOffset * 0.5);
+  float n2 = snoise(px * 0.7 + timeOffset * 0.3 + 42.0);
+  float sparkleNoise = max(n1, n2); // take the brighter of the two
 
-  vec3 cardColor = vec3(0.035); // near-black base
+  // Hard threshold: only the top ~8% of noise peaks become sparkles
+  float sparkle = smoothstep(0.55, 0.75, sparkleNoise);
+  // Subtle density variation so some areas are more sparkly
+  float densityMod = snoise(px * 0.015 + timeOffset * 0.2) * 0.3 + 0.7;
+  sparkle *= densityMod;
 
-  // --- Layer 2: Surface lighting (roughness-modulated sparkle) ---
+  vec3 cardColor = vec3(0.035) + sparkle * 0.18; // near-black base + bright dots
+
+  // --- Layer 2: Surface lighting ---
   vec3 N = normalize(vec3(-sin(u_tilt.x), -sin(u_tilt.y), cos(u_tilt.x) * cos(u_tilt.y)));
   vec3 V = vec3(0.0, 0.0, 1.0);
 
-  // Primary overhead light — exponent varies per-pixel for glitter
+  // Primary overhead light
   vec3 L1 = normalize(vec3(0.0, -0.3, 1.0));
   vec3 H1 = normalize(L1 + V);
-  float spec1 = pow(max(dot(N, H1), 0.0), specPower);
-  // Intensity: smooth grains sparkle bright, rough grains stay dark
-  float specIntensity1 = mix(0.35, 0.01, roughness);
-  cardColor += spec1 * specIntensity1;
+  float spec1 = pow(max(dot(N, H1), 0.0), 64.0);
+  cardColor += spec1 * 0.06;
 
-  // Secondary cursor-following light
+  // Secondary cursor-following light — makes sparkles shift as you move
   vec2 cursorOffset = (u_cursor - 0.5) * 2.0;
   vec3 L2 = normalize(vec3(cursorOffset.x * 0.6, cursorOffset.y * -0.6, 1.0));
   vec3 H2 = normalize(L2 + V);
-  float spec2 = pow(max(dot(N, H2), 0.0), specPower * 0.4);
-  float specIntensity2 = mix(0.25, 0.01, roughness);
-  cardColor += spec2 * specIntensity2;
+  float spec2 = pow(max(dot(N, H2), 0.0), 32.0);
+  cardColor += spec2 * 0.04;
 
   // --- Layer 3: Holographic foil (text regions only) ---
   // Flip Y axis to correct WebGL texture coordinate mismatch with canvas 2D
@@ -147,7 +144,7 @@ void main() {
     vec3 foilColor = mix(metallic, holoColor, 0.8) * fresnel;
 
     // Specular on foil (also roughness-modulated for sparkle on text)
-    float foilSpec = pow(max(dot(N, H1), 0.0), specPower * 0.3) * 0.35;
+    float foilSpec = pow(max(dot(N, H1), 0.0), 20.0) * 0.35;
     foilColor += foilSpec;
 
     cardColor = mix(cardColor, foilColor, mask * 0.97);
