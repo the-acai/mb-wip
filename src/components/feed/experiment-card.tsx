@@ -157,7 +157,7 @@ export function ExperimentCard({
         scale: 1,
         filter: "blur(0px)",
       }}
-      viewport={{ once: true, amount: 0.15 }}
+      viewport={{ once: true, margin: "0px 0px 200px 0px" }}
       transition={{
         default: {
           type: "spring",
