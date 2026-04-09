@@ -40,7 +40,6 @@ export function LoginCard({
   onConsume,
   distanceToBottom,
 }: LoginCardProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const consumedRef = useRef(false);
   const uniformStateRef = useRef<UniformState>({
@@ -122,40 +121,13 @@ export function LoginCard({
   const windowH = typeof window !== "undefined" ? window.innerHeight : 900;
 
   return (
+    // Outer wrapper: handles entrance + consume animations (declarative)
     <motion.div
-      ref={cardRef}
-      className="relative cursor-grab active:cursor-grabbing select-none touch-none"
-      style={{
-        x,
-        y,
-        rotateX,
-        rotateY,
-        transformPerspective: 800,
-        width: CARD_WIDTH,
-        height: CARD_HEIGHT,
-      }}
-      drag={isDraggable}
-      dragMomentum={false}
-      dragElastic={0.1}
-      dragTransition={{
-        power: 0,
-        timeConstant: 0,
-        bounceStiffness: 170,
-        bounceDamping: 18,
-      }}
-      onDrag={handleDrag}
-      onDragStart={() => onPhaseChange("dragging")}
-      onDragEnd={() => {
-        if (phase === "dragging") onPhaseChange("idle");
-      }}
-      onPointerMove={handlePointerMove}
       initial={{ y: windowH * 0.6, scale: 0.9, opacity: 0 }}
       animate={
         phase === "consuming"
           ? { y: windowH, scale: 0.95, opacity: 0 }
-          : phase === "entering"
-            ? { y: 0, scale: 1, opacity: 1 }
-            : undefined
+          : { y: 0, scale: 1, opacity: 1 }
       }
       transition={phase === "consuming" ? CONSUME_SPRING : ENTRANCE_SPRING}
       onAnimationComplete={() => {
@@ -166,51 +138,79 @@ export function LoginCard({
           onConsume();
         }
       }}
+      style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
     >
-      <div className="w-full h-full rounded-2xl bg-[#1b1b1b] overflow-hidden relative">
-        {/* WebGL canvas renders the holographic card surface */}
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 w-full h-full"
-          style={{ display: webglFailed ? "none" : "block" }}
-        />
+      {/* Inner element: handles drag + 3D tilt (imperative via MotionValues) */}
+      <motion.div
+        className="relative cursor-grab active:cursor-grabbing select-none touch-none w-full h-full"
+        style={{
+          x,
+          y,
+          rotateX,
+          rotateY,
+          transformPerspective: 800,
+        }}
+        drag={isDraggable}
+        dragMomentum={false}
+        dragElastic={0.1}
+        dragTransition={{
+          power: 0,
+          timeConstant: 0,
+          bounceStiffness: 170,
+          bounceDamping: 18,
+        }}
+        onDrag={handleDrag}
+        onDragStart={() => onPhaseChange("dragging")}
+        onDragEnd={() => {
+          if (phase === "dragging") onPhaseChange("idle");
+        }}
+        onPointerMove={handlePointerMove}
+      >
+        <div className="w-full h-full rounded-2xl bg-[#1b1b1b] overflow-hidden relative">
+          {/* WebGL canvas renders the holographic card surface */}
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full"
+            style={{ display: webglFailed ? "none" : "block" }}
+          />
 
-        {/* Fallback DOM text (shown if WebGL fails, or as overlay during shader load) */}
-        {webglFailed && (
-          <div className="absolute inset-0 flex flex-col items-center justify-between py-14 px-10">
-            <p className="font-heading text-[28px] font-black tracking-tight text-white/30">
-              matchbox
-            </p>
-            <div className="text-center">
-              <p className="font-heading text-[36px] font-black leading-[1.02] tracking-tight text-white/30">
-                WORKS IN
-                <br />
-                PROGRESS
+          {/* Fallback DOM text (shown if WebGL fails) */}
+          {webglFailed && (
+            <div className="absolute inset-0 flex flex-col items-center justify-between py-14 px-10">
+              <p className="font-heading text-[28px] font-black tracking-tight text-white/30">
+                matchbox
               </p>
+              <div className="text-center">
+                <p className="font-heading text-[36px] font-black leading-[1.02] tracking-tight text-white/30">
+                  WORKS IN
+                  <br />
+                  PROGRESS
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="font-heading text-[36px] font-black tracking-tight text-white/30">
+                  ACCESS
+                </p>
+                <svg
+                  className="mx-auto mt-2 text-white/30"
+                  width="40"
+                  height="20"
+                  viewBox="0 0 40 20"
+                  fill="none"
+                >
+                  <path
+                    d="M4 4L20 16L36 4"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="font-heading text-[36px] font-black tracking-tight text-white/30">
-                ACCESS
-              </p>
-              <svg
-                className="mx-auto mt-2 text-white/30"
-                width="40"
-                height="20"
-                viewBox="0 0 40 20"
-                fill="none"
-              >
-                <path
-                  d="M4 4L20 16L36 4"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </motion.div>
     </motion.div>
   );
 }
