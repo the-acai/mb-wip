@@ -116,7 +116,7 @@ void main() {
   sparkle *= densityMod;
 
   // Sparkle brightness: very subtle, scales gently with light
-  float sparkleBrightness = mix(0.018, 0.048, clamp(lightIntensity * 2.0, 0.0, 1.0));
+  float sparkleBrightness = mix(0.035, 0.09, clamp(lightIntensity * 2.0, 0.0, 1.0));
   vec3 cardColor = vec3(0.035) + sparkle * sparkleBrightness;
 
   cardColor += spec1 * 0.01;
