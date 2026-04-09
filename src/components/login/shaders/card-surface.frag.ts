@@ -110,17 +110,16 @@ void main() {
   // Combined light intensity drives sparkle reactivity:
   // more light = lower threshold = more sparkles catch the light
   float lightIntensity = spec1 + spec2;
-  float thresholdLow = mix(0.55, 0.2, clamp(lightIntensity * 2.0, 0.0, 1.0));
+  float thresholdLow = mix(0.55, 0.52, clamp(lightIntensity * 2.0, 0.0, 1.0));
   float sparkle = smoothstep(thresholdLow, thresholdLow + 0.2, sparkleNoise);
   sparkle *= densityMod;
 
-  // Sparkle brightness also scales with light
-  float sparkleBrightness = mix(0.12, 0.35, clamp(lightIntensity * 2.0, 0.0, 1.0));
+  // Sparkle brightness: very subtle, scales gently with light
+  float sparkleBrightness = mix(0.015, 0.04, clamp(lightIntensity * 2.0, 0.0, 1.0));
   vec3 cardColor = vec3(0.035) + sparkle * sparkleBrightness;
 
-  // Add smooth specular on top (subtle sheen separate from sparkle)
-  cardColor += spec1 * 0.04;
-  cardColor += spec2 * 0.03;
+  cardColor += spec1 * 0.01;
+  cardColor += spec2 * 0.008;
 
   // --- Layer 3: Holographic foil (text regions only) ---
   // Flip Y axis to correct WebGL texture coordinate mismatch with canvas 2D
