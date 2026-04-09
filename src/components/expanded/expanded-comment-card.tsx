@@ -106,12 +106,12 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
 
   return (
     <motion.div
-      className="flex max-h-[calc(100vh-120px)] flex-col gap-8 rounded-2xl bg-white p-6"
+      className="flex max-h-[calc(100vh-120px)] flex-col rounded-2xl bg-white p-6 pb-0 overflow-hidden"
       layout
       transition={COMMENT_SPRING}
     >
-      {/* Comment list */}
-      <div ref={commentListRef} className="relative flex flex-1 flex-col gap-8 overflow-y-auto">
+      {/* Comment list — pb-8 keeps clip boundary below the entrance animation */}
+      <div ref={commentListRef} className="relative flex flex-1 flex-col gap-8 overflow-y-auto pb-8">
         {topLevel.map((comment, i) => {
           const nextComment = topLevel[i + 1];
           const currentColor = getAuthorColor(getAuthorName(comment));
@@ -146,7 +146,9 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
       </div>
 
       {/* Comment input */}
-      <ExpandedCommentForm onSubmit={handleFormSubmit} />
+      <div className="pb-6">
+        <ExpandedCommentForm onSubmit={handleFormSubmit} />
+      </div>
     </motion.div>
   );
 }
