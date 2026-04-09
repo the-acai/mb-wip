@@ -76,12 +76,28 @@ void main() {
   // Pixel coordinates for high-frequency noise
   vec2 px = uv * u_resolution;
 
-  // --- Layer 1: Paper grain (fine, like real paper tooth) ---
-  float timeOffset = u_time * 0.002;
-  float fineGrain = snoise(px * 0.15 + timeOffset) * 0.5
-                  + snoise(px * 0.4 + timeOffset * 1.5) * 0.3
-                  + snoise(px * 1.0 + timeOffset * 0.5) * 0.2;
-  float grain = fineGrain * 0.012;
+  // --- Layer 1: Paper grain (directional fiber texture, like cotton stock) ---
+  float timeOffset = u_time * 0.001;
+
+  // Fiber direction: slightly off-vertical for natural feel
+  vec2 fiberDir = vec2(0.15, 1.0);
+  // Stretched coordinates along fiber direction for anisotropic noise
+  vec2 fiberUV = vec2(
+    dot(px, normalize(vec2(fiberDir.y, -fiberDir.x))), // across fibers (high freq)
+    dot(px, normalize(fiberDir))                         // along fibers (low freq)
+  );
+
+  // Large fiber bundles — elongated ridges
+  float bundles = snoise(vec2(fiberUV.x * 0.12, fiberUV.y * 0.03) + timeOffset) * 0.4;
+  // Medium fiber structure
+  float fibers = snoise(vec2(fiberUV.x * 0.35, fiberUV.y * 0.08) + timeOffset * 1.3) * 0.35;
+  // Fine tooth / individual fibers
+  float tooth = snoise(vec2(fiberUV.x * 0.9, fiberUV.y * 0.2) + timeOffset * 0.7) * 0.25;
+
+  // Combine with emphasis on ridges (abs creates sharper peaks)
+  float grain = bundles + fibers + tooth;
+  // Boost contrast: map [-1,1] range to visible variation on dark surface
+  grain *= 0.045;
   vec3 cardColor = vec3(0.106) + grain; // #1b1b1b base
 
   // --- Layer 2: Surface lighting ---
