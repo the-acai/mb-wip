@@ -1,7 +1,17 @@
 /**
- * Renders card text as a white-on-black luminance mask for the holographic shader.
- * Waits for the Parabolica font to load before rendering.
+ * Renders card text + matchbox logo as a white-on-black luminance mask
+ * for the holographic shader.
  */
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
 export async function generateTextMask(
   width: number,
   height: number,
@@ -22,14 +32,41 @@ export async function generateTextMask(
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
+  // --- Matchbox logo SVG (rendered white) ---
+  try {
+    const logoImg = await loadImage("/matchbox-logo.svg");
+    // SVG is 320×47, scale to fit ~280px wide, centered near top
+    const logoTargetW = 280;
+    const logoScale = logoTargetW / logoImg.naturalWidth;
+    const logoW = logoTargetW;
+    const logoH = logoImg.naturalHeight * logoScale;
+    const logoX = (width - logoW) / 2;
+    const logoY = 40;
+
+    // Draw the black SVG, then invert to white using composite
+    ctx.save();
+    // First fill a white rect in the logo area
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(logoX, logoY, logoW, logoH);
+    // Then draw the black logo with destination-in to mask
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
+    ctx.restore();
+    // Reset composite mode
+    ctx.globalCompositeOperation = "source-over";
+  } catch {
+    // Fallback: render "matchbox" as text
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `900 28px ${fontFamily}`;
+    ctx.fillText("matchbox", width / 2, 56);
+  }
+
   // White text
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-
-  // "matchbox" logo text at top
-  ctx.font = `900 28px ${fontFamily}`;
-  ctx.fillText("matchbox", width / 2, 56);
 
   // "WORKS IN PROGRESS" centered
   ctx.font = `900 36px ${fontFamily}`;

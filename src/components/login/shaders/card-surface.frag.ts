@@ -76,28 +76,17 @@ void main() {
   // Pixel coordinates for high-frequency noise
   vec2 px = uv * u_resolution;
 
-  // --- Layer 1: Paper grain (directional fiber texture, like cotton stock) ---
+  // --- Layer 1: Paper grain (fine uniform tooth, isotropic) ---
   float timeOffset = u_time * 0.001;
 
-  // Fiber direction: slightly off-vertical for natural feel
-  vec2 fiberDir = vec2(0.15, 1.0);
-  // Stretched coordinates along fiber direction for anisotropic noise
-  vec2 fiberUV = vec2(
-    dot(px, normalize(vec2(fiberDir.y, -fiberDir.x))), // across fibers (high freq)
-    dot(px, normalize(fiberDir))                         // along fibers (low freq)
-  );
+  // Subtle large-scale density variation (natural paper unevenness)
+  float density = snoise(px * 0.02 + timeOffset) * 0.2;
+  // Primary grain: medium bumps
+  float grainMed = snoise(px * 0.5 + timeOffset * 0.8) * 0.45;
+  // Fine tooth: per-pixel detail
+  float grainFine = snoise(px * 1.2 + timeOffset * 0.4) * 0.35;
 
-  // Large fiber bundles — elongated ridges
-  float bundles = snoise(vec2(fiberUV.x * 0.12, fiberUV.y * 0.03) + timeOffset) * 0.4;
-  // Medium fiber structure
-  float fibers = snoise(vec2(fiberUV.x * 0.35, fiberUV.y * 0.08) + timeOffset * 1.3) * 0.35;
-  // Fine tooth / individual fibers
-  float tooth = snoise(vec2(fiberUV.x * 0.9, fiberUV.y * 0.2) + timeOffset * 0.7) * 0.25;
-
-  // Combine with emphasis on ridges (abs creates sharper peaks)
-  float grain = bundles + fibers + tooth;
-  // Boost contrast: map [-1,1] range to visible variation on dark surface
-  grain *= 0.045;
+  float grain = (density + grainMed + grainFine) * 0.04;
   vec3 cardColor = vec3(0.106) + grain; // #1b1b1b base
 
   // --- Layer 2: Surface lighting ---
@@ -124,35 +113,39 @@ void main() {
   float mask = texture2D(u_textMask, maskUV).r;
 
   if (mask > 0.1) {
-    // Diffraction grating: smooth rainbow sweep across the card surface
-    // Primary angle depends on position + tilt + cursor for interactive shift
+    // Diffraction grating: pink/blue hero, green/yellow at fringes
     float angle = (uv.x + uv.y * 0.5) * 3.0
-                + u_tilt.x * 4.0
-                + u_tilt.y * 2.0
-                + (u_cursor.x - 0.5) * 2.0
-                + (u_cursor.y - 0.5) * 1.0;
+                + u_tilt.x * 5.0
+                + u_tilt.y * 3.0
+                + (u_cursor.x - 0.5) * 2.5
+                + (u_cursor.y - 0.5) * 1.5;
 
-    // Map angle to wavelength for smooth spectral sweep
-    float wavelength = mod(angle * 60.0, 400.0) + 380.0;
+    // Bias wavelength toward pink (650nm) and blue (460nm) as hero colors
+    // Offset so default view shows pink-blue range, green/yellow at extremes
+    float wavelength = mod(angle * 55.0 + 240.0, 400.0) + 380.0;
     vec3 holoColor = wavelengthToRGB(wavelength);
 
-    // Add a second diffraction order for richness
-    float wavelength2 = mod(angle * 90.0 + 120.0, 400.0) + 380.0;
+    // Second order biased toward complementary range for depth
+    float wavelength2 = mod(angle * 80.0 + 60.0, 400.0) + 380.0;
     vec3 holoColor2 = wavelengthToRGB(wavelength2);
-    holoColor = mix(holoColor, holoColor2, 0.3);
+    holoColor = mix(holoColor, holoColor2, 0.25);
 
-    // Fresnel-like edge brightening
-    float fresnel = 1.0 + 0.4 * pow(1.0 - abs(dot(N, V)), 3.0);
+    // Boost saturation: push colors away from grey
+    vec3 grey = vec3(dot(holoColor, vec3(0.299, 0.587, 0.114)));
+    holoColor = mix(grey, holoColor, 1.4); // 1.4 = 40% saturation boost
 
-    // Metallic base blended with rainbow
-    vec3 metallic = vec3(0.75, 0.73, 0.78);
-    vec3 foilColor = mix(metallic, holoColor, 0.55) * fresnel;
+    // Fresnel-like edge brightening (stronger)
+    float fresnel = 1.0 + 0.6 * pow(1.0 - abs(dot(N, V)), 3.0);
+
+    // Darker metallic base so colors pop against card
+    vec3 metallic = vec3(0.55, 0.52, 0.6);
+    vec3 foilColor = mix(metallic, holoColor, 0.75) * fresnel;
 
     // Specular highlight on foil
-    float foilSpec = pow(max(dot(N, H1), 0.0), 24.0) * 0.35;
+    float foilSpec = pow(max(dot(N, H1), 0.0), 20.0) * 0.4;
     foilColor += foilSpec;
 
-    cardColor = mix(cardColor, foilColor, mask * 0.95);
+    cardColor = mix(cardColor, foilColor, mask * 0.97);
   }
 
   gl_FragColor = vec4(cardColor, 1.0);
