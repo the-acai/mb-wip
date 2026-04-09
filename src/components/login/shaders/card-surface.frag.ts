@@ -135,7 +135,7 @@ void main() {
     float mR = texture2D(u_embossMask, maskUV + vec2(texel.x, 0.0)).r;
     float mD = texture2D(u_embossMask, maskUV - vec2(0.0, texel.y)).r;
     float mU = texture2D(u_embossMask, maskUV + vec2(0.0, texel.y)).r;
-    float bumpStrength = 0.8;
+    float bumpStrength = 1.5;
     vec3 embossN = normalize(N + vec3((mL - mR) * bumpStrength, (mD - mU) * bumpStrength, 0.0));
 
     // Position sweep (vertical-primary) + interactive shift from tilt/cursor
