@@ -5,7 +5,6 @@ import {
 } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/server";
 import { getFeedPosts } from "@/lib/queries/posts";
-import { getAllTags } from "@/lib/queries/tags";
 import { getSignedUrls } from "@/lib/queries/storage";
 import { FeedClient } from "@/components/feed/feed-client";
 import type { FeedPost } from "@/components/feed/experiment-card";
@@ -14,9 +13,7 @@ export default async function FeedPage() {
   const supabase = await createClient();
   const queryClient = new QueryClient();
 
-  const tags = (await getAllTags(supabase)) ?? [];
-
-  // Prefetch the default feed (newest, no tag filter)
+  // Prefetch the default feed (newest)
   await queryClient.prefetchInfiniteQuery({
     queryKey: ["feed", { tag: null }],
     queryFn: async () => {
@@ -54,7 +51,7 @@ export default async function FeedPage() {
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <FeedClient tags={tags} />
+      <FeedClient />
     </HydrationBoundary>
   );
 }
