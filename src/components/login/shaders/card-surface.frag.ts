@@ -79,16 +79,16 @@ void main() {
   // --- Layer 1: Paper grain as roughness map (creates glittery sparkle) ---
   float timeOffset = u_time * 0.001;
 
-  // High-frequency noise for fine grain
-  float grainRaw = snoise(px * 0.5 + timeOffset * 0.8) * 0.55
-                 + snoise(px * 1.5 + timeOffset * 0.4) * 0.45;
-  // Sharpen contrast: push toward 0 or 1 for distinct sparkle vs matte
+  // Grain noise at scale visible on the smaller card (~3-6px per bump)
+  float grainRaw = snoise(px * 0.08 + timeOffset * 0.8) * 0.5
+                 + snoise(px * 0.25 + timeOffset * 0.4) * 0.5;
+  // Sharpen contrast: cube for sharp sparkle peaks against matte
   float grainNorm = clamp(grainRaw * 0.5 + 0.5, 0.0, 1.0);
-  grainNorm = grainNorm * grainNorm; // square for more sparkle peaks, fewer smooth spots
-  // Wide roughness range: 0.3 (mirror-like sparkle) to 0.95 (fully matte)
-  float roughness = mix(0.3, 0.95, grainNorm);
-  // Specular exponent: smooth grains = very sharp bright points, rough = invisible
-  float specPower = mix(256.0, 8.0, roughness);
+  grainNorm = grainNorm * grainNorm * grainNorm;
+  // Wide roughness range: 0.2 (mirror sparkle) to 0.95 (fully matte)
+  float roughness = mix(0.2, 0.95, grainNorm);
+  // Specular exponent: smooth grains = intense pinpoints, rough = invisible
+  float specPower = mix(300.0, 6.0, roughness);
 
   vec3 cardColor = vec3(0.035); // near-black base
 
@@ -101,7 +101,7 @@ void main() {
   vec3 H1 = normalize(L1 + V);
   float spec1 = pow(max(dot(N, H1), 0.0), specPower);
   // Intensity: smooth grains sparkle bright, rough grains stay dark
-  float specIntensity1 = mix(0.2, 0.01, roughness);
+  float specIntensity1 = mix(0.35, 0.01, roughness);
   cardColor += spec1 * specIntensity1;
 
   // Secondary cursor-following light
@@ -109,7 +109,7 @@ void main() {
   vec3 L2 = normalize(vec3(cursorOffset.x * 0.6, cursorOffset.y * -0.6, 1.0));
   vec3 H2 = normalize(L2 + V);
   float spec2 = pow(max(dot(N, H2), 0.0), specPower * 0.4);
-  float specIntensity2 = mix(0.15, 0.01, roughness);
+  float specIntensity2 = mix(0.25, 0.01, roughness);
   cardColor += spec2 * specIntensity2;
 
   // --- Layer 3: Holographic foil (text regions only) ---
