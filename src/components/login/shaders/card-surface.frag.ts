@@ -120,7 +120,7 @@ void main() {
 
   if (mask > 0.01) {
     // Position sweep (vertical-primary) + interactive shift from tilt/cursor
-    float angle = (uv.x * 0.3 + (1.0 - uv.y) * 0.8) * 3.0
+    float angle = (uv.x * 0.3 + uv.y * 0.8) * 3.0
                 + u_tilt.x * 6.0
                 + u_tilt.y * 3.5
                 + (u_cursor.x - 0.5) * 3.0
