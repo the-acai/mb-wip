@@ -91,8 +91,8 @@ void main() {
 
   // Hard threshold: only the top ~8% of noise peaks become sparkles
   float sparkle = smoothstep(0.55, 0.75, sparkleNoise);
-  // Subtle density variation
-  float densityMod = snoise(px * 0.015) * 0.3 + 0.7;
+  // Very gradual density variation across the card (not patchy)
+  float densityMod = snoise(px * 0.003) * 0.15 + 0.85;
   sparkle *= densityMod;
 
   vec3 cardColor = vec3(0.035) + sparkle * 0.18; // near-black base + bright dots
