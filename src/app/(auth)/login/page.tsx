@@ -9,8 +9,8 @@ import { GradientBlobs } from "@/components/login/gradient-blobs";
 
 type Phase = "entering" | "idle" | "dragging" | "consuming";
 
-const CARD_WIDTH = 432;
-const CARD_HEIGHT = 757;
+const CARD_WIDTH = 216;
+const CARD_HEIGHT = 379;
 
 export default function LoginPage() {
   const [phase, setPhase] = useState<Phase>("entering");

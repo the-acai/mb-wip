@@ -23,8 +23,8 @@ const TILT_SPRING = { mass: 0.3, stiffness: 200, damping: 20 };
 const HOVER_TILT_SPRING = { mass: 0.5, stiffness: 150, damping: 18 };
 const MAX_HOVER_TILT = 6; // degrees
 
-const CARD_WIDTH = 432;
-const CARD_HEIGHT = 757;
+const CARD_WIDTH = 216;
+const CARD_HEIGHT = 379;
 
 interface LoginCardProps {
   x: MotionValue<number>;
@@ -184,13 +184,12 @@ export function LoginCard({
           transformPerspective: 800,
         }}
         drag={isDraggable}
+        dragSnapToOrigin
         dragMomentum={false}
         dragElastic={0.1}
         dragTransition={{
           power: 0,
-          timeConstant: 0,
-          bounceStiffness: 170,
-          bounceDamping: 18,
+          timeConstant: 200,
         }}
         onDrag={handleDrag}
         onDragStart={() => onPhaseChange("dragging")}
@@ -200,7 +199,7 @@ export function LoginCard({
         onPointerMove={handlePointerMove}
         onPointerLeave={handlePointerLeave}
       >
-        <div className="w-full h-full rounded-2xl bg-[#1b1b1b] overflow-hidden relative">
+        <div className="w-full h-full rounded-2xl bg-[#0e0e0e] overflow-hidden relative">
           <canvas
             ref={canvasRef}
             className="absolute inset-0 w-full h-full"

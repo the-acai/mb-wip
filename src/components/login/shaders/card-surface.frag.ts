@@ -79,15 +79,15 @@ void main() {
   // --- Layer 1: Paper grain (fine uniform tooth, isotropic) ---
   float timeOffset = u_time * 0.001;
 
-  // Subtle large-scale density variation (natural paper unevenness)
-  float density = snoise(px * 0.02 + timeOffset) * 0.2;
+  // Subtle large-scale density variation
+  float density = snoise(px * 0.02 + timeOffset) * 0.15;
   // Primary grain: medium bumps
-  float grainMed = snoise(px * 0.5 + timeOffset * 0.8) * 0.45;
+  float grainMed = snoise(px * 0.5 + timeOffset * 0.8) * 0.5;
   // Fine tooth: per-pixel detail
   float grainFine = snoise(px * 1.2 + timeOffset * 0.4) * 0.35;
 
-  float grain = (density + grainMed + grainFine) * 0.04;
-  vec3 cardColor = vec3(0.106) + grain; // #1b1b1b base
+  float grain = (density + grainMed + grainFine) * 0.025;
+  vec3 cardColor = vec3(0.055) + grain; // near-black base
 
   // --- Layer 2: Surface lighting ---
   // Card surface normal tilted by u_tilt
@@ -113,22 +113,21 @@ void main() {
   float mask = texture2D(u_textMask, maskUV).r;
 
   if (mask > 0.1) {
-    // Diffraction grating: pink/blue hero, green/yellow at fringes
-    float angle = (uv.x + uv.y * 0.5) * 3.0
-                + u_tilt.x * 5.0
-                + u_tilt.y * 3.0
-                + (u_cursor.x - 0.5) * 2.5
+    // Diffraction grating: blue/purple/pink hero at rest, green/yellow at fringes
+    float angle = (uv.x + uv.y * 0.5) * 2.5
+                + u_tilt.x * 6.0
+                + u_tilt.y * 3.5
+                + (u_cursor.x - 0.5) * 3.0
                 + (u_cursor.y - 0.5) * 1.5;
 
-    // Bias wavelength toward pink (650nm) and blue (460nm) as hero colors
-    // Offset so default view shows pink-blue range, green/yellow at extremes
-    float wavelength = mod(angle * 55.0 + 240.0, 400.0) + 380.0;
+    // Offset so tilt=0 + cursor=center shows blue-purple-green sweep
+    float wavelength = mod(angle * 50.0 + 80.0, 400.0) + 380.0;
     vec3 holoColor = wavelengthToRGB(wavelength);
 
-    // Second order biased toward complementary range for depth
-    float wavelength2 = mod(angle * 80.0 + 60.0, 400.0) + 380.0;
+    // Second order for depth/richness
+    float wavelength2 = mod(angle * 75.0 + 200.0, 400.0) + 380.0;
     vec3 holoColor2 = wavelengthToRGB(wavelength2);
-    holoColor = mix(holoColor, holoColor2, 0.25);
+    holoColor = mix(holoColor, holoColor2, 0.2);
 
     // Boost saturation: push colors away from grey
     vec3 grey = vec3(dot(holoColor, vec3(0.299, 0.587, 0.114)));

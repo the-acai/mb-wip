@@ -11,16 +11,15 @@ const BLOB_RADIUS_SPEEDS = [
 ] as const;
 
 const BLOBS = [
-  { color: "#ff2d78", size: 280, ampX: 80, ampY: 35, phase: 0, offsetX: -180 },
-  { color: "#a033e0", size: 240, ampX: 50, ampY: 55, phase: 2.1, offsetX: 0 },
-  { color: "#ff5533", size: 260, ampX: 65, ampY: 25, phase: 4.2, offsetX: 160 },
+  { color: "#ff2d78", size: 450, ampX: 60, ampY: 25, phase: 0, offsetX: -200 },
+  { color: "#a033e0", size: 400, ampX: 40, ampY: 35, phase: 2.1, offsetX: 10 },
+  { color: "#ff5533", size: 420, ampX: 50, ampY: 20, phase: 4.2, offsetX: 190 },
 ] as const;
 
 function morphRadius(t: number, speeds: readonly number[]): string {
-  // Generate 8 values between 30% and 70% for organic shapes
   const r = speeds.map((s, i) => {
-    const val = Math.sin(t * s + i * 1.7) * 0.5 + 0.5; // 0-1
-    return 30 + val * 40; // 30%-70%
+    const val = Math.sin(t * s + i * 1.7) * 0.5 + 0.5;
+    return 30 + val * 40;
   });
   return `${r[0]}% ${r[1]}% ${r[2]}% ${r[3]}% / ${r[4]}% ${r[5]}% ${r[6]}% ${r[7]}%`;
 }
@@ -38,20 +37,22 @@ export function GradientBlobs({ proximity }: GradientBlobsProps) {
 
   useAnimationFrame((time) => {
     const p = proximity.get();
-    const speed = 1 + p * 3;
-    const scale = 1 + p * 0.3;
-    const opacity = 0.7 + p * 0.3;
+    // Subtle excitement: speed only increases 50% at max proximity
+    const speed = 1 + p * 0.5;
+    const scale = 1 + p * 0.15;
+    const opacity = 0.7 + p * 0.2;
     const t = time * 0.001;
 
     for (let i = 0; i < BLOBS.length; i++) {
       const el = blobRefs.current[i];
       if (!el) continue;
       const blob = BLOBS[i];
-      const bx = Math.sin(t * speed * 0.3 + blob.phase) * blob.ampX;
-      const by = Math.cos(t * speed * 0.2 + blob.phase * 1.3) * blob.ampY;
+      // Gentle, slow movement
+      const bx = Math.sin(t * speed * 0.15 + blob.phase) * blob.ampX;
+      const by = Math.cos(t * speed * 0.1 + blob.phase * 1.3) * blob.ampY;
       el.style.transform = `translate(${bx}px, ${by}px) scale(${scale})`;
       el.style.opacity = String(opacity);
-      el.style.borderRadius = morphRadius(t * speed, BLOB_RADIUS_SPEEDS[i]);
+      el.style.borderRadius = morphRadius(t * speed * 0.5, BLOB_RADIUS_SPEEDS[i]);
     }
   });
 
@@ -66,9 +67,9 @@ export function GradientBlobs({ proximity }: GradientBlobsProps) {
             width: blob.size,
             height: blob.size,
             backgroundColor: blob.color,
-            filter: "blur(70px)",
+            filter: "blur(90px)",
             mixBlendMode: "plus-lighter",
-            bottom: -blob.size * 0.2,
+            bottom: -blob.size * 0.3,
             left: `calc(50% - ${blob.size / 2}px + ${blob.offsetX}px)`,
             opacity: 0.7,
             borderRadius: "50%",
