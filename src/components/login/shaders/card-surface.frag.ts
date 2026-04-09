@@ -128,14 +128,13 @@ void main() {
   float mask = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV).r);
 
   if (mask > 0.01) {
-    // --- Emboss: derive bump normal from mask edges ---
+    // --- Emboss: derive bump normal from anti-aliased mask edges ---
     vec2 texel = 1.0 / u_resolution;
-    float mL = texture2D(u_textMask, maskUV + vec2(-texel.x, 0.0)).r;
-    float mR = texture2D(u_textMask, maskUV + vec2( texel.x, 0.0)).r;
-    float mD = texture2D(u_textMask, maskUV + vec2(0.0, -texel.y)).r;
-    float mU = texture2D(u_textMask, maskUV + vec2(0.0,  texel.y)).r;
-    // Gradient of the mask = slope of the "raised" foil surface
-    float bumpStrength = 0.6;
+    float mL = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2(-texel.x, 0.0)).r);
+    float mR = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2( texel.x, 0.0)).r);
+    float mD = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2(0.0, -texel.y)).r);
+    float mU = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2(0.0,  texel.y)).r);
+    float bumpStrength = 0.8;
     vec3 embossN = normalize(N + vec3((mL - mR) * bumpStrength, (mD - mU) * bumpStrength, 0.0));
 
     // Position sweep (vertical-primary) + interactive shift from tilt/cursor
