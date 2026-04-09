@@ -11,9 +11,9 @@ const BLOB_RADIUS_SPEEDS = [
 ] as const;
 
 const BLOBS = [
-  { color: "#ff2d78", size: 450, ampX: 60, ampY: 25, phase: 0, offsetX: -200 },
-  { color: "#a033e0", size: 400, ampX: 40, ampY: 35, phase: 2.1, offsetX: 10 },
-  { color: "#ff5533", size: 420, ampX: 50, ampY: 20, phase: 4.2, offsetX: 190 },
+  { color: "#ff2d78", size: 400, ampX: 50, ampY: 20, phase: 0, offsetX: -320 },
+  { color: "#a033e0", size: 350, ampX: 35, ampY: 30, phase: 2.1, offsetX: 0 },
+  { color: "#ff5533", size: 380, ampX: 45, ampY: 18, phase: 4.2, offsetX: 300 },
 ] as const;
 
 function morphRadius(t: number, speeds: readonly number[]): string {
