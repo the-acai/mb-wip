@@ -18,7 +18,8 @@ export function ShrinkingHeader() {
 
   // Start centered in the 40svh space, translate up to top-4 as user scrolls
   const y = useTransform(scrollYProgress, (v) => {
-    const center = window.innerHeight * 0.2; // middle of 40svh
+    const vh = typeof window !== "undefined" ? window.innerHeight : 900;
+    const center = vh * 0.2; // middle of 40svh
     const fs = 64 - v * 40; // current interpolated font size
     const halfText = (fs * 1.18) / 2; // half the line height
     return (1 - v) * (center - 16 - halfText); // 16 = top-4
