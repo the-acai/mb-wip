@@ -3,6 +3,7 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import {
   motion,
+  animate,
   useMotionValue,
   useVelocity,
   useTransform,
@@ -184,17 +185,17 @@ export function LoginCard({
           transformPerspective: 800,
         }}
         drag={isDraggable}
-        dragSnapToOrigin
         dragMomentum={false}
         dragElastic={0.1}
-        dragTransition={{
-          power: 0,
-          timeConstant: 200,
-        }}
         onDrag={handleDrag}
         onDragStart={() => onPhaseChange("dragging")}
         onDragEnd={() => {
-          if (phase === "dragging") onPhaseChange("idle");
+          if (phase === "dragging") {
+            onPhaseChange("idle");
+            // Spring back to origin with the same spring as site transitions
+            animate(x, 0, { type: "spring", mass: 1.2, stiffness: 170, damping: 16 });
+            animate(y, 0, { type: "spring", mass: 1.2, stiffness: 170, damping: 16 });
+          }
         }}
         onPointerMove={handlePointerMove}
         onPointerLeave={handlePointerLeave}

@@ -76,36 +76,41 @@ void main() {
   // Pixel coordinates for high-frequency noise
   vec2 px = uv * u_resolution;
 
-  // --- Layer 1: Paper grain (fine uniform tooth, isotropic) ---
+  // --- Layer 1: Paper grain as roughness map (creates sparkle) ---
   float timeOffset = u_time * 0.001;
 
-  // Subtle large-scale density variation
-  float density = snoise(px * 0.02 + timeOffset) * 0.15;
-  // Primary grain: medium bumps
-  float grainMed = snoise(px * 0.5 + timeOffset * 0.8) * 0.5;
-  // Fine tooth: per-pixel detail
-  float grainFine = snoise(px * 1.2 + timeOffset * 0.4) * 0.35;
+  // Multi-octave isotropic grain
+  float grainRaw = snoise(px * 0.02 + timeOffset) * 0.15
+                 + snoise(px * 0.5 + timeOffset * 0.8) * 0.5
+                 + snoise(px * 1.2 + timeOffset * 0.4) * 0.35;
+  // Normalize to [0,1]
+  float grainNorm = grainRaw * 0.5 + 0.5;
+  // Map to roughness: 0.7 (smooth/sparkly) to 0.9 (rough/matte)
+  float roughness = mix(0.7, 0.9, grainNorm);
+  // Derive specular exponent from roughness: low roughness = sharp highlights
+  float specPower = mix(160.0, 24.0, (roughness - 0.7) / 0.2);
 
-  float grain = (density + grainMed + grainFine) * 0.015;
-  vec3 cardColor = vec3(0.035) + grain; // near-black base
+  vec3 cardColor = vec3(0.035); // near-black base
 
-  // --- Layer 2: Surface lighting ---
-  // Card surface normal tilted by u_tilt
+  // --- Layer 2: Surface lighting (roughness-modulated sparkle) ---
   vec3 N = normalize(vec3(-sin(u_tilt.x), -sin(u_tilt.y), cos(u_tilt.x) * cos(u_tilt.y)));
-  vec3 V = vec3(0.0, 0.0, 1.0); // viewer direction
+  vec3 V = vec3(0.0, 0.0, 1.0);
 
-  // Primary overhead light
+  // Primary overhead light — exponent varies per-pixel for sparkle
   vec3 L1 = normalize(vec3(0.0, -0.3, 1.0));
   vec3 H1 = normalize(L1 + V);
-  float spec1 = pow(max(dot(N, H1), 0.0), 64.0);
-  cardColor += spec1 * 0.06;
+  float spec1 = pow(max(dot(N, H1), 0.0), specPower);
+  // Brighter sparkle on smoother grains, dimmer on rough
+  float specIntensity1 = mix(0.12, 0.03, (roughness - 0.7) / 0.2);
+  cardColor += spec1 * specIntensity1;
 
   // Secondary cursor-following light
   vec2 cursorOffset = (u_cursor - 0.5) * 2.0;
   vec3 L2 = normalize(vec3(cursorOffset.x * 0.6, cursorOffset.y * -0.6, 1.0));
   vec3 H2 = normalize(L2 + V);
-  float spec2 = pow(max(dot(N, H2), 0.0), 32.0);
-  cardColor += spec2 * 0.04;
+  float spec2 = pow(max(dot(N, H2), 0.0), specPower * 0.5);
+  float specIntensity2 = mix(0.08, 0.02, (roughness - 0.7) / 0.2);
+  cardColor += spec2 * specIntensity2;
 
   // --- Layer 3: Holographic foil (text regions only) ---
   // Flip Y axis to correct WebGL texture coordinate mismatch with canvas 2D
@@ -114,28 +119,25 @@ void main() {
   float mask = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV).r);
 
   if (mask > 0.01) {
-    // Interactive angle: position sweep + tilt + cursor
-    float angle = (uv.x * 0.3 + (1.0 - uv.y) * 0.8) * 1.0
-                + u_tilt.x * 1.5
-                + u_tilt.y * 0.8
-                + (u_cursor.x - 0.5) * 0.7
-                + (u_cursor.y - 0.5) * 0.4;
+    // Position sweep (vertical-primary) + interactive shift from tilt/cursor
+    float angle = (uv.x * 0.3 + (1.0 - uv.y) * 0.8) * 3.0
+                + u_tilt.x * 6.0
+                + u_tilt.y * 3.5
+                + (u_cursor.x - 0.5) * 3.0
+                + (u_cursor.y - 0.5) * 1.5;
 
-    // Custom color ramp: cyan → blue → violet → magenta → pink
-    // Maps angle [0,1] to the desired palette. fract wraps for continuous sweep.
-    float t = fract(angle);
-    vec3 holoColor;
-    if (t < 0.2) {
-      holoColor = mix(vec3(0.2, 0.9, 0.6), vec3(0.25, 0.7, 1.0), t / 0.2); // green-cyan → cyan-blue
-    } else if (t < 0.4) {
-      holoColor = mix(vec3(0.25, 0.7, 1.0), vec3(0.4, 0.3, 1.0), (t - 0.2) / 0.2); // cyan-blue → blue
-    } else if (t < 0.6) {
-      holoColor = mix(vec3(0.4, 0.3, 1.0), vec3(0.65, 0.2, 0.9), (t - 0.4) / 0.2); // blue → violet
-    } else if (t < 0.8) {
-      holoColor = mix(vec3(0.65, 0.2, 0.9), vec3(0.95, 0.2, 0.65), (t - 0.6) / 0.2); // violet → magenta
-    } else {
-      holoColor = mix(vec3(0.95, 0.2, 0.65), vec3(0.2, 0.9, 0.6), (t - 0.8) / 0.2); // magenta → green (wrap)
-    }
+    // Spectral mapping: offset rotated so rest shows cyan(top) → violet(center) → red(bottom)
+    float wavelength = mod(angle * 60.0 + 350.0, 400.0) + 380.0;
+    vec3 holoColor = wavelengthToRGB(wavelength);
+
+    // Second diffraction order for richness
+    float wavelength2 = mod(angle * 90.0 + 170.0, 400.0) + 380.0;
+    vec3 holoColor2 = wavelengthToRGB(wavelength2);
+    holoColor = mix(holoColor, holoColor2, 0.25);
+
+    // Boost saturation
+    vec3 grey = vec3(dot(holoColor, vec3(0.299, 0.587, 0.114)));
+    holoColor = mix(grey, holoColor, 1.5);
 
     // Fresnel-like edge brightening
     float fresnel = 1.0 + 0.5 * pow(1.0 - abs(dot(N, V)), 3.0);
@@ -144,8 +146,8 @@ void main() {
     vec3 metallic = vec3(0.5, 0.48, 0.55);
     vec3 foilColor = mix(metallic, holoColor, 0.8) * fresnel;
 
-    // Specular highlight on foil
-    float foilSpec = pow(max(dot(N, H1), 0.0), 20.0) * 0.35;
+    // Specular on foil (also roughness-modulated for sparkle on text)
+    float foilSpec = pow(max(dot(N, H1), 0.0), specPower * 0.3) * 0.35;
     foilColor += foilSpec;
 
     cardColor = mix(cardColor, foilColor, mask * 0.97);
