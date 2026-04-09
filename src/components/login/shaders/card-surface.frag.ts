@@ -129,11 +129,19 @@ void main() {
 
   if (mask > 0.01) {
     // --- Emboss: derive bump normal from anti-aliased mask edges ---
-    vec2 texel = 1.0 / u_resolution;
-    float mL = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2(-texel.x, 0.0)).r);
-    float mR = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2( texel.x, 0.0)).r);
-    float mD = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2(0.0, -texel.y)).r);
-    float mU = smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2(0.0,  texel.y)).r);
+    // Sample 2 texels out for wider, smoother emboss
+    vec2 texel = 2.0 / u_resolution;
+    // Average 2 samples per direction to smooth out aliasing
+    vec2 t1 = 1.0 / u_resolution;
+    vec2 t2 = 2.0 / u_resolution;
+    float mL = (smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2(-t1.x, 0.0)).r)
+              + smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2(-t2.x, 0.0)).r)) * 0.5;
+    float mR = (smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2( t1.x, 0.0)).r)
+              + smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2( t2.x, 0.0)).r)) * 0.5;
+    float mD = (smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2(0.0, -t1.y)).r)
+              + smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2(0.0, -t2.y)).r)) * 0.5;
+    float mU = (smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2(0.0,  t1.y)).r)
+              + smoothstep(0.05, 0.5, texture2D(u_textMask, maskUV + vec2(0.0,  t2.y)).r)) * 0.5;
     float bumpStrength = 0.8;
     vec3 embossN = normalize(N + vec3((mL - mR) * bumpStrength, (mD - mU) * bumpStrength, 0.0));
 
