@@ -192,16 +192,12 @@ export function UploadModalOverlay() {
       width: `${heroWidth}px`, height: "48px",
     }, SPRING));
 
-    // 3. Marquee visible early + scrolling (hero flies over it)
+    // 3. Marquee + hero crossfade (hero flies over, then swaps with marquee)
     loop.play();
     delay(() => {
       track(animate(marqueeRow, { opacity: 1 }, { duration: 0.2 }));
+      track(animate(hero, { opacity: 0 }, { duration: 0.2 }));
     }, 120);
-
-    // 4. Hero fades out once it's near the marquee
-    delay(() => {
-      track(animate(hero, { opacity: 0 }, { duration: 0.15 }));
-    }, 350);
 
     // 5. Interior stagger
     const interiorEntries: { ref: React.RefObject<HTMLElement | null>; to: Record<string, string | number> }[] = [
