@@ -30,21 +30,11 @@ export function SendItButton() {
     );
   }, []);
 
-  // Hide instantly when modal opens (marquee takes over the text),
-  // fade back in when modal closes
+  // Hide instantly when modal opens (hero takes over the text),
+  // show instantly when modal closes (hero has returned to button rect)
   useEffect(() => {
     if (!containerRef.current) return;
-    if (isOpen) {
-      gsap.set(containerRef.current, { opacity: 0 });
-    } else {
-      gsap.to(containerRef.current, {
-        opacity: 1,
-        duration: 0.3,
-        delay: 0.2,
-        ease: "power2.out",
-        overwrite: true,
-      });
-    }
+    gsap.set(containerRef.current, { opacity: isOpen ? 0 : 1 });
   }, [isOpen]);
 
   return (

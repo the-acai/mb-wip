@@ -369,10 +369,8 @@ export function UploadModalOverlay() {
   );
 
   return (
-    <motion.div
+    <div
       className="fixed inset-0 z-40"
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
       onPaste={handlePaste}
     >
       {/* Backdrop */}
@@ -498,6 +496,6 @@ export function UploadModalOverlay() {
           <p className="font-heading text-sm text-red-400 text-center">{error}</p>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
