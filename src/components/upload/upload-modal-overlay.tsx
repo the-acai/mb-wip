@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useLayoutEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useLayoutEffect } from "react";
 import { motion, animate, type AnimationPlaybackControls } from "motion/react";
 import gsap from "gsap";
 import { useDropzone } from "react-dropzone";
@@ -292,35 +292,47 @@ export function UploadModalOverlay() {
       }, {
         ...SPRING,
         onComplete: () => {
+          // Safety: ensure button is visible (idempotent if early reveal already fired)
           const buttonContainer = buttonPillRef.current?.closest("[data-send-it-container]") as HTMLElement | null;
-          const arrowEl = buttonPillRef.current?.parentElement?.querySelector("[data-arrow-wrap]") as HTMLElement | null;
+          if (buttonContainer) buttonContainer.style.opacity = "1";
 
-          // Fade hero out (button text takes over)
+          // Hero fades out — button text takes over
           animate(hero, { opacity: 0 }, { duration: 0.08 });
-
-          if (buttonContainer) {
-            buttonContainer.style.opacity = "1";
-          }
-          if (arrowEl) {
-            Object.assign(arrowEl.style, {
-              transform: "translateX(-16px)",
-              opacity: "0",
-              visibility: "hidden",
-            });
-            // Force a layout read so the initial state is committed before animating
-            arrowEl.getBoundingClientRect();
-            Object.assign(arrowEl.style, { visibility: "visible" });
-            animate(arrowEl, { x: 0, opacity: 1 }, SPRING);
-          }
 
           setTimeout(() => close(), 300);
         },
       }));
+
+      // ~200ms before morph settles: reveal button + spring arrow out
+      delay(() => {
+        const buttonContainer = buttonPillRef.current?.closest("[data-send-it-container]") as HTMLElement | null;
+        const arrowEl = buttonPillRef.current?.parentElement?.querySelector("[data-arrow-wrap]") as HTMLElement | null;
+
+        if (buttonContainer) buttonContainer.style.opacity = "1";
+        if (arrowEl) {
+          Object.assign(arrowEl.style, {
+            transform: "translateX(-16px)",
+            opacity: "0",
+            visibility: "visible",
+          });
+          arrowEl.getBoundingClientRect();
+          track(animate(arrowEl, { x: 0, opacity: 1 }, SPRING));
+        }
+      }, 390);
     }, 100);
 
     timersRef.current.push(closeTimer);
     animsRef.current.push(...anims);
   }, [close, stopAll]);
+
+  // Escape key → run full close animation (not context.close which skips it)
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [handleClose]);
 
   // ─── File handling ───
   const onDrop = useCallback((accepted: File[]) => {

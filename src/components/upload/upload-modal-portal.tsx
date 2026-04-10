@@ -6,17 +6,7 @@ import { useUploadModal } from "./upload-modal-context";
 import { UploadModalOverlay } from "./upload-modal-overlay";
 
 export function UploadModalPortal() {
-  const { isOpen, close } = useUploadModal();
-
-  // Escape key
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [isOpen, close]);
+  const { isOpen } = useUploadModal();
 
   // Scroll lock
   useEffect(() => {
