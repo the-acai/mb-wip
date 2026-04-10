@@ -298,6 +298,8 @@ export function UploadModalOverlay() {
           // Restore pill — hero fades away in sync, seamless handoff
           if (pill) pill.style.opacity = "";
 
+          // Fade modal + hero so overlay unmount is invisible (no snap)
+          animate(modal, { opacity: 0 }, { duration: 0.12 });
           animate(hero, { opacity: 0 }, { duration: 0.08 });
 
           setTimeout(() => close(), 300);
