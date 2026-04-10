@@ -10,23 +10,21 @@ const BREATH_DELAY = 0.14;
 export function SendItButton() {
   const { isOpen, open, buttonPillRef } = useUploadModal();
   const containerRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLSpanElement>(null);
-  const arrowWrapRef = useRef<HTMLSpanElement>(null);
   const hasAnimated = useRef(false);
 
   // Entrance: staggered char reveal
   useEffect(() => {
-    if (hasAnimated.current || !containerRef.current || !textRef.current) return;
+    if (hasAnimated.current || !containerRef.current) return;
     hasAnimated.current = true;
 
-    const chars = textRef.current.querySelectorAll("[data-char]");
-    const arrow = arrowWrapRef.current;
+    const pill = containerRef.current.querySelector("[data-pill]");
+    const chars = containerRef.current.querySelectorAll("[data-char]");
+    const arrowWrap = containerRef.current.querySelector("[data-arrow-wrap]");
 
     gsap.set(containerRef.current, { opacity: 1 });
 
-    gsap.fromTo(chars, {
-      opacity: 0, y: 12,
-    }, {
+    // Chars fade + slide up
+    gsap.fromTo(chars, { opacity: 0, y: 12 }, {
       opacity: 1, y: 0,
       duration: 0.5,
       stagger: 0.03,
@@ -34,31 +32,26 @@ export function SendItButton() {
       ease: "back.out(2)",
     });
 
-    if (arrow) {
-      gsap.fromTo(arrow, {
-        opacity: 0, x: -8,
-      }, {
+    // Arrow circle
+    if (arrowWrap) {
+      gsap.fromTo(arrowWrap, { opacity: 0, x: -8 }, {
         opacity: 1, x: 0,
         duration: 0.4,
-        delay: BREATH_DELAY + 0.03 * 7, // after last char
+        delay: BREATH_DELAY + 0.03 * 7,
         ease: "back.out(2)",
       });
     }
-  }, []);
 
-  // Hover: GSAP-driven letter bounce
-  const handleMouseEnter = () => {
-    if (!textRef.current || isOpen) return;
-    const chars = textRef.current.querySelectorAll("[data-char]");
-    gsap.to(chars, {
-      y: -3,
-      duration: 0.25,
-      stagger: 0.03,
-      ease: "power2.out",
-      yoyo: true,
-      repeat: 1,
-    });
-  };
+    // Pill container
+    if (pill) {
+      gsap.fromTo(pill, { opacity: 0 }, {
+        opacity: 1,
+        duration: 0.3,
+        delay: BREATH_DELAY,
+        ease: "power2.out",
+      });
+    }
+  }, []);
 
   // Hide/show based on modal state
   useEffect(() => {
@@ -66,7 +59,6 @@ export function SendItButton() {
     gsap.set(containerRef.current, { opacity: isOpen ? 0 : 1 });
   }, [isOpen]);
 
-  // "SEND IT" as individual char spans + arrow icon
   const text = "SEND IT";
 
   return (
@@ -77,28 +69,28 @@ export function SendItButton() {
     >
       <button
         onClick={open}
-        onMouseEnter={handleMouseEnter}
         className="group flex items-center gap-0.5"
       >
+        {/* Pill — CSS handles hover padding scale */}
         <span
-          ref={(el) => {
-            (textRef as React.MutableRefObject<HTMLSpanElement | null>).current = el;
-            (buttonPillRef as React.MutableRefObject<HTMLElement | null>).current = el;
-          }}
-          className="inline-flex h-12 items-center overflow-hidden rounded-full bg-[var(--text-dark)] px-6"
+          data-pill
+          ref={buttonPillRef as React.RefObject<HTMLSpanElement>}
+          className="inline-flex h-12 items-center overflow-hidden rounded-full bg-[var(--text-dark)] px-6 transition-[padding] duration-300 ease-out group-hover:px-8"
         >
           {text.split("").map((char, i) => (
             <span
               key={i}
               data-char
-              className="inline-block font-heading text-base font-bold text-[var(--page-bg)]"
+              className="inline-block font-heading text-base font-bold text-[var(--page-bg)] group-hover:animate-[letter-bounce_600ms_ease-out]"
+              style={{ animationDelay: `${i * 40}ms` }}
             >
               {char === " " ? "\u00A0" : char}
             </span>
           ))}
         </span>
+        {/* Arrow circle */}
         <span
-          ref={arrowWrapRef}
+          data-arrow-wrap
           data-char
           className="flex size-12 items-center justify-center rounded-full bg-[var(--text-dark)]"
         >
