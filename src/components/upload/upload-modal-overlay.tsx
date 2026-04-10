@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useRef, useLayoutEffect } from "react";
 import { motion, animate, type AnimationPlaybackControls } from "motion/react";
-import gsap from "gsap";
 import { useDropzone } from "react-dropzone";
 import { ArrowRight } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,7 +22,7 @@ const EXPANSION_SPRING = {
   damping: 16,
 };
 
-const ROW_BREATH = 0.06; // 60ms
+const ROW_BREATH_MS = 60; // 60ms stagger between interior elements
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES: Record<string, string[]> = {
@@ -45,7 +44,8 @@ export function UploadModalOverlay() {
 
   // Animation handles for cleanup / reversal
   const morphRef = useRef<AnimationPlaybackControls | null>(null);
-  const tlRef = useRef<gsap.core.Timeline | null>(null);
+  const interiorAnimsRef = useRef<AnimationPlaybackControls[]>([]);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const buttonRectRef = useRef<DOMRect | null>(null);
 
   const [marqueeActive, setMarqueeActive] = useState(false);
@@ -57,7 +57,7 @@ export function UploadModalOverlay() {
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
   const userColor = userName ? getAuthorColor(userName) : "#dfe0e0";
 
-  // ─── Animation: Motion spring for morph, GSAP timeline for interior stagger ───
+  // ─── Animation: Motion springs for morph + interior stagger ───
   useLayoutEffect(() => {
     const modal = modalRef.current;
     if (!modal) return;
@@ -98,12 +98,28 @@ export function UploadModalOverlay() {
       visibility: "visible",
     });
 
-    // Hide interior elements for the stagger
-    [userRowRef, captionRef, uploadAreaRef, readyBtnRef, arrowRef].forEach((ref) => {
-      if (ref.current) gsap.set(ref.current, { autoAlpha: 0 });
+    // Set interior elements to initial hidden state
+    const interiorEls = [
+      { ref: userRowRef, initial: { opacity: 0, y: 16 } },
+      { ref: captionRef, initial: { opacity: 0, scaleX: 0, transformOrigin: "left center" } },
+      { ref: uploadAreaRef, initial: { opacity: 0, y: 16 } },
+      { ref: readyBtnRef, initial: { opacity: 0, scaleX: 0, transformOrigin: "left center" } },
+      { ref: arrowRef, initial: { opacity: 0, x: -48 } },
+    ];
+
+    interiorEls.forEach(({ ref, initial }) => {
+      if (ref.current) {
+        Object.assign(ref.current.style, {
+          opacity: "0",
+          transform: initial.y ? `translateY(${initial.y}px)` :
+                     initial.scaleX !== undefined ? `scaleX(${initial.scaleX})` :
+                     initial.x ? `translateX(${initial.x}px)` : "",
+          ...(initial.transformOrigin ? { transformOrigin: initial.transformOrigin } : {}),
+        });
+      }
     });
 
-    // ── Phase 1: Motion spring morph (position, size, borderRadius) ──
+    // ── Phase 1: Motion spring morph ──
     const morphControls = animate(modal, {
       left: `${finalLeft}px`,
       top: `${finalTop}px`,
@@ -115,80 +131,83 @@ export function UploadModalOverlay() {
 
     morphRef.current = morphControls;
 
-    // ── Phase 2: GSAP timeline for interior stagger ──
-    // Start after a short delay so the morph is underway
-    const tl = gsap.timeline({ paused: true, onComplete: () => setMarqueeActive(true) });
+    // ── Phase 2: Motion spring stagger for interior elements ──
+    const anims: AnimationPlaybackControls[] = [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
-    // 2a: @user tag — slide up
-    tl.fromTo(
-      userRowRef.current,
-      { autoAlpha: 0, y: 16 },
-      { autoAlpha: 1, y: 0, duration: 0.4, ease: "power2.out" },
-    );
+    const staggerEntries: { ref: React.RefObject<HTMLElement | null>; to: Record<string, unknown> }[] = [
+      { ref: userRowRef, to: { opacity: 1, y: 0 } },
+      { ref: captionRef, to: { opacity: 1, scaleX: 1 } },
+      { ref: uploadAreaRef, to: { opacity: 1, y: 0 } },
+      { ref: readyBtnRef, to: { opacity: 1, scaleX: 1 } },
+      { ref: arrowRef, to: { opacity: 1, x: 0 } },
+    ];
 
-    // 2b: Caption — scale in from left
-    tl.fromTo(
-      captionRef.current,
-      { autoAlpha: 0, scaleX: 0, transformOrigin: "left center" },
-      { autoAlpha: 1, scaleX: 1, duration: 0.4, ease: "power2.out" },
-      `>-${0.4 - ROW_BREATH}`,
-    );
+    // Start interior stagger 250ms after morph begins
+    const baseTimer = setTimeout(() => {
+      staggerEntries.forEach(({ ref, to }, i) => {
+        const timer = setTimeout(() => {
+          if (ref.current) {
+            const ctrl = animate(ref.current, to, EXPANSION_SPRING);
+            anims.push(ctrl);
+          }
+          // Start marquee after last element begins animating
+          if (i === staggerEntries.length - 1) {
+            setMarqueeActive(true);
+          }
+        }, i * ROW_BREATH_MS);
+        timers.push(timer);
+      });
+    }, 250);
+    timers.push(baseTimer);
 
-    // 2c: Upload area — slide up
-    tl.fromTo(
-      uploadAreaRef.current,
-      { autoAlpha: 0, y: 16 },
-      { autoAlpha: 1, y: 0, duration: 0.4, ease: "power2.out" },
-      `>-${0.4 - ROW_BREATH}`,
-    );
-
-    // 2dI: I'M READY container — scale in on X
-    tl.fromTo(
-      readyBtnRef.current,
-      { autoAlpha: 0, scaleX: 0, transformOrigin: "left center" },
-      { autoAlpha: 1, scaleX: 1, duration: 0.4, ease: "power2.out" },
-      `>-${0.4 - ROW_BREATH}`,
-    );
-
-    // 2dII: Arrow — slide in from left
-    tl.fromTo(
-      arrowRef.current,
-      { autoAlpha: 0, x: -48 },
-      { autoAlpha: 1, x: 0, duration: 0.4, ease: "power2.out" },
-      `>-${0.4 - ROW_BREATH}`,
-    );
-
-    tlRef.current = tl;
-
-    // Start the interior stagger 250ms after the morph begins
-    const staggerTimer = setTimeout(() => tl.play(), 250);
+    interiorAnimsRef.current = anims;
+    timersRef.current = timers;
 
     return () => {
-      clearTimeout(staggerTimer);
+      timers.forEach(clearTimeout);
       morphControls.stop();
-      tl.kill();
+      anims.forEach((a) => a.stop());
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Close: reverse GSAP stagger, then spring-morph back to button ───
+  // ─── Close: spring interior elements back, then morph to button ───
   const handleClose = useCallback(() => {
-    const tl = tlRef.current;
     const modal = modalRef.current;
     const buttonRect = buttonRectRef.current;
 
     setMarqueeActive(false);
 
-    // Stop any in-progress morph
-    morphRef.current?.stop();
+    // Clear any pending stagger timers
+    timersRef.current.forEach(clearTimeout);
 
-    if (!tl || !modal || !buttonRect) {
+    // Stop all in-flight animations
+    morphRef.current?.stop();
+    interiorAnimsRef.current.forEach((a) => a.stop());
+
+    if (!modal || !buttonRect) {
       close();
       return;
     }
 
-    // Reverse interior elements
-    tl.eventCallback("onReverseComplete", () => {
-      // Spring back to button rect
+    // Spring interior elements back to hidden
+    const reverseAnims: AnimationPlaybackControls[] = [];
+    const reverseEntries: { ref: React.RefObject<HTMLElement | null>; to: Record<string, unknown> }[] = [
+      { ref: arrowRef, to: { opacity: 0, x: -48 } },
+      { ref: readyBtnRef, to: { opacity: 0, scaleX: 0 } },
+      { ref: uploadAreaRef, to: { opacity: 0, y: 16 } },
+      { ref: captionRef, to: { opacity: 0, scaleX: 0 } },
+      { ref: userRowRef, to: { opacity: 0, y: 16 } },
+    ];
+
+    reverseEntries.forEach(({ ref, to }) => {
+      if (ref.current) {
+        reverseAnims.push(animate(ref.current, to, { ...EXPANSION_SPRING, mass: 0.8 }));
+      }
+    });
+
+    // After a brief delay for interiors to retract, spring morph back to button
+    setTimeout(() => {
       const reverseControls = animate(modal, {
         left: `${buttonRect.left}px`,
         top: `${buttonRect.top}px`,
@@ -202,9 +221,7 @@ export function UploadModalOverlay() {
       });
 
       morphRef.current = reverseControls;
-    });
-
-    tl.reverse();
+    }, 150);
   }, [close]);
 
   // ─── File handling ───
@@ -295,7 +312,7 @@ export function UploadModalOverlay() {
         />
       </CursorCollapseIcon>
 
-      {/* Modal — Motion spring for morph, GSAP for interior stagger */}
+      {/* Modal — all Motion springs */}
       <div
         ref={modalRef}
         className="z-50 flex flex-col gap-8 bg-[#0e1708]"
@@ -328,7 +345,7 @@ export function UploadModalOverlay() {
           </div>
 
           {/* Caption input (2b) */}
-          <div ref={captionRef} className="flex-1">
+          <div ref={captionRef} className="flex-1" style={{ transformOrigin: "left center" }}>
             <input
               type="text"
               value={caption}
@@ -377,7 +394,7 @@ export function UploadModalOverlay() {
 
         {/* I'M READY button (2d) */}
         <div className="flex w-full items-center gap-0.5">
-          <div ref={readyBtnRef} className="flex-1">
+          <div ref={readyBtnRef} className="flex-1" style={{ transformOrigin: "left center" }}>
             <button
               onClick={handleSubmit}
               disabled={submitting || files.length === 0}
