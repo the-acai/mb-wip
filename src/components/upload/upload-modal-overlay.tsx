@@ -155,6 +155,7 @@ export function UploadModalOverlay() {
 
       tl.fromTo(flyCharEls[i], {
         position: "fixed",
+        zIndex: 60,
         left: from.left, top: from.top,
         width: from.width, height: from.height,
         autoAlpha: 1,
