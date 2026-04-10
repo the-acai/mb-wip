@@ -308,7 +308,7 @@ export function UploadModalOverlay() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.96 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
+          transition={EXPANSION_SPRING}
         />
       </CursorCollapseIcon>
 
