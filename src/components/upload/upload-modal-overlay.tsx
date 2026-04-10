@@ -295,11 +295,12 @@ export function UploadModalOverlay() {
           const buttonContainer = buttonPillRef.current?.closest("[data-send-it-container]") as HTMLElement | null;
           const pill = buttonPillRef.current as HTMLElement | null;
           if (buttonContainer) buttonContainer.style.opacity = "1";
-          // Restore pill — hero fades away in sync, seamless handoff
+
+          // Instant swap: hide modal, show pill in same frame (no crossfade)
+          modal.style.visibility = "hidden";
           if (pill) pill.style.opacity = "";
 
-          // Fade modal + hero so overlay unmount is invisible (no snap)
-          animate(modal, { opacity: 0 }, { duration: 0.12 });
+          // Hero fades — pill text takes over seamlessly
           animate(hero, { opacity: 0 }, { duration: 0.08 });
 
           setTimeout(() => close(), 300);
