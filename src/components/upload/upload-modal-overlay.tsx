@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef, useLayoutEffect } from "react";
-import { motion } from "motion/react";
+import { motion, animate, type AnimationPlaybackControls } from "motion/react";
 import gsap from "gsap";
-import { Flip } from "gsap/Flip";
 import { useDropzone } from "react-dropzone";
 import { ArrowRight } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -17,21 +16,14 @@ import { uploadFile } from "@/lib/queries/storage";
 import { createPost } from "@/lib/queries/posts";
 import { horizontalLoop } from "@/lib/gsap-horizontal-loop";
 
-gsap.registerPlugin(Flip);
-
-const EXPANSION_SPRING = {
+const SPRING = {
   type: "spring" as const,
   mass: 1.2,
   stiffness: 170,
   damping: 16,
 };
 
-const ROW_BREATH = 0.06;
-const MORPH_DURATION = 0.6;
-const MORPH_EASE = "expo.out";
-const INTERIOR_DURATION = 0.4;
-const INTERIOR_EASE = "power2.out";
-const INTERIOR_START = 0.25;
+const ROW_BREATH_MS = 60;
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES: Record<string, string[]> = {
@@ -53,10 +45,14 @@ export function UploadModalOverlay() {
   const captionRef = useRef<HTMLDivElement>(null);
   const uploadAreaRef = useRef<HTMLDivElement>(null);
   const readyBtnRef = useRef<HTMLDivElement>(null);
-  const arrowRef = useRef<HTMLDivElement>(null);
+  const arrowBtnRef = useRef<HTMLDivElement>(null);
 
-  const tlRef = useRef<gsap.core.Timeline | null>(null);
+  // All active animations — for cleanup and interruption
+  const animsRef = useRef<AnimationPlaybackControls[]>([]);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const loopRef = useRef<gsap.core.Timeline | null>(null);
+  const buttonRectRef = useRef<DOMRect | null>(null);
+  const isClosingRef = useRef(false);
 
   const [closing, setClosing] = useState(false);
   const [caption, setCaption] = useState("");
@@ -67,7 +63,28 @@ export function UploadModalOverlay() {
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
   const userColor = userName ? getAuthorColor(userName) : "#dfe0e0";
 
-  // ─── Build GSAP timeline with Flip ───
+  /** Track an animation for later cleanup */
+  const track = useCallback((ctrl: AnimationPlaybackControls) => {
+    animsRef.current.push(ctrl);
+    return ctrl;
+  }, []);
+
+  /** Schedule a timer and track it */
+  const delay = useCallback((fn: () => void, ms: number) => {
+    const t = setTimeout(fn, ms);
+    timersRef.current.push(t);
+    return t;
+  }, []);
+
+  /** Stop everything in flight */
+  const stopAll = useCallback(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+    animsRef.current.forEach((a) => a.stop());
+    animsRef.current = [];
+  }, []);
+
+  // ─── Open animation ───
   useLayoutEffect(() => {
     const modal = modalRef.current;
     const hero = heroRef.current;
@@ -78,12 +95,13 @@ export function UploadModalOverlay() {
     const btnRect = pill
       ? pill.getBoundingClientRect()
       : new DOMRect(window.innerWidth / 2 - 80, window.innerHeight - 80, 160, 48);
+    buttonRectRef.current = btnRect;
 
     const modalWidth = 544;
     const modalPadding = 24;
     const contentWidth = modalWidth - modalPadding * 2;
 
-    // Measure final height
+    // Measure final modal height
     const savedCss = modal.style.cssText;
     modal.style.cssText = `
       position: fixed; width: ${modalWidth}px; padding: ${modalPadding}px;
@@ -96,126 +114,190 @@ export function UploadModalOverlay() {
     const finalLeft = (window.innerWidth - modalWidth) / 2;
     const finalTop = (window.innerHeight - finalHeight) / 2;
 
-    // Hero target: center of the marquee row
-    const heroWidth = hero.offsetWidth || 120;
-    const marqueeCenterX = finalLeft + modalPadding + contentWidth / 2 - heroWidth / 2;
-    const marqueeY = finalTop + modalPadding;
+    // Hero target: center of marquee area
+    const heroMeasure = hero.getBoundingClientRect();
+    const heroWidth = heroMeasure.width || 120;
+    const heroTargetX = finalLeft + modalPadding + contentWidth / 2 - heroWidth / 2;
+    const heroTargetY = finalTop + modalPadding;
 
-    // ── 1. Set start positions (button rect) ──
-    gsap.set(modal, {
+    // ── Set starting states ──
+    // Modal at button rect
+    Object.assign(modal.style, {
       position: "fixed",
-      left: btnRect.left, top: btnRect.top,
-      width: btnRect.width, height: btnRect.height,
-      borderRadius: btnRect.height / 2,
-      padding: 0, overflow: "hidden", autoAlpha: 1,
+      left: `${btnRect.left}px`, top: `${btnRect.top}px`,
+      width: `${btnRect.width}px`, height: `${btnRect.height}px`,
+      borderRadius: `${btnRect.height / 2}px`,
+      padding: "0px", overflow: "hidden",
+      opacity: "1", visibility: "visible",
     });
 
-    gsap.set(hero, {
-      position: "fixed", zIndex: 60,
-      left: btnRect.left, top: btnRect.top,
-      width: btnRect.width, height: btnRect.height,
-      autoAlpha: 1,
+    // Hero at button position (centered)
+    Object.assign(hero.style, {
+      position: "fixed", zIndex: "60",
+      left: `${btnRect.left}px`, top: `${btnRect.top}px`,
+      width: `${btnRect.width}px`, height: `${btnRect.height}px`,
+      opacity: "1", visibility: "visible",
       display: "flex", alignItems: "center", justifyContent: "center",
     });
 
-    gsap.set(marqueeRow, { autoAlpha: 0 });
-
-    // ── 2. Capture start states with Flip ──
-    const modalStartState = Flip.getState(modal);
-    const heroStartState = Flip.getState(hero);
-
-    // ── 3. Set final positions ──
-    gsap.set(modal, {
-      left: finalLeft, top: finalTop,
-      width: modalWidth, height: finalHeight,
-      borderRadius: 40, padding: modalPadding,
-    });
-
-    gsap.set(hero, {
-      left: marqueeCenterX, top: marqueeY,
-      width: heroWidth, height: 48,
-      justifyContent: "center",
-    });
-
-    // ── 4. Set up horizontalLoop on marquee items ──
-    // Temporarily show marquee at final position so the loop can measure
-    gsap.set(marqueeRow, { autoAlpha: 1 });
-    const marqueeItems = marqueeRow.querySelectorAll("[data-marquee-item]");
-    const loop = horizontalLoop(marqueeItems, {
-      speed: 1.5,
-      repeat: -1,
-      paused: true,
-      paddingRight: 16,
-    });
-    loopRef.current = loop;
-    // Hide again — will be shown at handoff
-    gsap.set(marqueeRow, { autoAlpha: 0 });
-
-    // ── 5. Build main timeline ──
-    const tl = gsap.timeline({
-      paused: true,
-      onReverseComplete: () => close(),
-    });
-
-    // Modal Flip morph
-    tl.add(
-      Flip.from(modalStartState, {
-        duration: MORPH_DURATION, ease: MORPH_EASE, absolute: true,
-      }),
-      0,
-    );
-
-    // Hero Flip: button center → marquee center
-    tl.add(
-      Flip.from(heroStartState, {
-        duration: MORPH_DURATION, ease: MORPH_EASE, absolute: true,
-      }),
-      0,
-    );
-
-    // Start marquee loop at t=0 (scrolls invisibly at first)
-    tl.call(() => { loop.play(); }, undefined, 0);
-
-    // Marquee fades in early — hero flies INTO the already-scrolling marquee
-    tl.to(marqueeRow, { autoAlpha: 1, duration: 0.2 }, 0.15);
-
-    // Hero fades out as it reaches the marquee center
-    tl.to(hero, { autoAlpha: 0, duration: 0.15 }, MORPH_DURATION - 0.2);
-
-    // Interior stagger
-    const interiors: [React.RefObject<HTMLElement | null>, gsap.TweenVars, gsap.TweenVars][] = [
-      [userRowRef, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0 }],
-      [captionRef, { autoAlpha: 0, scaleX: 0, transformOrigin: "left center" }, { autoAlpha: 1, scaleX: 1 }],
-      [uploadAreaRef, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0 }],
-      [readyBtnRef, { autoAlpha: 0, scaleX: 0, transformOrigin: "left center" }, { autoAlpha: 1, scaleX: 1 }],
-      [arrowRef, { autoAlpha: 0, x: -48 }, { autoAlpha: 1, x: 0 }],
-    ];
-
-    interiors.forEach(([ref, from, to], i) => {
+    // Marquee + interiors hidden
+    marqueeRow.style.opacity = "0";
+    marqueeRow.style.visibility = "visible";
+    [userRowRef, captionRef, uploadAreaRef, readyBtnRef, arrowBtnRef].forEach((ref) => {
       if (ref.current) {
-        tl.fromTo(ref.current, from, {
-          ...to, duration: INTERIOR_DURATION, ease: INTERIOR_EASE,
-        }, INTERIOR_START + i * ROW_BREATH);
+        ref.current.style.opacity = "0";
+        ref.current.style.visibility = "visible";
       }
     });
 
-    tlRef.current = tl;
-    tl.play();
+    // ── Set up marquee loop (needs to measure at final position briefly) ──
+    const savedModalCss2 = modal.style.cssText;
+    Object.assign(modal.style, {
+      left: `${finalLeft}px`, top: `${finalTop}px`,
+      width: `${modalWidth}px`, height: `${finalHeight}px`,
+      borderRadius: "40px", padding: `${modalPadding}px`,
+    });
+    marqueeRow.style.opacity = "1";
+
+    const marqueeItems = marqueeRow.querySelectorAll("[data-marquee-item]");
+    const loop = horizontalLoop(marqueeItems, {
+      speed: 1.5, repeat: -1, paused: true, paddingRight: 16,
+    });
+    loopRef.current = loop;
+
+    // Restore modal to button rect
+    modal.style.cssText = savedModalCss2;
+    marqueeRow.style.opacity = "0";
+    Object.assign(modal.style, {
+      position: "fixed",
+      left: `${btnRect.left}px`, top: `${btnRect.top}px`,
+      width: `${btnRect.width}px`, height: `${btnRect.height}px`,
+      borderRadius: `${btnRect.height / 2}px`,
+      padding: "0px", overflow: "hidden",
+      opacity: "1", visibility: "visible",
+    });
+
+    // ── Animate! ──
+
+    // 1. Modal morph (spring)
+    track(animate(modal, {
+      left: `${finalLeft}px`, top: `${finalTop}px`,
+      width: `${modalWidth}px`, height: `${finalHeight}px`,
+      borderRadius: "40px", padding: `${modalPadding}px`,
+    }, SPRING));
+
+    // 2. Hero flies from button center → marquee center (spring)
+    track(animate(hero, {
+      left: `${heroTargetX}px`, top: `${heroTargetY}px`,
+      width: `${heroWidth}px`, height: "48px",
+    }, SPRING));
+
+    // 3. Marquee visible early + scrolling (hero flies over it)
+    loop.play();
+    delay(() => {
+      track(animate(marqueeRow, { opacity: 1 }, { duration: 0.2 }));
+    }, 120);
+
+    // 4. Hero fades out once it's near the marquee
+    delay(() => {
+      track(animate(hero, { opacity: 0 }, { duration: 0.15 }));
+    }, 350);
+
+    // 5. Interior stagger
+    const interiorEntries: { ref: React.RefObject<HTMLElement | null>; to: Record<string, string | number> }[] = [
+      { ref: userRowRef, to: { opacity: 1, y: 0 } },
+      { ref: captionRef, to: { opacity: 1, scaleX: 1 } },
+      { ref: uploadAreaRef, to: { opacity: 1, y: 0 } },
+      { ref: readyBtnRef, to: { opacity: 1, scaleX: 1 } },
+      { ref: arrowBtnRef, to: { opacity: 1, x: 0 } },
+    ];
+
+    // Set initial transforms
+    if (userRowRef.current) userRowRef.current.style.transform = "translateY(16px)";
+    if (captionRef.current) { captionRef.current.style.transform = "scaleX(0)"; captionRef.current.style.transformOrigin = "left center"; }
+    if (uploadAreaRef.current) uploadAreaRef.current.style.transform = "translateY(16px)";
+    if (readyBtnRef.current) { readyBtnRef.current.style.transform = "scaleX(0)"; readyBtnRef.current.style.transformOrigin = "left center"; }
+    if (arrowBtnRef.current) arrowBtnRef.current.style.transform = "translateX(-48px)";
+
+    delay(() => {
+      interiorEntries.forEach(({ ref, to }, i) => {
+        delay(() => {
+          if (ref.current) track(animate(ref.current, to, SPRING));
+        }, i * ROW_BREATH_MS);
+      });
+    }, 200);
 
     return () => {
-      tl.kill();
+      stopAll();
       loop.kill();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Close ───
   const handleClose = useCallback(() => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
     setClosing(true);
-    loopRef.current?.pause();
-    const tl = tlRef.current;
-    if (!tl) { close(); return; }
-    tl.reverse();
-  }, [close]);
+
+    const modal = modalRef.current;
+    const hero = heroRef.current;
+    const marqueeRow = marqueeRowRef.current;
+    const btnRect = buttonRectRef.current;
+
+    stopAll();
+
+    if (!modal || !hero || !marqueeRow || !btnRect) {
+      close();
+      return;
+    }
+
+    const anims: AnimationPlaybackControls[] = [];
+
+    // 1. Hero appears over the scrolling marquee
+    anims.push(animate(hero, { opacity: 1 }, { duration: 0.1 }));
+
+    // 2. Interior elements retract
+    const reverseEntries: { ref: React.RefObject<HTMLElement | null>; to: Record<string, string | number> }[] = [
+      { ref: arrowBtnRef, to: { opacity: 0, x: -48 } },
+      { ref: readyBtnRef, to: { opacity: 0, scaleX: 0 } },
+      { ref: uploadAreaRef, to: { opacity: 0, y: 16 } },
+      { ref: captionRef, to: { opacity: 0, scaleX: 0 } },
+      { ref: userRowRef, to: { opacity: 0, y: 16 } },
+    ];
+    reverseEntries.forEach(({ ref, to }) => {
+      if (ref.current) anims.push(animate(ref.current, to, { ...SPRING, mass: 0.8 }));
+    });
+
+    // 3. After brief moment: hero flies back, marquee fades, modal morphs
+    const closeTimer = setTimeout(() => {
+      // Hero flies back to button
+      anims.push(animate(hero, {
+        left: `${btnRect.left}px`, top: `${btnRect.top}px`,
+        width: `${btnRect.width}px`, height: `${btnRect.height}px`,
+        justifyContent: "center",
+      }, SPRING));
+
+      // Marquee fades out while hero is leaving
+      anims.push(animate(marqueeRow, { opacity: 0 }, { duration: 0.15 }));
+
+      // Pause the loop after marquee is invisible
+      setTimeout(() => { loopRef.current?.pause(); }, 200);
+
+      // Modal morphs back to button rect
+      anims.push(animate(modal, {
+        left: `${btnRect.left}px`, top: `${btnRect.top}px`,
+        width: `${btnRect.width}px`, height: `${btnRect.height}px`,
+        borderRadius: `${btnRect.height / 2}px`,
+        padding: "0px",
+      }, {
+        ...SPRING,
+        onComplete: () => close(),
+      }));
+    }, 100);
+
+    timersRef.current.push(closeTimer);
+    animsRef.current.push(...anims);
+  }, [close, stopAll]);
 
   // ─── File handling ───
   const onDrop = useCallback((accepted: File[]) => {
@@ -271,15 +353,15 @@ export function UploadModalOverlay() {
           className="absolute inset-0 bg-[var(--page-bg)]"
           initial={{ opacity: 0 }}
           animate={{ opacity: closing ? 0 : 0.96 }}
-          transition={closing ? { duration: 0.2, ease: "easeOut" } : EXPANSION_SPRING}
+          transition={closing ? { duration: 0.2, ease: "easeOut" } : SPRING}
         />
       </CursorCollapseIcon>
 
-      {/* Hero text — single block, flies from button center to marquee center */}
+      {/* Hero — always in DOM, opacity controlled by animate() */}
       <div
         ref={heroRef}
         className="pointer-events-none flex h-12 items-center gap-2 overflow-hidden"
-        style={{ visibility: "hidden" }}
+        style={{ opacity: 0, position: "fixed", zIndex: 60 }}
       >
         <span className="font-heading text-base font-bold text-[var(--page-bg)] whitespace-nowrap">
           SEND IT
@@ -293,8 +375,8 @@ export function UploadModalOverlay() {
         className="z-50 flex flex-col gap-8 bg-[#0e1708]"
         style={{ visibility: "hidden" }}
       >
-        {/* Marquee row — GSAP horizontalLoop drives scrolling */}
-        <div ref={marqueeRowRef} className="flex h-12 items-center overflow-hidden" style={{ visibility: "hidden" }}>
+        {/* Marquee — GSAP horizontalLoop */}
+        <div ref={marqueeRowRef} className="flex h-12 items-center overflow-hidden" style={{ opacity: 0 }}>
           {Array.from({ length: MARQUEE_COUNT }).map((_, i) => (
             <span key={i} data-marquee-item className="flex shrink-0 items-center gap-2 px-2">
               <span className="font-heading text-base font-bold text-[var(--page-bg)] whitespace-nowrap">
@@ -305,18 +387,18 @@ export function UploadModalOverlay() {
           ))}
         </div>
 
-        <div ref={userRowRef} className="flex w-full items-center gap-2">
+        <div ref={userRowRef} className="flex w-full items-center gap-2" style={{ opacity: 0 }}>
           <div className="flex h-14 shrink-0 items-center justify-center rounded-lg px-4" style={{ backgroundColor: userColor }}>
             <span className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#f7f8f8] whitespace-nowrap">@{userName}</span>
           </div>
-          <div ref={captionRef} className="flex-1" style={{ transformOrigin: "left center" }}>
+          <div ref={captionRef} className="flex-1" style={{ opacity: 0, transformOrigin: "left center" }}>
             <input type="text" value={caption} onChange={(e) => setCaption(e.target.value)}
               placeholder="is designing the greatest thing since sliced bread."
               className="h-14 w-full rounded-lg border border-[#3d4141] bg-[#222520] px-4 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#f7f8f8] placeholder:text-[#8b8b8b] focus:outline-none" />
           </div>
         </div>
 
-        <div ref={uploadAreaRef}>
+        <div ref={uploadAreaRef} style={{ opacity: 0 }}>
           <div {...getRootProps()}
             className={`flex h-[240px] cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border transition-colors ${
               isDragActive ? "border-[#f7f8f8] bg-[#2a2d28]" : "border-[#3d4141] bg-[#222520]"}`}>
@@ -337,7 +419,7 @@ export function UploadModalOverlay() {
         </div>
 
         <div className="flex w-full items-center gap-0.5">
-          <div ref={readyBtnRef} className="flex-1" style={{ transformOrigin: "left center" }}>
+          <div ref={readyBtnRef} className="flex-1" style={{ opacity: 0, transformOrigin: "left center" }}>
             <button onClick={handleSubmit} disabled={submitting || files.length === 0}
               className="flex h-12 w-full items-center justify-center rounded-full bg-[#f7f8f8] px-6 disabled:opacity-50">
               <span className="font-heading text-base font-bold leading-[1.28] tracking-[-0.16px] text-[#0e1708] whitespace-nowrap">
@@ -345,7 +427,7 @@ export function UploadModalOverlay() {
               </span>
             </button>
           </div>
-          <div ref={arrowRef}>
+          <div ref={arrowBtnRef} style={{ opacity: 0 }}>
             <span className="flex size-12 items-center justify-center rounded-full bg-[#f7f8f8]">
               <ArrowRight className="size-5 text-[#0e1708]" />
             </span>
