@@ -292,20 +292,28 @@ export function UploadModalOverlay() {
       }, {
         ...SPRING,
         onComplete: () => {
-          // Hero has arrived at button position — show button, spring arrow out
           const buttonContainer = buttonPillRef.current?.closest("[data-send-it-container]") as HTMLElement | null;
           const arrowEl = buttonPillRef.current?.parentElement?.querySelector("[data-arrow-wrap]") as HTMLElement | null;
-
-          if (arrowEl && buttonContainer) {
-            Object.assign(arrowEl.style, { transform: "translateX(-16px)", opacity: "0" });
-            buttonContainer.style.opacity = "1";
-            animate(arrowEl, { x: 0, opacity: 1 }, SPRING);
-          }
 
           // Fade hero out (button text takes over)
           animate(hero, { opacity: 0 }, { duration: 0.08 });
 
-          // Close after arrow has started springing
+          if (arrowEl && buttonContainer) {
+            // Arrow starts invisible at -16px, container becomes visible
+            // (hero covers the text, arrow is invisible — no flash)
+            gsap.set(arrowEl, { x: -16, autoAlpha: 0 });
+            buttonContainer.style.opacity = "1";
+
+            // Arrow springs out — autoAlpha handles visibility + opacity together
+            gsap.to(arrowEl, {
+              x: 0, autoAlpha: 1,
+              duration: 0.6, ease: "power2.out",
+              // Match SPRING feel: fast start, gentle settle
+            });
+          } else if (buttonContainer) {
+            buttonContainer.style.opacity = "1";
+          }
+
           setTimeout(() => close(), 300);
         },
       }));

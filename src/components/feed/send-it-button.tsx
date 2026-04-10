@@ -12,7 +12,7 @@ export function SendItButton() {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasAnimated = useRef(false);
 
-  // Entrance animation
+  // Entrance animation (first load only)
   useEffect(() => {
     if (hasAnimated.current || !containerRef.current) return;
     hasAnimated.current = true;
@@ -37,10 +37,19 @@ export function SendItButton() {
     }
   }, []);
 
-  // Hide/show based on modal state (arrow animation handled by overlay)
+  // On open: hide container + reset arrow to clean state for next close
   useEffect(() => {
     if (!containerRef.current) return;
-    gsap.set(containerRef.current, { opacity: isOpen ? 0 : 1 });
+
+    if (isOpen) {
+      gsap.set(containerRef.current, { opacity: 0 });
+      // Reset arrow to default visible state (clear any leftover from close animation)
+      const arrowWrap = containerRef.current.querySelector("[data-arrow-wrap]") as HTMLElement | null;
+      if (arrowWrap) {
+        gsap.set(arrowWrap, { x: 0, opacity: 1, clearProps: "transform" });
+      }
+    }
+    // On close: do nothing — overlay handles the transition
   }, [isOpen]);
 
   return (
