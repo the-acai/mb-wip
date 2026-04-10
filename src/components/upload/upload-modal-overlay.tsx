@@ -173,12 +173,14 @@ export function UploadModalOverlay() {
       0,
     );
 
-    // Start marquee loop immediately (runs invisibly, so it's mid-scroll at handoff)
+    // Start marquee loop at t=0 (scrolls invisibly at first)
     tl.call(() => { loop.play(); }, undefined, 0);
 
-    // Crossfade handoff: hero → marquee
-    tl.to(hero, { autoAlpha: 0, duration: 0.12 }, MORPH_DURATION - 0.12);
-    tl.to(marqueeRow, { autoAlpha: 1, duration: 0.12 }, MORPH_DURATION - 0.12);
+    // Marquee fades in early — hero flies INTO the already-scrolling marquee
+    tl.to(marqueeRow, { autoAlpha: 1, duration: 0.2 }, 0.15);
+
+    // Hero fades out as it reaches the marquee center
+    tl.to(hero, { autoAlpha: 0, duration: 0.15 }, MORPH_DURATION - 0.2);
 
     // Interior stagger
     const interiors: [React.RefObject<HTMLElement | null>, gsap.TweenVars, gsap.TweenVars][] = [
