@@ -30,10 +30,7 @@ export function ExpandedCard({ postData, style }: ExpandedCardProps) {
       transition={{ layout: EXPANSION_SPRING }}
     >
       {/* Image — flex-1 fills remaining space after caption */}
-      <motion.div
-        layoutId={`card-image-${postData.id}`}
-        className="relative min-h-0 flex-1 overflow-hidden rounded-lg"
-      >
+      <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg">
         {postData.imageUrl ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
@@ -46,7 +43,7 @@ export function ExpandedCard({ postData, style }: ExpandedCardProps) {
             <span className="font-heading text-sm">No image</span>
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* Caption */}
       <div className="flex shrink-0 items-baseline gap-2">
