@@ -7,17 +7,15 @@ import { Button } from "@/components/ui/button";
 import {
   UploadIcon,
   XIcon,
-  FileTextIcon,
   PlayCircleIcon,
   ImageIcon,
 } from "lucide-react";
 
-const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
 const ACCEPTED_TYPES: Record<string, string[]> = {
   "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"],
-  "video/*": [".mp4", ".webm", ".mov"],
-  "application/pdf": [".pdf"],
+  "video/webm": [".webm"],
 };
 
 interface MediaUploaderProps {
@@ -33,9 +31,6 @@ function getFilePreview(file: File): string | null {
 }
 
 function FileTypeIcon({ mimeType }: { mimeType: string }) {
-  if (mimeType === "application/pdf") {
-    return <FileTextIcon className="size-8 text-muted-foreground" />;
-  }
   if (mimeType.startsWith("video/")) {
     return <PlayCircleIcon className="size-8 text-muted-foreground" />;
   }
@@ -85,7 +80,7 @@ export function MediaUploader({ files, onFilesChange }: MediaUploaderProps) {
               Drag & drop files, or click to browse
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Images, video, GIF, PDF up to 50MB
+              Images, GIF, video up to 10MB
             </p>
           </>
         )}

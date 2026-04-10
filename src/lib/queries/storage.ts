@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { convertToWebp } from "@/lib/image-convert";
 
 const BUCKET = "experiment-assets";
 
@@ -26,24 +27,27 @@ export async function uploadFile(
   userId: string,
   postId: string
 ) {
-  const ext = file.name.split(".").pop();
+  // Convert raster images (JPEG, PNG) to WebP client-side
+  const processed = await convertToWebp(file);
+
+  const ext = processed.name.split(".").pop();
   const filePath = `${userId}/${postId}/${crypto.randomUUID()}.${ext}`;
 
   const [uploadResult, dimensions] = await Promise.all([
-    supabase.storage.from(BUCKET).upload(filePath, file, {
+    supabase.storage.from(BUCKET).upload(filePath, processed, {
       cacheControl: "3600",
-      contentType: file.type,
+      contentType: processed.type,
       upsert: false,
     }),
-    getImageDimensions(file),
+    getImageDimensions(processed),
   ]);
 
   if (uploadResult.error) throw uploadResult.error;
 
   return {
     file_path: uploadResult.data.path,
-    mime_type: file.type,
-    size_bytes: file.size,
+    mime_type: processed.type,
+    size_bytes: processed.size,
     width: dimensions?.width ?? null,
     height: dimensions?.height ?? null,
   };
