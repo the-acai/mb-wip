@@ -48,6 +48,7 @@ export function UploadModalOverlay() {
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const buttonRectRef = useRef<DOMRect | null>(null);
 
+  const [closing, setClosing] = useState(false);
   const [marqueeActive, setMarqueeActive] = useState(false);
   const [caption, setCaption] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -176,6 +177,7 @@ export function UploadModalOverlay() {
     const modal = modalRef.current;
     const buttonRect = buttonRectRef.current;
 
+    setClosing(true);
     setMarqueeActive(false);
 
     // Clear any pending stagger timers
@@ -306,9 +308,8 @@ export function UploadModalOverlay() {
         <motion.div
           className="absolute inset-0 bg-[var(--page-bg)]"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.96 }}
-          exit={{ opacity: 0 }}
-          transition={EXPANSION_SPRING}
+          animate={{ opacity: closing ? 0 : 0.96 }}
+          transition={closing ? { duration: 0.2, ease: "easeOut" } : EXPANSION_SPRING}
         />
       </CursorCollapseIcon>
 

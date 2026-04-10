@@ -89,10 +89,13 @@ export function ExpandedPostOverlay() {
       <CursorCollapseIcon onDismiss={dismiss}>
         <motion.div
           className="absolute inset-0 bg-[var(--page-bg)]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.96 }}
-          exit={{ opacity: 0 }}
-          transition={EXPANSION_SPRING}
+          variants={{
+            hidden: { opacity: 0, transition: { duration: 0.2, ease: "easeOut" } },
+            visible: { opacity: 0.96, transition: EXPANSION_SPRING },
+          }}
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
         />
       </CursorCollapseIcon>
 
