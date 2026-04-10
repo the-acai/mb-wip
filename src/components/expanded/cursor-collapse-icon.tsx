@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useIsPresent } from "motion/react";
 
 const CURSOR_SPRING = {
   type: "spring" as const,
@@ -21,11 +21,12 @@ const ICON_OFFSET = 24; // Equal offset right and below cursor
 
 interface CursorCollapseIconProps {
   onDismiss: () => void;
-  hidden?: boolean;
   children: React.ReactNode;
 }
 
-export function CursorCollapseIcon({ onDismiss, hidden, children }: CursorCollapseIconProps) {
+export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconProps) {
+  const isPresent = useIsPresent();
+  const hidden = !isPresent;
   const [hovering, setHovering] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const originRef = useRef({ x: 0, y: 0 });

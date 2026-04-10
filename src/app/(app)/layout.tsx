@@ -2,6 +2,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Providers } from "@/components/providers";
 import { ExpansionProvider } from "@/components/expanded/expansion-context";
 import { OverlayPortal } from "@/components/expanded/overlay-portal";
+import { LayoutGroupWrapper } from "@/components/layout-group-wrapper";
 import { ShrinkingHeader } from "@/components/feed/shrinking-header";
 import { SendItButton } from "@/components/feed/send-it-button";
 
@@ -15,6 +16,7 @@ export default function AppLayout({
   return (
     <Providers>
     <ExpansionProvider>
+    <LayoutGroupWrapper>
     <TooltipProvider>
       <div className="min-h-screen bg-[var(--page-bg)]">
         <ShrinkingHeader />
@@ -24,6 +26,7 @@ export default function AppLayout({
         <OverlayPortal />
       </div>
     </TooltipProvider>
+    </LayoutGroupWrapper>
     </ExpansionProvider>
     </Providers>
   );

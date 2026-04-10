@@ -5,7 +5,7 @@ import Image from "next/image";
 import { motion } from "motion/react";
 
 import { getAuthorColor } from "@/lib/utils";
-import { useExpansion } from "@/components/expanded/expansion-context";
+import { useExpansion, type ExpandedPostData } from "@/components/expanded/expansion-context";
 
 export interface FeedPost {
   id: string;
@@ -81,9 +81,8 @@ export function ExperimentCard({
   delay = 0,
   spring = defaultSpring,
 }: ExperimentCardProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
   const preloaded = useRef(false);
-  const { captureSource, prefetchComments, postData } = useExpansion();
+  const { expand, prefetchComments, postData } = useExpansion();
 
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
@@ -101,27 +100,16 @@ export function ExperimentCard({
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (cardRef.current) {
-      const rect = cardRef.current.getBoundingClientRect();
-      captureSource(
-        {
-          id: post.id,
-          title: post.title,
-          body: post.body,
-          created_at: post.created_at,
-          author: post.author,
-          imageUrl: thumbnailUrl ?? null,
-          imageAspect: orientation === "portrait" ? 2 / 3 : 3 / 2,
-        },
-        {
-          top: rect.top,
-          left: rect.left,
-          width: rect.width,
-          height: rect.height,
-        }
-      );
-    }
-    window.history.pushState(null, "", `/post/${post.id}`);
+    const data: ExpandedPostData = {
+      id: post.id,
+      title: post.title,
+      body: post.body,
+      created_at: post.created_at,
+      author: post.author,
+      imageUrl: thumbnailUrl ?? null,
+      imageAspect: orientation === "portrait" ? 2 / 3 : 3 / 2,
+    };
+    expand(data);
   };
 
   // Preload image + comments on hover so they're ready before the FLIP
@@ -141,7 +129,6 @@ export function ExperimentCard({
       onMouseEnter={handleMouseEnter}
       style={{
         transformStyle: "preserve-3d",
-        visibility: isLifted ? "hidden" : "visible",
       }}
       initial={{
         opacity: 0,
@@ -170,11 +157,18 @@ export function ExperimentCard({
         filter: { duration: 0.6, ease: "easeOut", delay },
       }}
     >
-      <div ref={cardRef} onClick={handleClick} className="group block cursor-pointer">
+      <motion.div
+        layoutId={`card-${post.id}`}
+        onClick={handleClick}
+        className="group block cursor-pointer"
+        style={{ opacity: isLifted ? 0 : 1 }}
+        transition={{ layout: { type: "spring", mass: 1.2, stiffness: 170, damping: 16 } }}
+      >
         <div className="flex flex-col gap-4">
           {/* Image */}
           {thumbnailUrl ? (
-            <div
+            <motion.div
+              layoutId={`card-image-${post.id}`}
               className="relative overflow-hidden rounded-lg bg-white"
               style={{ aspectRatio }}
             >
@@ -185,14 +179,15 @@ export function ExperimentCard({
                 className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
               />
-            </div>
+            </motion.div>
           ) : (
-            <div
+            <motion.div
+              layoutId={`card-image-${post.id}`}
               className="flex items-center justify-center overflow-hidden rounded-lg bg-white text-[var(--text-caption)]"
               style={{ aspectRatio }}
             >
               <span className="font-heading text-sm">No image</span>
-            </div>
+            </motion.div>
           )}
 
           {/* Caption row */}
@@ -210,7 +205,7 @@ export function ExperimentCard({
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }

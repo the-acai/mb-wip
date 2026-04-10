@@ -4,13 +4,6 @@ import { createContext, useContext, useState, useCallback, useRef, type ReactNod
 import { createClient } from "@/lib/supabase/client";
 import { getComments } from "@/lib/queries/comments";
 
-export interface SourceRect {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-}
-
 /** Minimal post data needed to render the expanded card immediately */
 export interface ExpandedPostData {
   id: string;
@@ -32,36 +25,26 @@ export interface ExpandedPostData {
 type CommentData = any[];
 
 interface ExpansionContextValue {
-  sourceRect: SourceRect | null;
   postData: ExpandedPostData | null;
-  closing: boolean;
   commentCache: Map<string, CommentData>;
-  captureSource: (data: ExpandedPostData, rect: SourceRect) => void;
+  expand: (data: ExpandedPostData) => void;
+  collapse: (historyAlreadyBack?: boolean) => void;
   prefetchComments: (postId: string) => void;
-  startClose: (needsHistoryBack: boolean) => void;
-  finishClose: () => void;
-  clear: () => void;
 }
 
 const ExpansionContext = createContext<ExpansionContextValue>({
-  sourceRect: null,
   postData: null,
-  closing: false,
   commentCache: new Map(),
-  captureSource: () => {},
+  expand: () => {},
+  collapse: () => {},
   prefetchComments: () => {},
-  startClose: () => {},
-  finishClose: () => {},
-  clear: () => {},
 });
 
 export function ExpansionProvider({ children }: { children: ReactNode }) {
-  const [sourceRect, setSourceRect] = useState<SourceRect | null>(null);
   const [postData, setPostData] = useState<ExpandedPostData | null>(null);
-  const [closing, setClosing] = useState(false);
-  const [needsHistoryBack, setNeedsHistoryBack] = useState(false);
   const [commentCache, setCommentCache] = useState<Map<string, CommentData>>(new Map());
   const fetchingRef = useRef<Set<string>>(new Set());
+  const historyPushedRef = useRef(false);
 
   const prefetchComments = useCallback((postId: string) => {
     if (fetchingRef.current.has(postId)) return;
@@ -74,35 +57,24 @@ export function ExpansionProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const captureSource = useCallback((data: ExpandedPostData, rect: SourceRect) => {
+  const expand = useCallback((data: ExpandedPostData) => {
     setPostData(data);
-    setSourceRect(rect);
-    setClosing(false);
+    window.history.pushState(null, "", `/post/${data.id}`);
+    historyPushedRef.current = true;
   }, []);
 
-  const startClose = useCallback((historyBack: boolean) => {
-    setClosing(true);
-    setNeedsHistoryBack(historyBack);
-  }, []);
-
-  const clear = useCallback(() => {
-    setSourceRect(null);
-    setPostData(null);
-    setClosing(false);
-    setNeedsHistoryBack(false);
-  }, []);
-
-  const finishClose = useCallback(() => {
-    if (needsHistoryBack) {
+  const collapse = useCallback((historyAlreadyBack = false) => {
+    if (!historyAlreadyBack && historyPushedRef.current) {
       window.history.back();
     }
-    clear();
-  }, [needsHistoryBack, clear]);
+    historyPushedRef.current = false;
+    setPostData(null);
+  }, []);
 
   return (
     <ExpansionContext value={{
-      sourceRect, postData, closing, commentCache,
-      captureSource, prefetchComments, startClose, finishClose, clear,
+      postData, commentCache,
+      expand, collapse, prefetchComments,
     }}>
       {children}
     </ExpansionContext>

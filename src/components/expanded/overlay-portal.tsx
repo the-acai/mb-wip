@@ -1,22 +1,24 @@
 "use client";
 
 import { useEffect } from "react";
+import { AnimatePresence } from "motion/react";
 import { useExpansion } from "./expansion-context";
 import { ExpandedPostOverlay } from "./expanded-post-overlay";
 
 export function OverlayPortal() {
-  const { postData, closing, startClose } = useExpansion();
+  const { postData, collapse } = useExpansion();
 
-  // Back button: start close animation (URL already reverted by browser)
+  // Back button: browser already reverted history, just clear state
   useEffect(() => {
     if (!postData) return;
-    const handlePopState = () => {
-      if (!closing) startClose(false);
-    };
+    const handlePopState = () => collapse(true);
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [postData, closing, startClose]);
+  }, [postData, collapse]);
 
-  if (!postData) return null;
-  return <ExpandedPostOverlay />;
+  return (
+    <AnimatePresence>
+      {postData && <ExpandedPostOverlay key={postData.id} />}
+    </AnimatePresence>
+  );
 }

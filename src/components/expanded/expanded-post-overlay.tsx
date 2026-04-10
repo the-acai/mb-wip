@@ -28,7 +28,7 @@ const EXPANSION_SPRING = {
 };
 
 export function ExpandedPostOverlay() {
-  const { sourceRect, postData, closing, commentCache, prefetchComments, startClose, finishClose } = useExpansion();
+  const { postData, commentCache, prefetchComments, collapse } = useExpansion();
 
   // Read from cache, trigger fetch if miss
   const cachedComments = postData ? (commentCache.get(postData.id) ?? []) : [];
@@ -38,11 +38,9 @@ export function ExpandedPostOverlay() {
     }
   }, [postData, commentCache, prefetchComments]);
 
-  // Manual dismiss: needs history.back() after animation completes
   const dismiss = useCallback(() => {
-    if (closing) return;
-    startClose(true);
-  }, [closing, startClose]);
+    collapse();
+  }, [collapse]);
 
   // Escape key
   useEffect(() => {
@@ -86,13 +84,14 @@ export function ExpandedPostOverlay() {
   const commentSlideX = -(gap + commentWidth);
 
   return (
-    <div className="fixed inset-0 z-40">
+    <motion.div className="fixed inset-0 z-40" exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
       {/* Backdrop */}
-      <CursorCollapseIcon onDismiss={dismiss} hidden={closing}>
+      <CursorCollapseIcon onDismiss={dismiss}>
         <motion.div
           className="absolute inset-0 bg-[var(--page-bg)]"
           initial={{ opacity: 0 }}
-          animate={{ opacity: closing ? 0 : 0.96 }}
+          animate={{ opacity: 0.96 }}
+          exit={{ opacity: 0 }}
           transition={{ duration: 0.35, ease: "easeOut" }}
         />
       </CursorCollapseIcon>
@@ -108,14 +107,11 @@ export function ExpandedPostOverlay() {
           zIndex: 0,
         }}
         initial={{ x: commentSlideX, scale: 0.96, opacity: 0 }}
-        animate={{
-          x: closing ? commentSlideX : 0,
-          scale: closing ? 0.96 : 1,
-          opacity: closing ? 0 : 1,
-        }}
+        animate={{ x: 0, scale: 1, opacity: 1 }}
+        exit={{ x: commentSlideX, scale: 0.96, opacity: 0 }}
         transition={{
           default: EXPANSION_SPRING,
-          opacity: closing ? { duration: 0.1, ease: "easeOut" } : EXPANSION_SPRING,
+          opacity: { duration: 0.25, ease: "easeOut" },
         }}
       >
         <ExpandedCommentCard postId={postData.id} initialComments={cachedComments as Comment[]} />
@@ -124,16 +120,13 @@ export function ExpandedPostOverlay() {
       {/* Expanded card — on top of comment card (higher z) */}
       <ExpandedCard
         postData={postData}
-        sourceRect={sourceRect}
-        targetRect={{
+        style={{
           top: cardTop,
           left: margin,
           width: cardWidth,
           height: totalCardHeight,
         }}
-        closing={closing}
-        onCloseComplete={finishClose}
       />
-    </div>
+    </motion.div>
   );
 }
