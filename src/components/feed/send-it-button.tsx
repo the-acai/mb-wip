@@ -46,6 +46,7 @@ export function SendItButton() {
   return (
     <div
       ref={containerRef}
+      data-send-it-container
       className="fixed bottom-[4svh] left-1/2 z-50 flex -translate-x-1/2 items-center gap-0.5"
       style={{ opacity: 0, pointerEvents: isOpen ? "none" : "auto" }}
     >

@@ -294,10 +294,15 @@ export function UploadModalOverlay() {
         onComplete: () => close(),
       }));
 
-      // Button arrow slides out from pill 300ms before close() fires
+      // Button arrow: make container visible, hide arrow, then spring it out
+      const buttonContainer = buttonPillRef.current?.closest("[data-send-it-container]") as HTMLElement | null;
       const arrowEl = buttonPillRef.current?.parentElement?.querySelector("[data-arrow-wrap]") as HTMLElement | null;
-      if (arrowEl) {
+      if (arrowEl && buttonContainer) {
+        // Hide arrow, then make container visible (hero covers the text)
         Object.assign(arrowEl.style, { transform: "translateX(-16px)", opacity: "0" });
+        buttonContainer.style.opacity = "1";
+
+        // Arrow springs out 300ms later
         setTimeout(() => {
           animate(arrowEl, { x: 0, opacity: 1 }, SPRING);
         }, 300);
