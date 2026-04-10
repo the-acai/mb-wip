@@ -1,11 +1,18 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import gsap from "gsap";
+import { animate } from "motion/react";
 import { ArrowRight } from "lucide-react";
 import { useUploadModal } from "@/components/upload/upload-modal-context";
 
-const BREATH_DELAY = 0.14;
+const SPRING = {
+  type: "spring" as const,
+  mass: 1.2,
+  stiffness: 170,
+  damping: 16,
+};
+
+const BREATH_DELAY_MS = 140;
 
 export function SendItButton() {
   const { isOpen, open, buttonPillRef } = useUploadModal();
@@ -17,39 +24,45 @@ export function SendItButton() {
     if (hasAnimated.current || !containerRef.current) return;
     hasAnimated.current = true;
 
-    const chars = containerRef.current.querySelectorAll("[data-char]");
-    const arrowWrap = containerRef.current.querySelector("[data-arrow-wrap]");
+    const container = containerRef.current;
+    const chars = container.querySelectorAll("[data-char]");
+    const arrowWrap = container.querySelector("[data-arrow-wrap]") as HTMLElement | null;
 
-    gsap.set(containerRef.current, { opacity: 1 });
+    container.style.opacity = "1";
 
-    gsap.fromTo(chars, { opacity: 0, y: 12 }, {
-      opacity: 1, y: 0,
-      duration: 0.5, stagger: 0.03,
-      delay: BREATH_DELAY, ease: "back.out(2)",
+    // Stagger chars in
+    chars.forEach((char, i) => {
+      const el = char as HTMLElement;
+      el.style.opacity = "0";
+      el.style.transform = "translateY(12px)";
+      setTimeout(() => {
+        animate(el, { opacity: 1, y: 0 }, SPRING);
+      }, BREATH_DELAY_MS + i * 30);
     });
 
+    // Arrow slides in after chars
     if (arrowWrap) {
-      gsap.fromTo(arrowWrap, { opacity: 0, x: -8 }, {
-        opacity: 1, x: 0,
-        duration: 0.4, delay: BREATH_DELAY + 0.03 * 7,
-        ease: "back.out(2)",
-      });
+      arrowWrap.style.opacity = "0";
+      arrowWrap.style.transform = "translateX(-8px)";
+      setTimeout(() => {
+        animate(arrowWrap, { opacity: 1, x: 0 }, SPRING);
+      }, BREATH_DELAY_MS + chars.length * 30);
     }
   }, []);
 
-  // On open: hide container + reset arrow to clean state for next close
+  // On open: hide container + reset arrow for next close cycle
   useEffect(() => {
     if (!containerRef.current) return;
 
     if (isOpen) {
-      gsap.set(containerRef.current, { opacity: 0 });
-      // Reset arrow to default visible state (clear any leftover from close animation)
+      containerRef.current.style.opacity = "0";
       const arrowWrap = containerRef.current.querySelector("[data-arrow-wrap]") as HTMLElement | null;
       if (arrowWrap) {
-        gsap.set(arrowWrap, { x: 0, opacity: 1, clearProps: "transform" });
+        arrowWrap.style.transform = "";
+        arrowWrap.style.opacity = "";
+        arrowWrap.style.visibility = "";
       }
     }
-    // On close: do nothing — overlay handles the transition
   }, [isOpen]);
 
   return (

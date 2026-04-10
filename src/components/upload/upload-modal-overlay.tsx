@@ -298,20 +298,19 @@ export function UploadModalOverlay() {
           // Fade hero out (button text takes over)
           animate(hero, { opacity: 0 }, { duration: 0.08 });
 
-          if (arrowEl && buttonContainer) {
-            // Arrow starts invisible at -16px, container becomes visible
-            // (hero covers the text, arrow is invisible — no flash)
-            gsap.set(arrowEl, { x: -16, autoAlpha: 0 });
+          if (buttonContainer) {
             buttonContainer.style.opacity = "1";
-
-            // Arrow springs out — autoAlpha handles visibility + opacity together
-            gsap.to(arrowEl, {
-              x: 0, autoAlpha: 1,
-              duration: 0.6, ease: "power2.out",
-              // Match SPRING feel: fast start, gentle settle
+          }
+          if (arrowEl) {
+            Object.assign(arrowEl.style, {
+              transform: "translateX(-16px)",
+              opacity: "0",
+              visibility: "hidden",
             });
-          } else if (buttonContainer) {
-            buttonContainer.style.opacity = "1";
+            // Force a layout read so the initial state is committed before animating
+            arrowEl.getBoundingClientRect();
+            Object.assign(arrowEl.style, { visibility: "visible" });
+            animate(arrowEl, { x: 0, opacity: 1 }, SPRING);
           }
 
           setTimeout(() => close(), 300);
