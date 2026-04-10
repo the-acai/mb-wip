@@ -1,26 +1,29 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode, type RefObject } from "react";
 import { useExpansion } from "@/components/expanded/expansion-context";
 
 interface UploadModalContextValue {
   isOpen: boolean;
   open: () => void;
   close: () => void;
+  /** Ref to the SEND IT pill element — modal reads its rect for the morph */
+  buttonPillRef: RefObject<HTMLElement | null>;
 }
 
 const UploadModalContext = createContext<UploadModalContextValue>({
   isOpen: false,
   open: () => {},
   close: () => {},
+  buttonPillRef: { current: null },
 });
 
 export function UploadModalProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   const { postData, collapse } = useExpansion();
+  const buttonPillRef = useRef<HTMLElement | null>(null);
 
   const open = useCallback(() => {
-    // Mutual exclusion: collapse expanded card if open
     if (postData) collapse();
     setIsOpen(true);
   }, [postData, collapse]);
@@ -30,7 +33,7 @@ export function UploadModalProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <UploadModalContext value={{ isOpen, open, close }}>
+    <UploadModalContext value={{ isOpen, open, close, buttonPillRef }}>
       {children}
     </UploadModalContext>
   );

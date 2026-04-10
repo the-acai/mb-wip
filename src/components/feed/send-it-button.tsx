@@ -1,35 +1,56 @@
 "use client";
 
-import { motion } from "motion/react";
+import { useRef, useEffect } from "react";
+import gsap from "gsap";
 import { ArrowRight } from "lucide-react";
 import { useUploadModal } from "@/components/upload/upload-modal-context";
 
-const CARD_SPRING = { type: "spring" as const, mass: 2, stiffness: 100, damping: 16 };
 const BREATH_DELAY = 0.14; // withinRowMs (80) + rowBreathMs (60)
 
 export function SendItButton() {
-  const { isOpen, open } = useUploadModal();
+  const { isOpen, open, buttonPillRef } = useUploadModal();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hasAnimated = useRef(false);
+
+  // Entrance animation (replaces Motion initial/animate)
+  useEffect(() => {
+    if (hasAnimated.current || !containerRef.current) return;
+    hasAnimated.current = true;
+
+    gsap.fromTo(
+      containerRef.current,
+      { opacity: 0, y: 24 },
+      {
+        opacity: 1,
+        y: 0,
+        duration: 0.8,
+        delay: BREATH_DELAY,
+        ease: "power2.out",
+      }
+    );
+  }, []);
+
+  // Fade out when modal opens, fade in when it closes
+  useEffect(() => {
+    if (!containerRef.current) return;
+    gsap.to(containerRef.current, {
+      opacity: isOpen ? 0 : 1,
+      duration: 0.2,
+      ease: "power2.out",
+      overwrite: true,
+    });
+  }, [isOpen]);
 
   return (
-    <motion.div
+    <div
+      ref={containerRef}
       className="fixed bottom-[4svh] left-1/2 z-50 flex -translate-x-1/2 items-center gap-0.5"
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: isOpen ? 0 : 1, y: 0 }}
-      transition={{
-        default: { ...CARD_SPRING, delay: BREATH_DELAY },
-        opacity: { duration: 0.4, ease: "easeOut", delay: BREATH_DELAY },
-      }}
-      style={{ pointerEvents: isOpen ? "none" : "auto" }}
+      style={{ opacity: 0, pointerEvents: isOpen ? "none" : "auto" }}
     >
-      <button
-        onClick={open}
-        className="group flex items-center gap-0.5"
-      >
-        <motion.span
-          layoutId="send-it"
-          className="inline-flex h-12 items-center overflow-hidden bg-[var(--text-dark)] px-6 transition-[padding] duration-300 ease-out group-hover:px-8"
-          style={{ borderRadius: 9999 }}
-          transition={{ layout: { type: "spring", mass: 1.2, stiffness: 170, damping: 16 } }}
+      <button onClick={open} className="group flex items-center gap-0.5">
+        <span
+          ref={buttonPillRef as React.RefObject<HTMLSpanElement>}
+          className="inline-flex h-12 items-center overflow-hidden rounded-full bg-[var(--text-dark)] px-6 transition-[padding] duration-300 ease-out group-hover:px-8"
         >
           {"SEND IT".split("").map((char, i) => (
             <span
@@ -40,11 +61,11 @@ export function SendItButton() {
               {char === " " ? "\u00A0" : char}
             </span>
           ))}
-        </motion.span>
+        </span>
         <span className="flex size-12 items-center justify-center rounded-full bg-[var(--text-dark)]">
           <ArrowRight className="size-5 text-[var(--page-bg)]" />
         </span>
       </button>
-    </motion.div>
+    </div>
   );
 }

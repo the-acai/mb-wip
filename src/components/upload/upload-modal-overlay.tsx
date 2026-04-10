@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useLayoutEffect } from "react";
 import { motion } from "motion/react";
+import gsap from "gsap";
 import { useDropzone } from "react-dropzone";
 import { ArrowRight } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,32 +15,27 @@ import { createClient } from "@/lib/supabase/client";
 import { uploadFile } from "@/lib/queries/storage";
 import { createPost } from "@/lib/queries/posts";
 
-const EXPANSION_SPRING = {
-  type: "spring" as const,
-  mass: 1.2,
-  stiffness: 170,
-  damping: 16,
-};
+const ROW_BREATH = 0.06; // 60ms
 
-// Interior element spring: same feel, constrained to ~400ms
-const INTERIOR_SPRING = {
-  type: "spring" as const,
-  visualDuration: 0.4,
-  bounce: 0.2,
-};
-
-const ROW_BREATH = 0.06; // 60ms, from DEFAULT_SPRING.rowBreathMs
-
-const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES: Record<string, string[]> = {
   "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"],
   "video/webm": [".webm"],
 };
 
 export function UploadModalOverlay() {
-  const { close } = useUploadModal();
+  const { close, buttonPillRef } = useUploadModal();
   const { user } = useUser();
   const queryClient = useQueryClient();
+
+  const modalRef = useRef<HTMLDivElement>(null);
+  const marqueeRef = useRef<HTMLDivElement>(null);
+  const userRowRef = useRef<HTMLDivElement>(null);
+  const captionRef = useRef<HTMLDivElement>(null);
+  const uploadAreaRef = useRef<HTMLDivElement>(null);
+  const readyBtnRef = useRef<HTMLDivElement>(null);
+  const arrowRef = useRef<HTMLDivElement>(null);
+  const tlRef = useRef<gsap.core.Timeline | null>(null);
 
   const [marqueeActive, setMarqueeActive] = useState(false);
   const [caption, setCaption] = useState("");
@@ -50,6 +46,126 @@ export function UploadModalOverlay() {
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
   const userColor = userName ? getAuthorColor(userName) : "#dfe0e0";
 
+  // ─── GSAP timeline: morph from button rect → modal, stagger interior ───
+  useLayoutEffect(() => {
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    // Get button rect (or fall back to viewport center)
+    const pill = buttonPillRef.current;
+    const buttonRect = pill
+      ? pill.getBoundingClientRect()
+      : { left: window.innerWidth / 2 - 80, top: window.innerHeight - 80, width: 160, height: 48 };
+
+    // Final modal position: centered, 544px wide
+    const modalWidth = 544;
+    const finalLeft = (window.innerWidth - modalWidth) / 2;
+
+    // Set modal to button's rect instantly (invisible start handled by autoAlpha)
+    gsap.set(modal, {
+      position: "fixed",
+      left: buttonRect.left,
+      top: buttonRect.top,
+      width: buttonRect.width,
+      height: buttonRect.height,
+      borderRadius: buttonRect.height / 2, // pill shape
+      padding: 0,
+      autoAlpha: 1,
+      overflow: "hidden",
+    });
+
+    // Hide interior elements
+    const interiors = [userRowRef, captionRef, uploadAreaRef, readyBtnRef, arrowRef];
+    interiors.forEach((ref) => {
+      if (ref.current) gsap.set(ref.current, { autoAlpha: 0 });
+    });
+
+    // Build the timeline
+    const tl = gsap.timeline({
+      defaults: { ease: "power3.inOut" },
+      onComplete: () => setMarqueeActive(true),
+    });
+
+    // Phase 1: Morph from button → modal
+    tl.to(modal, {
+      left: finalLeft,
+      top: "50%",
+      yPercent: -50,
+      width: modalWidth,
+      height: "auto",
+      borderRadius: 40,
+      padding: 24,
+      duration: 0.5,
+      ease: "power3.inOut",
+    });
+
+    // Phase 2: Stagger interior elements (overlapping with end of morph)
+    const staggerStart = "-=0.2"; // begin 200ms before morph finishes
+
+    // 2a: @user tag — slide up
+    tl.fromTo(
+      userRowRef.current,
+      { autoAlpha: 0, y: 16 },
+      { autoAlpha: 1, y: 0, duration: 0.4, ease: "power2.out" },
+      staggerStart
+    );
+
+    // 2b: Caption — scale in from left
+    tl.fromTo(
+      captionRef.current,
+      { autoAlpha: 0, scaleX: 0, transformOrigin: "left center" },
+      { autoAlpha: 1, scaleX: 1, duration: 0.4, ease: "power2.out" },
+      `>-${0.4 - ROW_BREATH}` // stagger by ROW_BREATH from 2a
+    );
+
+    // 2c: Upload area — slide up
+    tl.fromTo(
+      uploadAreaRef.current,
+      { autoAlpha: 0, y: 16 },
+      { autoAlpha: 1, y: 0, duration: 0.4, ease: "power2.out" },
+      `>-${0.4 - ROW_BREATH}`
+    );
+
+    // 2dI: I'M READY container — scale in on X
+    tl.fromTo(
+      readyBtnRef.current,
+      { autoAlpha: 0, scaleX: 0, transformOrigin: "left center" },
+      { autoAlpha: 1, scaleX: 1, duration: 0.4, ease: "power2.out" },
+      `>-${0.4 - ROW_BREATH}`
+    );
+
+    // 2dII: Arrow — slide in from left
+    tl.fromTo(
+      arrowRef.current,
+      { autoAlpha: 0, x: -48 },
+      { autoAlpha: 1, x: 0, duration: 0.4, ease: "power2.out" },
+      `>-${0.4 - ROW_BREATH}`
+    );
+
+    tlRef.current = tl;
+
+    return () => {
+      tl.kill();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Close handler: reverse timeline, then unmount ───
+  const handleClose = useCallback(() => {
+    const tl = tlRef.current;
+    if (!tl) {
+      close();
+      return;
+    }
+
+    setMarqueeActive(false);
+
+    tl.eventCallback("onReverseComplete", () => {
+      close();
+    });
+    tl.reverse();
+  }, [close]);
+
+  // ─── File handling ───
   const onDrop = useCallback((accepted: File[]) => {
     setFiles((prev) => [...prev, ...accepted]);
   }, []);
@@ -61,7 +177,6 @@ export function UploadModalOverlay() {
     multiple: true,
   });
 
-  // Handle Cmd+V paste
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -78,6 +193,7 @@ export function UploadModalOverlay() {
     }
   }, []);
 
+  // ─── Submit ───
   const handleSubmit = useCallback(async () => {
     if (submitting || files.length === 0) return;
     setSubmitting(true);
@@ -97,17 +213,16 @@ export function UploadModalOverlay() {
         assets,
       });
 
-      // Refresh the feed
       queryClient.invalidateQueries({ queryKey: ["feed"] });
-      close();
+      handleClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
       setSubmitting(false);
     }
-  }, [submitting, files, user, caption, queryClient, close]);
+  }, [submitting, files, user, caption, queryClient, handleClose]);
 
-  const marqueeText = (
+  // ─── Marquee content ───
+  const marqueeItems = (
     <span className="flex shrink-0 items-center gap-4">
       {Array.from({ length: 8 }).map((_, i) => (
         <span key={i} className="flex items-center gap-2">
@@ -128,7 +243,7 @@ export function UploadModalOverlay() {
       onPaste={handlePaste}
     >
       {/* Backdrop with cursor-follow dismiss */}
-      <CursorCollapseIcon onDismiss={close}>
+      <CursorCollapseIcon onDismiss={handleClose}>
         <motion.div
           className="absolute inset-0 bg-[var(--page-bg)]"
           initial={{ opacity: 0 }}
@@ -138,34 +253,29 @@ export function UploadModalOverlay() {
         />
       </CursorCollapseIcon>
 
-      {/* Modal container — morphs from SEND IT button */}
-      <motion.div
-        layoutId="send-it"
-        className="fixed left-1/2 top-1/2 z-50 flex -translate-x-1/2 -translate-y-1/2 flex-col gap-8 overflow-hidden bg-[#0e1708] p-6"
-        style={{ borderRadius: 40, width: 544 }}
-        transition={{ layout: EXPANSION_SPRING }}
-        onLayoutAnimationComplete={() => setMarqueeActive(true)}
+      {/* Modal — GSAP animates position/size from button rect */}
+      <div
+        ref={modalRef}
+        className="z-50 flex flex-col gap-8 bg-[#0e1708]"
+        style={{ visibility: "hidden" /* autoAlpha handles this */ }}
       >
         {/* Marquee row */}
-        <div className="flex items-center overflow-hidden">
+        <div ref={marqueeRef} className="flex items-center overflow-hidden">
           <div
             className="flex gap-0"
-            style={marqueeActive ? {
-              animation: "marquee-scroll 10s linear infinite",
-            } : undefined}
+            style={
+              marqueeActive
+                ? { animation: "marquee-scroll 10s linear infinite" }
+                : undefined
+            }
           >
-            {marqueeText}
-            {marqueeActive && marqueeText}
+            {marqueeItems}
+            {marqueeActive && marqueeItems}
           </div>
         </div>
 
-        {/* @user tag + caption input */}
-        <motion.div
-          className="flex w-full items-center gap-2"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...INTERIOR_SPRING, delay: 0 }}
-        >
+        {/* @user tag (2a) */}
+        <div ref={userRowRef} className="flex w-full items-center gap-2">
           <div
             className="flex h-14 shrink-0 items-center justify-center rounded-lg px-4"
             style={{ backgroundColor: userColor }}
@@ -174,14 +284,9 @@ export function UploadModalOverlay() {
               @{userName}
             </span>
           </div>
-          {/* Caption input — stagger 2b */}
-          <motion.div
-            className="flex-1"
-            initial={{ scaleX: 0, opacity: 0 }}
-            animate={{ scaleX: 1, opacity: 1 }}
-            transition={{ ...INTERIOR_SPRING, delay: ROW_BREATH }}
-            style={{ transformOrigin: "left center" }}
-          >
+
+          {/* Caption input (2b) */}
+          <div ref={captionRef} className="flex-1">
             <input
               type="text"
               value={caption}
@@ -189,15 +294,11 @@ export function UploadModalOverlay() {
               placeholder="is designing the greatest thing since sliced bread."
               className="h-14 w-full rounded-lg border border-[#3d4141] bg-[#222520] px-4 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#f7f8f8] placeholder:text-[#8b8b8b] focus:outline-none"
             />
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
 
-        {/* Upload area — stagger 2c */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...INTERIOR_SPRING, delay: ROW_BREATH * 2 }}
-        >
+        {/* Upload area (2c) */}
+        <div ref={uploadAreaRef}>
           <div
             {...getRootProps()}
             className={`flex h-[240px] cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border transition-colors ${
@@ -230,18 +331,12 @@ export function UploadModalOverlay() {
               </>
             )}
           </div>
-        </motion.div>
+        </div>
 
-        {/* I'M READY button — two-phase animation */}
+        {/* I'M READY button (2d) */}
         <div className="flex w-full items-center gap-0.5">
-          {/* Container scales in on X — stagger 2dI */}
-          <motion.div
-            className="flex-1"
-            initial={{ scaleX: 0, opacity: 0 }}
-            animate={{ scaleX: 1, opacity: 1 }}
-            transition={{ ...INTERIOR_SPRING, delay: ROW_BREATH * 3 }}
-            style={{ transformOrigin: "left center" }}
-          >
+          {/* Container scales in (2dI) */}
+          <div ref={readyBtnRef} className="flex-1">
             <button
               onClick={handleSubmit}
               disabled={submitting || files.length === 0}
@@ -251,25 +346,23 @@ export function UploadModalOverlay() {
                 {submitting ? "SENDING..." : "I'M READY"}
               </span>
             </button>
-          </motion.div>
+          </div>
 
-          {/* Arrow slides in from beneath — stagger 2dII */}
-          <motion.div
-            initial={{ x: -48, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ ...INTERIOR_SPRING, delay: ROW_BREATH * 4 }}
-          >
+          {/* Arrow slides in (2dII) */}
+          <div ref={arrowRef}>
             <span className="flex size-12 items-center justify-center rounded-full bg-[#f7f8f8]">
               <ArrowRight className="size-5 text-[#0e1708]" />
             </span>
-          </motion.div>
+          </div>
         </div>
 
         {/* Error message */}
         {error && (
-          <p className="font-heading text-sm text-red-400 text-center">{error}</p>
+          <p className="font-heading text-sm text-red-400 text-center">
+            {error}
+          </p>
         )}
-      </motion.div>
+      </div>
     </motion.div>
   );
 }
