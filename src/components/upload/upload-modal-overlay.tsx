@@ -310,14 +310,10 @@ export function UploadModalOverlay() {
 
         if (buttonContainer) buttonContainer.style.opacity = "1";
         if (arrowEl) {
-          Object.assign(arrowEl.style, {
-            transform: "translateX(-16px)",
-            opacity: "0",
-            visibility: "visible",
-          });
-          arrowEl.getBoundingClientRect();
-          // Don't track — arrow is on SendItButton, must survive overlay unmount
-          animate(arrowEl, { x: 0, opacity: 1 }, SPRING);
+          arrowEl.style.visibility = "visible";
+          // Explicit [from, to] keyframes — Motion's internal state may think
+          // the arrow is already at (x:0, opacity:1) from the entrance animation
+          animate(arrowEl, { x: [-16, 0], opacity: [0, 1] }, SPRING);
         }
       }, 390);
     }, 100);
