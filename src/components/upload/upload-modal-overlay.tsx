@@ -316,7 +316,8 @@ export function UploadModalOverlay() {
             visibility: "visible",
           });
           arrowEl.getBoundingClientRect();
-          track(animate(arrowEl, { x: 0, opacity: 1 }, SPRING));
+          // Don't track — arrow is on SendItButton, must survive overlay unmount
+          animate(arrowEl, { x: 0, opacity: 1 }, SPRING);
         }
       }, 390);
     }, 100);
