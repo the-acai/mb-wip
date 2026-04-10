@@ -25,9 +25,10 @@ const EXPANSION_SPRING = {
 const ROW_BREATH = 0.06;
 const MORPH_DURATION = 0.55;
 const MORPH_EASE = "back.out(1.7)";
+const CHAR_STAGGER = 0.02; // 20ms per character
 const INTERIOR_DURATION = 0.4;
 const INTERIOR_EASE = "power2.out";
-const INTERIOR_START = 0.3; // when interior stagger begins (overlaps morph)
+const INTERIOR_START = 0.3;
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES: Record<string, string[]> = {
@@ -36,12 +37,12 @@ const ACCEPTED_TYPES: Record<string, string[]> = {
 };
 
 export function UploadModalOverlay() {
-  const { close, buttonPillRef } = useUploadModal();
+  const { close, buttonPillRef, buttonCharRects } = useUploadModal();
   const { user } = useUser();
   const queryClient = useQueryClient();
 
   const modalRef = useRef<HTMLDivElement>(null);
-  const heroRef = useRef<HTMLDivElement>(null);
+  const flyingCharsRef = useRef<HTMLDivElement>(null);
   const marqueeRowRef = useRef<HTMLDivElement>(null);
   const marqueeInnerRef = useRef<HTMLDivElement>(null);
   const userRowRef = useRef<HTMLDivElement>(null);
@@ -61,13 +62,13 @@ export function UploadModalOverlay() {
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
   const userColor = userName ? getAuthorColor(userName) : "#dfe0e0";
 
-  // ─── Build the single GSAP timeline ───
+  // ─── Build single GSAP timeline ───
   useLayoutEffect(() => {
     const modal = modalRef.current;
-    const hero = heroRef.current;
+    const flyingChars = flyingCharsRef.current;
     const marqueeRow = marqueeRowRef.current;
     const marqueeInner = marqueeInnerRef.current;
-    if (!modal || !hero || !marqueeRow) return;
+    if (!modal || !flyingChars || !marqueeRow) return;
 
     const pill = buttonPillRef.current;
     const btnRect = pill
@@ -76,7 +77,6 @@ export function UploadModalOverlay() {
 
     const modalWidth = 544;
     const modalPadding = 24;
-    const contentWidth = modalWidth - modalPadding * 2;
 
     // Measure final height
     const savedCss = modal.style.cssText;
@@ -90,22 +90,41 @@ export function UploadModalOverlay() {
 
     const finalLeft = (window.innerWidth - modalWidth) / 2;
     const finalTop = (window.innerHeight - finalHeight) / 2;
-    const marqueeX = finalLeft + modalPadding;
-    const marqueeY = finalTop + modalPadding;
 
-    // ── Build timeline (paused — we call .play() to open) ──
+    // Measure where the marquee chars will be in the final layout
+    // Temporarily show marquee to measure
+    gsap.set(marqueeRow, { autoAlpha: 1 });
+    gsap.set(modal, {
+      position: "fixed",
+      left: finalLeft,
+      top: finalTop,
+      width: modalWidth,
+      height: finalHeight,
+      padding: modalPadding,
+      autoAlpha: 0, // invisible but measurable
+    });
+
+    const marqueeCharEls = marqueeRow.querySelectorAll("[data-mchar]");
+    const marqueeCharRects = Array.from(marqueeCharEls).map((el) => el.getBoundingClientRect());
+
+    // Now hide marquee and reset modal
+    gsap.set(marqueeRow, { autoAlpha: 0 });
+
+    // Get flying char elements
+    const flyCharEls = flyingChars.querySelectorAll("[data-fchar]");
+
+    // ── Build timeline ──
     const tl = gsap.timeline({
       paused: true,
       onReverseComplete: () => close(),
       onUpdate(this: gsap.core.Timeline) {
-        // Stop marquee scroll when reversing
         if (marqueeInner && this.reversed()) {
           marqueeInner.style.animation = "none";
         }
       },
     });
 
-    // 1. Modal morph: button rect → center
+    // 1. Modal morph
     tl.fromTo(modal, {
       position: "fixed",
       left: btnRect.left,
@@ -127,41 +146,49 @@ export function UploadModalOverlay() {
       ease: MORPH_EASE,
     }, 0);
 
-    // 2. Hero flight: button position → marquee position (same time as morph)
-    tl.fromTo(hero, {
-      position: "fixed",
-      left: btnRect.left,
-      top: btnRect.top,
-      width: btnRect.width,
-      height: btnRect.height,
-      autoAlpha: 1,
-      justifyContent: "center",
-    }, {
-      left: marqueeX,
-      top: marqueeY,
-      width: contentWidth,
-      height: 48,
-      justifyContent: "flex-start",
-      duration: MORPH_DURATION,
-      ease: MORPH_EASE,
-    }, 0);
+    // 2. Per-char flight from button positions to marquee positions
+    const charCount = Math.min(buttonCharRects.length, flyCharEls.length, marqueeCharRects.length);
 
-    // 3. Handoff: hide hero, show marquee, start scrolling
-    tl.set(hero, { autoAlpha: 0 });
-    tl.set(marqueeRow, { autoAlpha: 1 });
+    for (let i = 0; i < charCount; i++) {
+      const from = buttonCharRects[i];
+      const to = marqueeCharRects[i];
+      if (!from || !to) continue;
+
+      tl.fromTo(flyCharEls[i], {
+        position: "fixed",
+        left: from.left,
+        top: from.top,
+        width: from.width,
+        height: from.height,
+        autoAlpha: 1,
+        fontSize: "16px",
+      }, {
+        left: to.left,
+        top: to.top,
+        width: to.width,
+        height: to.height,
+        duration: MORPH_DURATION,
+        ease: MORPH_EASE,
+      }, i * CHAR_STAGGER);
+    }
+
+    // 3. Handoff: hide flying chars, show marquee, start scroll
+    const handoffTime = MORPH_DURATION + (charCount - 1) * CHAR_STAGGER;
+    tl.set(flyingChars, { autoAlpha: 0 }, handoffTime);
+    tl.set(marqueeRow, { autoAlpha: 1 }, handoffTime);
     tl.call(() => {
       if (marqueeInner) {
         marqueeInner.style.animation = "marquee-scroll 10s linear infinite";
       }
-    });
+    }, undefined, handoffTime);
 
     // 4. Interior stagger
     const interiors: [React.RefObject<HTMLElement | null>, gsap.TweenVars, gsap.TweenVars][] = [
-      [userRowRef,  { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0 }],
-      [captionRef,  { autoAlpha: 0, scaleX: 0, transformOrigin: "left center" }, { autoAlpha: 1, scaleX: 1 }],
+      [userRowRef, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0 }],
+      [captionRef, { autoAlpha: 0, scaleX: 0, transformOrigin: "left center" }, { autoAlpha: 1, scaleX: 1 }],
       [uploadAreaRef, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0 }],
       [readyBtnRef, { autoAlpha: 0, scaleX: 0, transformOrigin: "left center" }, { autoAlpha: 1, scaleX: 1 }],
-      [arrowRef,    { autoAlpha: 0, x: -48 }, { autoAlpha: 1, x: 0 }],
+      [arrowRef, { autoAlpha: 0, x: -48 }, { autoAlpha: 1, x: 0 }],
     ];
 
     interiors.forEach(([ref, from, to], i) => {
@@ -175,30 +202,19 @@ export function UploadModalOverlay() {
     });
 
     tlRef.current = tl;
-
-    // Play!
     tl.play();
 
-    return () => {
-      tl.kill();
-    };
+    return () => { tl.kill(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Close: just reverse the timeline ───
+  // ─── Close ───
   const handleClose = useCallback(() => {
     setClosing(true);
-
-    const tl = tlRef.current;
-    if (!tl) {
-      close();
-      return;
-    }
-
-    // Stop marquee immediately
     if (marqueeInnerRef.current) {
       marqueeInnerRef.current.style.animation = "none";
     }
-
+    const tl = tlRef.current;
+    if (!tl) { close(); return; }
     tl.reverse();
   }, [close]);
 
@@ -235,21 +251,17 @@ export function UploadModalOverlay() {
     if (submitting || files.length === 0) return;
     setSubmitting(true);
     setError(null);
-
     try {
       const supabase = createClient();
       const tempId = crypto.randomUUID();
-
       const assets = await Promise.all(
         files.map((file) => uploadFile(supabase, file, user!.id, tempId))
       );
-
       await createPost(supabase, {
         title: caption.trim() || "Untitled",
         body: caption.trim() || undefined,
         assets,
       });
-
       queryClient.invalidateQueries({ queryKey: ["feed"] });
       handleClose();
     } catch (err) {
@@ -259,14 +271,25 @@ export function UploadModalOverlay() {
   }, [submitting, files, user, caption, queryClient, handleClose]);
 
   // ─── Marquee content ───
+  const marqueeText = "SEND IT";
   const marqueeItems = (
     <span className="flex shrink-0 items-center gap-4">
       {Array.from({ length: 8 }).map((_, i) => (
         <span key={i} className="flex items-center gap-2">
           <span className="font-heading text-base font-bold text-[var(--page-bg)] whitespace-nowrap">
-            SEND IT
+            {i === 0
+              ? marqueeText.split("").map((c, ci) => (
+                  <span key={ci} data-mchar className="inline-block">
+                    {c === " " ? "\u00A0" : c}
+                  </span>
+                ))
+              : marqueeText}
           </span>
-          <ArrowRight className="size-3 text-[var(--page-bg)]" />
+          {i === 0 ? (
+            <span data-mchar><ArrowRight className="size-3 text-[var(--page-bg)]" /></span>
+          ) : (
+            <ArrowRight className="size-3 text-[var(--page-bg)]" />
+          )}
         </span>
       ))}
     </span>
@@ -284,22 +307,34 @@ export function UploadModalOverlay() {
         />
       </CursorCollapseIcon>
 
-      {/* Hero text — always in DOM, GSAP controls visibility */}
-      <div
-        ref={heroRef}
-        className="z-[60] flex h-12 items-center overflow-hidden"
-        style={{ visibility: "hidden", position: "fixed" }}
-      >
-        {marqueeItems}
+      {/* Flying chars — always in DOM, GSAP controls position & visibility */}
+      <div ref={flyingCharsRef} className="z-[60]" style={{ visibility: "hidden" }}>
+        {marqueeText.split("").map((c, i) => (
+          <span
+            key={i}
+            data-fchar
+            className="inline-flex items-center justify-center font-heading text-base font-bold text-[var(--page-bg)]"
+            style={{ position: "fixed" }}
+          >
+            {c === " " ? "\u00A0" : c}
+          </span>
+        ))}
+        <span
+          data-fchar
+          className="inline-flex items-center justify-center"
+          style={{ position: "fixed" }}
+        >
+          <ArrowRight className="size-5 text-[var(--page-bg)]" />
+        </span>
       </div>
 
-      {/* Modal container */}
+      {/* Modal */}
       <div
         ref={modalRef}
         className="z-50 flex flex-col gap-8 bg-[#0e1708]"
         style={{ visibility: "hidden" }}
       >
-        {/* Marquee row — hidden until hero hands off */}
+        {/* Marquee row — hidden until char handoff */}
         <div ref={marqueeRowRef} className="flex h-12 items-center overflow-hidden" style={{ visibility: "hidden" }}>
           <div ref={marqueeInnerRef} className="flex gap-0">
             {marqueeItems}
@@ -307,7 +342,7 @@ export function UploadModalOverlay() {
           </div>
         </div>
 
-        {/* @user tag (2a) */}
+        {/* @user tag */}
         <div ref={userRowRef} className="flex w-full items-center gap-2">
           <div
             className="flex h-14 shrink-0 items-center justify-center rounded-lg px-4"
@@ -328,14 +363,12 @@ export function UploadModalOverlay() {
           </div>
         </div>
 
-        {/* Upload area (2c) */}
+        {/* Upload area */}
         <div ref={uploadAreaRef}>
           <div
             {...getRootProps()}
             className={`flex h-[240px] cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border transition-colors ${
-              isDragActive
-                ? "border-[#f7f8f8] bg-[#2a2d28]"
-                : "border-[#3d4141] bg-[#222520]"
+              isDragActive ? "border-[#f7f8f8] bg-[#2a2d28]" : "border-[#3d4141] bg-[#222520]"
             }`}
           >
             <input {...getInputProps()} />
@@ -353,18 +386,14 @@ export function UploadModalOverlay() {
                 <p className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#d3d3d3] text-center">
                   Drag and drop your work. Or &#8984;V.
                 </p>
-                <p className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#8b8b8b]">
-                  Max size 10MB.
-                </p>
-                <p className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#8b8b8b]">
-                  png, jpg, gif, webp, webm, svg
-                </p>
+                <p className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#8b8b8b]">Max size 10MB.</p>
+                <p className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#8b8b8b]">png, jpg, gif, webp, webm, svg</p>
               </>
             )}
           </div>
         </div>
 
-        {/* I'M READY button (2d) */}
+        {/* I'M READY button */}
         <div className="flex w-full items-center gap-0.5">
           <div ref={readyBtnRef} className="flex-1" style={{ transformOrigin: "left center" }}>
             <button
@@ -384,9 +413,7 @@ export function UploadModalOverlay() {
           </div>
         </div>
 
-        {error && (
-          <p className="font-heading text-sm text-red-400 text-center">{error}</p>
-        )}
+        {error && <p className="font-heading text-sm text-red-400 text-center">{error}</p>}
       </div>
     </div>
   );
