@@ -292,27 +292,29 @@ export function UploadModalOverlay() {
       }, {
         ...SPRING,
         onComplete: () => {
-          // Safety: ensure button is visible (idempotent if early reveal already fired)
           const buttonContainer = buttonPillRef.current?.closest("[data-send-it-container]") as HTMLElement | null;
+          const pill = buttonPillRef.current as HTMLElement | null;
           if (buttonContainer) buttonContainer.style.opacity = "1";
+          // Restore pill — hero fades away in sync, seamless handoff
+          if (pill) pill.style.opacity = "";
 
-          // Hero fades out — button text takes over
           animate(hero, { opacity: 0 }, { duration: 0.08 });
 
           setTimeout(() => close(), 300);
         },
       }));
 
-      // ~200ms before morph settles: reveal button + spring arrow out
+      // ~200ms before morph settles: show container (for arrow) but hide pill
+      // (hero + modal cover the text area, only the arrow extends beyond)
       delay(() => {
         const buttonContainer = buttonPillRef.current?.closest("[data-send-it-container]") as HTMLElement | null;
+        const pill = buttonPillRef.current as HTMLElement | null;
         const arrowEl = buttonPillRef.current?.parentElement?.querySelector("[data-arrow-wrap]") as HTMLElement | null;
 
         if (buttonContainer) buttonContainer.style.opacity = "1";
+        if (pill) pill.style.opacity = "0"; // hide text, hero covers it
         if (arrowEl) {
           arrowEl.style.visibility = "visible";
-          // Explicit [from, to] keyframes — Motion's internal state may think
-          // the arrow is already at (x:0, opacity:1) from the entrance animation
           animate(arrowEl, { x: [-16, 0], opacity: [0, 1] }, SPRING);
         }
       }, 390);
