@@ -22,7 +22,7 @@ const EXPANSION_SPRING = {
   damping: 16,
 };
 
-const ROW_BREATH_MS = 60; // 60ms stagger between interior elements
+const ROW_BREATH_MS = 60;
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES: Record<string, string[]> = {
@@ -36,20 +36,24 @@ export function UploadModalOverlay() {
   const queryClient = useQueryClient();
 
   const modalRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const marqueeRowRef = useRef<HTMLDivElement>(null);
   const userRowRef = useRef<HTMLDivElement>(null);
   const captionRef = useRef<HTMLDivElement>(null);
   const uploadAreaRef = useRef<HTMLDivElement>(null);
   const readyBtnRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<HTMLDivElement>(null);
 
-  // Animation handles for cleanup / reversal
   const morphRef = useRef<AnimationPlaybackControls | null>(null);
+  const heroAnimRef = useRef<AnimationPlaybackControls | null>(null);
   const interiorAnimsRef = useRef<AnimationPlaybackControls[]>([]);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const buttonRectRef = useRef<DOMRect | null>(null);
+  const marqueeTargetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const [closing, setClosing] = useState(false);
   const [marqueeActive, setMarqueeActive] = useState(false);
+  const [heroVisible, setHeroVisible] = useState(true);
   const [caption, setCaption] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -58,10 +62,11 @@ export function UploadModalOverlay() {
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
   const userColor = userName ? getAuthorColor(userName) : "#dfe0e0";
 
-  // ─── Animation: Motion springs for morph + interior stagger ───
+  // ─── Animation ───
   useLayoutEffect(() => {
     const modal = modalRef.current;
-    if (!modal) return;
+    const hero = heroRef.current;
+    if (!modal || !hero) return;
 
     // Capture button rect
     const pill = buttonPillRef.current;
@@ -71,11 +76,12 @@ export function UploadModalOverlay() {
     buttonRectRef.current = buttonRect;
 
     const modalWidth = 544;
+    const modalPadding = 24;
 
-    // Measure final modal height at full width
+    // Measure final modal height
     const savedCss = modal.style.cssText;
     modal.style.cssText = `
-      position: fixed; width: ${modalWidth}px; padding: 24px;
+      position: fixed; width: ${modalWidth}px; padding: ${modalPadding}px;
       height: auto; visibility: hidden; left: 0; top: 0;
       display: flex; flex-direction: column; gap: 32px;
     `;
@@ -85,7 +91,15 @@ export function UploadModalOverlay() {
     const finalLeft = (window.innerWidth - modalWidth) / 2;
     const finalTop = (window.innerHeight - finalHeight) / 2;
 
-    // Set modal to button rect (starting state)
+    // Marquee target: top-left of the modal content area (after padding),
+    // vertically centered in the h-12 marquee row
+    const marqueeTarget = {
+      x: finalLeft + modalPadding,
+      y: finalTop + modalPadding,
+    };
+    marqueeTargetRef.current = marqueeTarget;
+
+    // ── Set modal to button rect (starting state) ──
     Object.assign(modal.style, {
       position: "fixed",
       left: `${buttonRect.left}px`,
@@ -99,7 +113,12 @@ export function UploadModalOverlay() {
       visibility: "visible",
     });
 
-    // Set interior elements to initial hidden state
+    // Hide marquee row (hero covers it until handoff)
+    if (marqueeRowRef.current) {
+      marqueeRowRef.current.style.opacity = "0";
+    }
+
+    // Hide interior elements
     const interiorEls = [
       { ref: userRowRef, initial: { opacity: 0, y: 16 } },
       { ref: captionRef, initial: { opacity: 0, scaleX: 0, transformOrigin: "left center" } },
@@ -120,19 +139,54 @@ export function UploadModalOverlay() {
       }
     });
 
-    // ── Phase 1: Motion spring morph ──
+    // ── Position hero at button text location ──
+    // Button text is centered in the pill (items-center, centered content)
+    Object.assign(hero.style, {
+      position: "fixed",
+      left: `${buttonRect.left}px`,
+      top: `${buttonRect.top}px`,
+      width: `${buttonRect.width}px`,
+      height: `${buttonRect.height}px`,
+      opacity: "1",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    });
+
+    // ── Phase 1: Modal morph (container only) ──
     const morphControls = animate(modal, {
       left: `${finalLeft}px`,
       top: `${finalTop}px`,
       width: `${modalWidth}px`,
       height: `${finalHeight}px`,
       borderRadius: "40px",
-      padding: "24px",
+      padding: `${modalPadding}px`,
     }, EXPANSION_SPRING);
 
     morphRef.current = morphControls;
 
-    // ── Phase 2: Motion spring stagger for interior elements ──
+    // ── Phase 2: Hero text flies from button to marquee position ──
+    const heroControls = animate(hero, {
+      left: `${marqueeTarget.x}px`,
+      top: `${marqueeTarget.y}px`,
+      width: `${modalWidth - modalPadding * 2}px`,
+      height: "48px",
+      justifyContent: "flex-start",
+    }, {
+      ...EXPANSION_SPRING,
+      onComplete: () => {
+        // Handoff: hide hero, show real marquee, start scrolling
+        setHeroVisible(false);
+        if (marqueeRowRef.current) {
+          marqueeRowRef.current.style.opacity = "1";
+        }
+        setMarqueeActive(true);
+      },
+    });
+
+    heroAnimRef.current = heroControls;
+
+    // ── Phase 3: Interior stagger (starts 250ms after morph begins) ──
     const anims: AnimationPlaybackControls[] = [];
     const timers: ReturnType<typeof setTimeout>[] = [];
 
@@ -144,17 +198,12 @@ export function UploadModalOverlay() {
       { ref: arrowRef, to: { opacity: 1, x: 0 } },
     ];
 
-    // Start interior stagger 250ms after morph begins
     const baseTimer = setTimeout(() => {
       staggerEntries.forEach(({ ref, to }, i) => {
         const timer = setTimeout(() => {
           if (ref.current) {
             const ctrl = animate(ref.current, to, EXPANSION_SPRING);
             anims.push(ctrl);
-          }
-          // Start marquee after last element begins animating
-          if (i === staggerEntries.length - 1) {
-            setMarqueeActive(true);
           }
         }, i * ROW_BREATH_MS);
         timers.push(timer);
@@ -168,32 +217,45 @@ export function UploadModalOverlay() {
     return () => {
       timers.forEach(clearTimeout);
       morphControls.stop();
+      heroControls.stop();
       anims.forEach((a) => a.stop());
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Close: spring interior elements back, then morph to button ───
+  // ─── Close ───
   const handleClose = useCallback(() => {
     const modal = modalRef.current;
+    const hero = heroRef.current;
     const buttonRect = buttonRectRef.current;
 
     setClosing(true);
     setMarqueeActive(false);
 
-    // Clear any pending stagger timers
     timersRef.current.forEach(clearTimeout);
-
-    // Stop all in-flight animations
     morphRef.current?.stop();
+    heroAnimRef.current?.stop();
     interiorAnimsRef.current.forEach((a) => a.stop());
 
-    if (!modal || !buttonRect) {
+    if (!modal || !hero || !buttonRect) {
       close();
       return;
     }
 
-    // Spring interior elements back to hidden
-    const reverseAnims: AnimationPlaybackControls[] = [];
+    // Show hero at marquee position, hide the real marquee
+    setHeroVisible(true);
+    if (marqueeRowRef.current) {
+      marqueeRowRef.current.style.opacity = "0";
+    }
+
+    const mt = marqueeTargetRef.current;
+    Object.assign(hero.style, {
+      left: `${mt.x}px`,
+      top: `${mt.y}px`,
+      opacity: "1",
+      justifyContent: "flex-start",
+    });
+
+    // Spring interior elements back
     const reverseEntries: { ref: React.RefObject<HTMLElement | null>; to: Record<string, unknown> }[] = [
       { ref: arrowRef, to: { opacity: 0, x: -48 } },
       { ref: readyBtnRef, to: { opacity: 0, scaleX: 0 } },
@@ -204,12 +266,22 @@ export function UploadModalOverlay() {
 
     reverseEntries.forEach(({ ref, to }) => {
       if (ref.current) {
-        reverseAnims.push(animate(ref.current, to, { ...EXPANSION_SPRING, mass: 0.8 }));
+        animate(ref.current, to, { ...EXPANSION_SPRING, mass: 0.8 });
       }
     });
 
-    // After a brief delay for interiors to retract, spring morph back to button
+    // After interiors start retracting, morph modal + hero back
     setTimeout(() => {
+      // Hero flies back to button position
+      animate(hero, {
+        left: `${buttonRect.left}px`,
+        top: `${buttonRect.top}px`,
+        width: `${buttonRect.width}px`,
+        height: `${buttonRect.height}px`,
+        justifyContent: "center",
+      }, EXPANSION_SPRING);
+
+      // Modal shrinks back to button rect
       const reverseControls = animate(modal, {
         left: `${buttonRect.left}px`,
         top: `${buttonRect.top}px`,
@@ -282,7 +354,7 @@ export function UploadModalOverlay() {
     }
   }, [submitting, files, user, caption, queryClient, handleClose]);
 
-  // ─── Marquee content ───
+  // ─── Marquee content (used by both hero and real marquee) ───
   const marqueeItems = (
     <span className="flex shrink-0 items-center gap-4">
       {Array.from({ length: 8 }).map((_, i) => (
@@ -303,7 +375,7 @@ export function UploadModalOverlay() {
       transition={{ duration: 0.2 }}
       onPaste={handlePaste}
     >
-      {/* Backdrop with cursor-follow dismiss */}
+      {/* Backdrop */}
       <CursorCollapseIcon onDismiss={handleClose}>
         <motion.div
           className="absolute inset-0 bg-[var(--page-bg)]"
@@ -313,14 +385,25 @@ export function UploadModalOverlay() {
         />
       </CursorCollapseIcon>
 
-      {/* Modal — all Motion springs */}
+      {/* Hero text — flies from button position to marquee position */}
+      {heroVisible && (
+        <div
+          ref={heroRef}
+          className="z-[60] flex h-12 items-center overflow-hidden"
+          style={{ opacity: 0 }}
+        >
+          {marqueeItems}
+        </div>
+      )}
+
+      {/* Modal container */}
       <div
         ref={modalRef}
         className="z-50 flex flex-col gap-8 bg-[#0e1708]"
         style={{ visibility: "hidden" }}
       >
-        {/* Marquee row — always visible (not part of interior stagger) */}
-        <div className="flex h-12 items-center overflow-hidden">
+        {/* Marquee row (hidden until hero hands off) */}
+        <div ref={marqueeRowRef} className="flex h-12 items-center overflow-hidden" style={{ opacity: 0 }}>
           <div
             className="flex gap-0"
             style={
@@ -344,8 +427,6 @@ export function UploadModalOverlay() {
               @{userName}
             </span>
           </div>
-
-          {/* Caption input (2b) */}
           <div ref={captionRef} className="flex-1" style={{ transformOrigin: "left center" }}>
             <input
               type="text"
@@ -406,7 +487,6 @@ export function UploadModalOverlay() {
               </span>
             </button>
           </div>
-
           <div ref={arrowRef}>
             <span className="flex size-12 items-center justify-center rounded-full bg-[#f7f8f8]">
               <ArrowRight className="size-5 text-[#0e1708]" />
@@ -415,9 +495,7 @@ export function UploadModalOverlay() {
         </div>
 
         {error && (
-          <p className="font-heading text-sm text-red-400 text-center">
-            {error}
-          </p>
+          <p className="font-heading text-sm text-red-400 text-center">{error}</p>
         )}
       </div>
     </motion.div>
