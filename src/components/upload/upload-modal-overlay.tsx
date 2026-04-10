@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useLayoutEffect } from "react";
 import { motion } from "motion/react";
 import gsap from "gsap";
-import { CustomEase } from "gsap/CustomEase";
+import { Flip } from "gsap/Flip";
 import { useDropzone } from "react-dropzone";
 import { ArrowRight } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,14 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 import { uploadFile } from "@/lib/queries/storage";
 import { createPost } from "@/lib/queries/posts";
 
-gsap.registerPlugin(CustomEase);
-
-// Approximation of EXPANSION_SPRING (mass 1.2, stiffness 170, damping 16)
-// Fast rise → 12% overshoot at ~32% progress → settles by ~55%
-CustomEase.create(
-  "expansionSpring",
-  "M0,0 C0.12,0.45,0.24,0.89,0.32,1.01 0.40,1.10,0.44,1.12,0.48,1.12 0.56,1.08,0.65,1.02,0.76,1.0 0.86,0.99,0.94,1.0,1,1"
-);
+gsap.registerPlugin(Flip);
 
 const EXPANSION_SPRING = {
   type: "spring" as const,
@@ -33,12 +26,11 @@ const EXPANSION_SPRING = {
 };
 
 const ROW_BREATH = 0.06;
-const MORPH_DURATION = 0.65;
-const MORPH_EASE = "expansionSpring";
-const CHAR_STAGGER = 0.02;
+const MORPH_DURATION = 0.6;
+const MORPH_EASE = "expo.out";
 const INTERIOR_DURATION = 0.4;
 const INTERIOR_EASE = "power2.out";
-const INTERIOR_START = 0.3;
+const INTERIOR_START = 0.25;
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES: Record<string, string[]> = {
@@ -47,12 +39,12 @@ const ACCEPTED_TYPES: Record<string, string[]> = {
 };
 
 export function UploadModalOverlay() {
-  const { close, buttonPillRef, buttonCharRects } = useUploadModal();
+  const { close, buttonPillRef } = useUploadModal();
   const { user } = useUser();
   const queryClient = useQueryClient();
 
   const modalRef = useRef<HTMLDivElement>(null);
-  const flyingCharsRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
   const marqueeRowRef = useRef<HTMLDivElement>(null);
   const marqueeInnerRef = useRef<HTMLDivElement>(null);
   const userRowRef = useRef<HTMLDivElement>(null);
@@ -72,13 +64,13 @@ export function UploadModalOverlay() {
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
   const userColor = userName ? getAuthorColor(userName) : "#dfe0e0";
 
-  // ─── Build single GSAP timeline ───
+  // ─── Build GSAP timeline with Flip ───
   useLayoutEffect(() => {
     const modal = modalRef.current;
-    const flyingChars = flyingCharsRef.current;
+    const hero = heroRef.current;
     const marqueeRow = marqueeRowRef.current;
     const marqueeInner = marqueeInnerRef.current;
-    if (!modal || !flyingChars || !marqueeRow) return;
+    if (!modal || !hero || !marqueeRow) return;
 
     const pill = buttonPillRef.current;
     const btnRect = pill
@@ -87,8 +79,9 @@ export function UploadModalOverlay() {
 
     const modalWidth = 544;
     const modalPadding = 24;
+    const contentWidth = modalWidth - modalPadding * 2;
 
-    // Measure final height
+    // ── Measure final modal height ──
     const savedCss = modal.style.cssText;
     modal.style.cssText = `
       position: fixed; width: ${modalWidth}px; padding: ${modalPadding}px;
@@ -100,27 +93,47 @@ export function UploadModalOverlay() {
 
     const finalLeft = (window.innerWidth - modalWidth) / 2;
     const finalTop = (window.innerHeight - finalHeight) / 2;
+    const marqueeX = finalLeft + modalPadding;
+    const marqueeY = finalTop + modalPadding;
 
-    // Measure marquee char targets in final layout
-    gsap.set(marqueeRow, { autoAlpha: 1 });
+    // ── 1. Set start positions (button rect) ──
     gsap.set(modal, {
-      position: "fixed", left: finalLeft, top: finalTop,
-      width: modalWidth, height: finalHeight, padding: modalPadding,
-      autoAlpha: 0,
+      position: "fixed",
+      left: btnRect.left, top: btnRect.top,
+      width: btnRect.width, height: btnRect.height,
+      borderRadius: btnRect.height / 2,
+      padding: 0, overflow: "hidden", autoAlpha: 1,
     });
 
-    const marqueeCharEls = marqueeRow.querySelectorAll("[data-mchar]");
-    const marqueeCharRects = Array.from(marqueeCharEls).map((el) => el.getBoundingClientRect());
+    gsap.set(hero, {
+      position: "fixed", zIndex: 60,
+      left: btnRect.left, top: btnRect.top,
+      width: btnRect.width, height: btnRect.height,
+      autoAlpha: 1,
+      display: "flex", alignItems: "center", justifyContent: "center",
+    });
 
+    // Hide marquee + interiors
     gsap.set(marqueeRow, { autoAlpha: 0 });
 
-    // Get flying char elements
-    const flyCharEls = flyingChars.querySelectorAll("[data-fchar]");
+    // ── 2. Capture start states with Flip ──
+    const modalStartState = Flip.getState(modal);
+    const heroStartState = Flip.getState(hero);
 
-    // Hide all flying chars initially (parent stays visible for GSAP to work)
-    gsap.set(flyCharEls, { autoAlpha: 0 });
+    // ── 3. Set final positions ──
+    gsap.set(modal, {
+      left: finalLeft, top: finalTop,
+      width: modalWidth, height: finalHeight,
+      borderRadius: 40, padding: modalPadding,
+    });
 
-    // ── Build timeline ──
+    gsap.set(hero, {
+      left: marqueeX, top: marqueeY,
+      width: contentWidth, height: 48,
+      justifyContent: "flex-start",
+    });
+
+    // ── 4. Build timeline ──
     const tl = gsap.timeline({
       paused: true,
       onReverseComplete: () => close(),
@@ -131,52 +144,36 @@ export function UploadModalOverlay() {
       },
     });
 
-    // 1. Modal morph
-    tl.fromTo(modal, {
-      position: "fixed",
-      left: btnRect.left, top: btnRect.top,
-      width: btnRect.width, height: btnRect.height,
-      borderRadius: btnRect.height / 2,
-      padding: 0, overflow: "hidden", autoAlpha: 1,
-    }, {
-      left: finalLeft, top: finalTop,
-      width: modalWidth, height: finalHeight,
-      borderRadius: 40, padding: modalPadding,
-      duration: MORPH_DURATION, ease: MORPH_EASE,
-    }, 0);
+    // Modal Flip morph: from button rect → final center
+    tl.add(
+      Flip.from(modalStartState, {
+        duration: MORPH_DURATION,
+        ease: MORPH_EASE,
+        absolute: true,
+      }),
+      0,
+    );
 
-    // 2. Per-char flight from button → marquee
-    const charCount = Math.min(buttonCharRects.length, flyCharEls.length, marqueeCharRects.length);
+    // Hero Flip: from button position → marquee position
+    tl.add(
+      Flip.from(heroStartState, {
+        duration: MORPH_DURATION,
+        ease: MORPH_EASE,
+        absolute: true,
+      }),
+      0,
+    );
 
-    for (let i = 0; i < charCount; i++) {
-      const from = buttonCharRects[i];
-      const to = marqueeCharRects[i];
-      if (!from || !to) continue;
-
-      tl.fromTo(flyCharEls[i], {
-        position: "fixed",
-        zIndex: 60,
-        left: from.left, top: from.top,
-        width: from.width, height: from.height,
-        autoAlpha: 1,
-      }, {
-        left: to.left, top: to.top,
-        width: to.width, height: to.height,
-        duration: MORPH_DURATION, ease: MORPH_EASE,
-      }, i * CHAR_STAGGER);
-    }
-
-    // 3. Crossfade handoff: flying chars fade out, marquee fades in
-    const handoffTime = MORPH_DURATION + (charCount - 1) * CHAR_STAGGER;
-    tl.to(flyCharEls, { autoAlpha: 0, duration: 0.1 }, handoffTime - 0.1);
-    tl.to(marqueeRow, { autoAlpha: 1, duration: 0.1 }, handoffTime - 0.1);
+    // Crossfade handoff: hero → marquee
+    tl.to(hero, { autoAlpha: 0, duration: 0.12 }, MORPH_DURATION - 0.12);
+    tl.to(marqueeRow, { autoAlpha: 1, duration: 0.12 }, MORPH_DURATION - 0.12);
     tl.call(() => {
       if (marqueeInner) {
         marqueeInner.style.animation = "marquee-scroll 10s linear infinite";
       }
-    }, undefined, handoffTime);
+    }, undefined, MORPH_DURATION);
 
-    // 4. Interior stagger
+    // Interior stagger
     const interiors: [React.RefObject<HTMLElement | null>, gsap.TweenVars, gsap.TweenVars][] = [
       [userRowRef, { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0 }],
       [captionRef, { autoAlpha: 0, scaleX: 0, transformOrigin: "left center" }, { autoAlpha: 1, scaleX: 1 }],
@@ -224,15 +221,12 @@ export function UploadModalOverlay() {
     if (!items) return;
     const pastedFiles: File[] = [];
     for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (item.kind === "file") {
-        const file = item.getAsFile();
+      if (items[i].kind === "file") {
+        const file = items[i].getAsFile();
         if (file) pastedFiles.push(file);
       }
     }
-    if (pastedFiles.length > 0) {
-      setFiles((prev) => [...prev, ...pastedFiles]);
-    }
+    if (pastedFiles.length > 0) setFiles((prev) => [...prev, ...pastedFiles]);
   }, []);
 
   // ─── Submit ───
@@ -260,25 +254,14 @@ export function UploadModalOverlay() {
   }, [submitting, files, user, caption, queryClient, handleClose]);
 
   // ─── Marquee content ───
-  const marqueeText = "SEND IT";
   const marqueeItems = (
     <span className="flex shrink-0 items-center gap-4">
       {Array.from({ length: 8 }).map((_, i) => (
         <span key={i} className="flex items-center gap-2">
           <span className="font-heading text-base font-bold text-[var(--page-bg)] whitespace-nowrap">
-            {i === 0
-              ? marqueeText.split("").map((c, ci) => (
-                  <span key={ci} data-mchar className="inline-block">
-                    {c === " " ? "\u00A0" : c}
-                  </span>
-                ))
-              : marqueeText}
+            SEND IT
           </span>
-          {i === 0 ? (
-            <span data-mchar><ArrowRight className="size-3 text-[var(--page-bg)]" /></span>
-          ) : (
-            <ArrowRight className="size-3 text-[var(--page-bg)]" />
-          )}
+          <ArrowRight className="size-3 text-[var(--page-bg)]" />
         </span>
       ))}
     </span>
@@ -296,25 +279,16 @@ export function UploadModalOverlay() {
         />
       </CursorCollapseIcon>
 
-      {/* Flying chars — parent visible, individual chars hidden via autoAlpha */}
-      <div ref={flyingCharsRef} className="pointer-events-none z-[60]">
-        {marqueeText.split("").map((c, i) => (
-          <span
-            key={i}
-            data-fchar
-            className="inline-flex items-center justify-center font-heading text-base font-bold text-[var(--page-bg)]"
-            style={{ position: "fixed", visibility: "hidden" }}
-          >
-            {c === " " ? "\u00A0" : c}
-          </span>
-        ))}
-        <span
-          data-fchar
-          className="inline-flex items-center justify-center"
-          style={{ position: "fixed", visibility: "hidden" }}
-        >
-          <ArrowRight className="size-5 text-[var(--page-bg)]" />
+      {/* Hero text — single block, flies from button to marquee position */}
+      <div
+        ref={heroRef}
+        className="pointer-events-none flex h-12 items-center gap-2 overflow-hidden"
+        style={{ visibility: "hidden" }}
+      >
+        <span className="font-heading text-base font-bold text-[var(--page-bg)] whitespace-nowrap">
+          SEND IT
         </span>
+        <ArrowRight className="size-3 text-[var(--page-bg)]" />
       </div>
 
       {/* Modal */}
@@ -323,7 +297,7 @@ export function UploadModalOverlay() {
         className="z-50 flex flex-col gap-8 bg-[#0e1708]"
         style={{ visibility: "hidden" }}
       >
-        {/* Marquee row */}
+        {/* Marquee row — hidden until hero hands off */}
         <div ref={marqueeRowRef} className="flex h-12 items-center overflow-hidden" style={{ visibility: "hidden" }}>
           <div ref={marqueeInnerRef} className="flex gap-0">
             {marqueeItems}
@@ -336,21 +310,16 @@ export function UploadModalOverlay() {
             <span className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#f7f8f8] whitespace-nowrap">@{userName}</span>
           </div>
           <div ref={captionRef} className="flex-1" style={{ transformOrigin: "left center" }}>
-            <input
-              type="text" value={caption} onChange={(e) => setCaption(e.target.value)}
+            <input type="text" value={caption} onChange={(e) => setCaption(e.target.value)}
               placeholder="is designing the greatest thing since sliced bread."
-              className="h-14 w-full rounded-lg border border-[#3d4141] bg-[#222520] px-4 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#f7f8f8] placeholder:text-[#8b8b8b] focus:outline-none"
-            />
+              className="h-14 w-full rounded-lg border border-[#3d4141] bg-[#222520] px-4 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#f7f8f8] placeholder:text-[#8b8b8b] focus:outline-none" />
           </div>
         </div>
 
         <div ref={uploadAreaRef}>
-          <div
-            {...getRootProps()}
+          <div {...getRootProps()}
             className={`flex h-[240px] cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border transition-colors ${
-              isDragActive ? "border-[#f7f8f8] bg-[#2a2d28]" : "border-[#3d4141] bg-[#222520]"
-            }`}
-          >
+              isDragActive ? "border-[#f7f8f8] bg-[#2a2d28]" : "border-[#3d4141] bg-[#222520]"}`}>
             <input {...getInputProps()} />
             {files.length > 0 ? (
               <div className="flex flex-col items-center gap-2">
