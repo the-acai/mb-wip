@@ -319,8 +319,8 @@ export function UploadModalOverlay() {
         className="z-50 flex flex-col gap-8 bg-[#0e1708]"
         style={{ visibility: "hidden" }}
       >
-        {/* Marquee row */}
-        <div className="flex items-center overflow-hidden">
+        {/* Marquee row — always visible (not part of interior stagger) */}
+        <div className="flex h-12 items-center overflow-hidden">
           <div
             className="flex gap-0"
             style={
@@ -330,7 +330,7 @@ export function UploadModalOverlay() {
             }
           >
             {marqueeItems}
-            {marqueeActive && marqueeItems}
+            {marqueeItems}
           </div>
         </div>
 

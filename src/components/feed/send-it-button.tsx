@@ -30,15 +30,21 @@ export function SendItButton() {
     );
   }, []);
 
-  // Fade out when modal opens, fade in when it closes
+  // Hide instantly when modal opens (marquee takes over the text),
+  // fade back in when modal closes
   useEffect(() => {
     if (!containerRef.current) return;
-    gsap.to(containerRef.current, {
-      opacity: isOpen ? 0 : 1,
-      duration: 0.2,
-      ease: "power2.out",
-      overwrite: true,
-    });
+    if (isOpen) {
+      gsap.set(containerRef.current, { opacity: 0 });
+    } else {
+      gsap.to(containerRef.current, {
+        opacity: 1,
+        duration: 0.3,
+        delay: 0.2,
+        ease: "power2.out",
+        overwrite: true,
+      });
+    }
   }, [isOpen]);
 
   return (
