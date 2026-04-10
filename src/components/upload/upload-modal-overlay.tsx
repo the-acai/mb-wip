@@ -242,7 +242,10 @@ export function UploadModalOverlay() {
     const modal = modalRef.current;
     const hero = heroRef.current;
     const marqueeRow = marqueeRowRef.current;
-    const btnRect = buttonRectRef.current;
+    // Re-measure pill rect — it may be narrower now than at open time
+    // (hover state widens pill from px-6 to px-8, adds 16px)
+    const pill = buttonPillRef.current;
+    const btnRect = pill ? pill.getBoundingClientRect() : buttonRectRef.current;
 
     stopAll();
 
