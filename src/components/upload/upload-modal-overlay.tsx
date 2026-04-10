@@ -293,6 +293,15 @@ export function UploadModalOverlay() {
         ...SPRING,
         onComplete: () => close(),
       }));
+
+      // Button arrow slides out from pill 300ms before close() fires
+      const arrowEl = buttonPillRef.current?.parentElement?.querySelector("[data-arrow-wrap]") as HTMLElement | null;
+      if (arrowEl) {
+        Object.assign(arrowEl.style, { transform: "translateX(-16px)", opacity: "0" });
+        setTimeout(() => {
+          animate(arrowEl, { x: 0, opacity: 1 }, SPRING);
+        }, 300);
+      }
     }, 100);
 
     timersRef.current.push(closeTimer);

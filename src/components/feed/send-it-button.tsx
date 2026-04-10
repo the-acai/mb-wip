@@ -37,27 +37,10 @@ export function SendItButton() {
     }
   }, []);
 
-  // Hide instantly on open; on close, pill appears and arrow slides out
-  const wasOpenRef = useRef(false);
+  // Hide/show based on modal state (arrow animation handled by overlay)
   useEffect(() => {
     if (!containerRef.current) return;
-    const arrowWrap = containerRef.current.querySelector("[data-arrow-wrap]");
-
-    if (isOpen) {
-      gsap.set(containerRef.current, { opacity: 0 });
-      wasOpenRef.current = true;
-    } else if (wasOpenRef.current) {
-      // Pill text appears instantly (hero is already there)
-      gsap.set(containerRef.current, { opacity: 1 });
-      // Arrow slides out from behind the pill with a spring
-      if (arrowWrap) {
-        gsap.fromTo(arrowWrap, { x: -16, opacity: 0 }, {
-          x: 0, opacity: 1,
-          duration: 0.5, ease: "back.out(2)",
-        });
-      }
-      wasOpenRef.current = false;
-    }
+    gsap.set(containerRef.current, { opacity: isOpen ? 0 : 1 });
   }, [isOpen]);
 
   return (
