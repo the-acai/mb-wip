@@ -357,16 +357,15 @@ export function UploadModalOverlay() {
         />
       </CursorCollapseIcon>
 
-      {/* Hero — always in DOM, opacity controlled by animate() */}
+      {/* Hero — just the text, no arrow (button has its own arrow circle) */}
       <div
         ref={heroRef}
-        className="pointer-events-none flex h-12 items-center gap-2 overflow-hidden"
+        className="pointer-events-none flex h-12 items-center overflow-hidden"
         style={{ opacity: 0, position: "fixed", zIndex: 60 }}
       >
         <span className="font-heading text-base font-bold text-[var(--page-bg)] whitespace-nowrap">
           SEND IT
         </span>
-        <ArrowRight className="size-3 text-[var(--page-bg)]" />
       </div>
 
       {/* Modal */}
