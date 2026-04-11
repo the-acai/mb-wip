@@ -31,6 +31,14 @@ export function LoopScrollContainer({
   const scrollOffsetRef = useRef(0); // scroll position relative to main content top
   const initializedRef = useRef(false);
 
+  // Helper: get the scroll position where main content starts
+  const getMainContentTop = useCallback(() => {
+    const main = mainContentRef.current;
+    if (!main) return 0;
+    // offsetTop gives the distance from the top of the scroll container's content
+    return main.offsetTop;
+  }, []);
+
   // Lock body scroll when loop is active
   useLayoutEffect(() => {
     if (!enabled) {
@@ -49,19 +57,20 @@ export function LoopScrollContainer({
     if (!enabled) return;
 
     const container = scrollContainerRef.current;
-    const topBuffer = topBufferRef.current;
-    if (!container || !topBuffer) return;
+    if (!container) return;
+
+    const mainTop = getMainContentTop();
 
     if (!initializedRef.current) {
       // First activation: position at start of main content
-      container.scrollTop = topBuffer.offsetHeight;
+      container.scrollTop = mainTop;
       scrollOffsetRef.current = 0;
       initializedRef.current = true;
     } else {
       // Posts changed (pagination): restore relative position
-      container.scrollTop = topBuffer.offsetHeight + scrollOffsetRef.current;
+      container.scrollTop = mainTop + scrollOffsetRef.current;
     }
-  }, [enabled, posts.length]);
+  }, [enabled, posts.length, getMainContentTop]);
 
   // Teleportation logic (RAF-gated)
   const handleScroll = useCallback(() => {
@@ -69,21 +78,20 @@ export function LoopScrollContainer({
 
     const container = scrollContainerRef.current;
     const mainContent = mainContentRef.current;
-    const topBuffer = topBufferRef.current;
-    if (!container || !mainContent || !topBuffer) return;
+    if (!container || !mainContent) return;
 
+    const mainTop = mainContent.offsetTop;
     const mainHeight = mainContent.offsetHeight;
-    const bufferHeight = topBuffer.offsetHeight;
     const { scrollTop, clientHeight } = container;
 
     // Track position relative to main content top
-    scrollOffsetRef.current = scrollTop - bufferHeight;
+    scrollOffsetRef.current = scrollTop - mainTop;
 
     // Scrolled past bottom of main content → teleport up
-    if (scrollTop >= bufferHeight + mainHeight) {
+    if (scrollTop >= mainTop + mainHeight) {
       isTeleportingRef.current = true;
       container.scrollTop = scrollTop - mainHeight;
-      scrollOffsetRef.current = container.scrollTop - bufferHeight;
+      scrollOffsetRef.current = container.scrollTop - mainTop;
       requestAnimationFrame(() => {
         isTeleportingRef.current = false;
       });
@@ -91,10 +99,10 @@ export function LoopScrollContainer({
     }
 
     // Scrolled above top of main content minus one viewport → teleport down
-    if (scrollTop < bufferHeight - clientHeight) {
+    if (scrollTop < mainTop - clientHeight) {
       isTeleportingRef.current = true;
       container.scrollTop = scrollTop + mainHeight;
-      scrollOffsetRef.current = container.scrollTop - bufferHeight;
+      scrollOffsetRef.current = container.scrollTop - mainTop;
       requestAnimationFrame(() => {
         isTeleportingRef.current = false;
       });
@@ -147,7 +155,12 @@ export function LoopScrollContainer({
         />
       )}
 
-      <div key="main-content" ref={mainContentRef} role={enabled ? "feed" : undefined} aria-label={enabled ? "Project feed" : undefined}>
+      <div
+        key="main-content"
+        ref={mainContentRef}
+        role={enabled ? "feed" : undefined}
+        aria-label={enabled ? "Project feed" : undefined}
+      >
         {children}
       </div>
 

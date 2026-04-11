@@ -7,7 +7,7 @@ import { FeedGrid } from "./feed-grid";
 import { LoopScrollContainer } from "./loop-scroll-container";
 import type { FeedPost } from "./experiment-card";
 
-const MIN_POSTS_FOR_LOOP = 12;
+const MIN_POSTS_FOR_LOOP = 3;
 
 export function FeedClient() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } =
