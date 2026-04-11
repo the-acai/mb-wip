@@ -14,9 +14,9 @@ const SPRING = {
 
 const HOVER_SPRING = {
   type: "spring" as const,
-  mass: 0.5,
-  stiffness: 250,
-  damping: 18,
+  mass: 2,
+  stiffness: 100,
+  damping: 16,
 };
 
 const BREATH_DELAY_MS = 140;
@@ -101,7 +101,7 @@ export function SendItButton() {
               className="inline-block font-heading text-base font-bold text-[var(--page-bg)]"
               variants={{
                 idle: { y: 0 },
-                hover: { y: -3 },
+                hover: { y: [0, -3, 0] },
               }}
               transition={{ ...HOVER_SPRING, delay: i * 0.04 }}
             >
