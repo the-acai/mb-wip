@@ -1,10 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 import { useFeedPosts } from "@/hooks/use-feed-posts";
 import { FeedGrid } from "./feed-grid";
+import { LoopScrollContainer } from "./loop-scroll-container";
 import type { FeedPost } from "./experiment-card";
+
+const MIN_POSTS_FOR_LOOP = 12;
 
 export function FeedClient() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } =
@@ -15,12 +18,34 @@ export function FeedClient() {
     [data]
   );
 
+  // Detect when the shrinking header spacer (40svh) is fully scrolled past
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (headerCollapsed) return; // once active, stay active
+
+    const handler = () => {
+      const threshold = window.innerHeight * 0.4; // 40svh spacer height
+      if (window.scrollY >= threshold) {
+        setHeaderCollapsed(true);
+      }
+    };
+
+    handler(); // check immediately (page may have loaded already scrolled)
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, [headerCollapsed]);
+
+  const loopEnabled = headerCollapsed && posts.length >= MIN_POSTS_FOR_LOOP;
+
   return (
-    <FeedGrid
-      posts={posts}
-      hasMore={hasNextPage}
-      loading={isFetchingNextPage || (isFetching && posts.length === 0)}
-      onLoadMore={() => fetchNextPage()}
-    />
+    <LoopScrollContainer posts={posts} enabled={loopEnabled}>
+      <FeedGrid
+        posts={posts}
+        hasMore={hasNextPage}
+        loading={isFetchingNextPage || (isFetching && posts.length === 0)}
+        onLoadMore={() => fetchNextPage()}
+      />
+    </LoopScrollContainer>
   );
 }
