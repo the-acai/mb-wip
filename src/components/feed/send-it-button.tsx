@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { animate } from "motion/react";
+import { motion, animate } from "motion/react";
 import { ArrowRight } from "lucide-react";
 import { useUploadModal } from "@/components/upload/upload-modal-context";
 
@@ -10,6 +10,13 @@ const SPRING = {
   mass: 1.2,
   stiffness: 170,
   damping: 16,
+};
+
+const HOVER_SPRING = {
+  type: "spring" as const,
+  mass: 0.5,
+  stiffness: 250,
+  damping: 18,
 };
 
 const BREATH_DELAY_MS = 140;
@@ -72,29 +79,43 @@ export function SendItButton() {
       className="fixed bottom-[4svh] left-1/2 z-50 flex -translate-x-1/2 items-center gap-0.5"
       style={{ opacity: 0, pointerEvents: isOpen ? "none" : "auto" }}
     >
-      <button onClick={open} className="group flex items-center gap-0.5">
-        <span
+      <motion.button
+        onClick={open}
+        className="flex cursor-pointer items-center gap-0.5"
+        whileHover="hover"
+        initial="idle"
+      >
+        <motion.span
           ref={buttonPillRef as React.RefObject<HTMLSpanElement>}
-          className="inline-flex h-12 items-center overflow-hidden rounded-full bg-[var(--text-dark)] px-6 transition-[padding] duration-300 ease-out group-hover:px-8"
+          className="inline-flex h-12 items-center overflow-hidden rounded-full bg-[var(--text-dark)]"
+          variants={{
+            idle: { paddingLeft: 24, paddingRight: 24 },
+            hover: { paddingLeft: 32, paddingRight: 32 },
+          }}
+          transition={HOVER_SPRING}
         >
           {"SEND IT".split("").map((char, i) => (
-            <span
+            <motion.span
               key={i}
               data-char
-              className="inline-block font-heading text-base font-bold text-[var(--page-bg)] group-hover:animate-[letter-bounce_600ms_ease-out]"
-              style={{ animationDelay: `${i * 40}ms` }}
+              className="inline-block font-heading text-base font-bold text-[var(--page-bg)]"
+              variants={{
+                idle: { y: 0 },
+                hover: { y: -3 },
+              }}
+              transition={{ ...HOVER_SPRING, delay: i * 0.04 }}
             >
               {char === " " ? "\u00A0" : char}
-            </span>
+            </motion.span>
           ))}
-        </span>
+        </motion.span>
         <span
           data-arrow-wrap
           className="flex size-12 items-center justify-center rounded-full bg-[var(--text-dark)]"
         >
           <ArrowRight className="size-5 text-[var(--page-bg)]" />
         </span>
-      </button>
+      </motion.button>
     </div>
   );
 }
