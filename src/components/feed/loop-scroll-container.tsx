@@ -24,85 +24,57 @@ export function LoopScrollContainer({
   enabled,
   children,
 }: LoopScrollContainerProps) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const topBufferRef = useRef<HTMLDivElement>(null);
   const mainContentRef = useRef<HTMLDivElement>(null);
+  const topBufferRef = useRef<HTMLDivElement>(null);
   const isTeleportingRef = useRef(false);
-  const scrollOffsetRef = useRef(0); // scroll position relative to main content top
   const initializedRef = useRef(false);
 
-  // Helper: get the scroll position where main content starts
-  const getMainContentTop = useCallback(() => {
-    const main = mainContentRef.current;
-    if (!main) return 0;
-    // offsetTop gives the distance from the top of the scroll container's content
-    return main.offsetTop;
-  }, []);
-
-  // Lock body scroll when loop is active
+  // When the top buffer first appears, it pushes main content down.
+  // Compensate scroll position so the user doesn't see a jump.
   useLayoutEffect(() => {
-    if (!enabled) {
-      initializedRef.current = false;
-      return;
-    }
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    if (!enabled || initializedRef.current) return;
+
+    const topBuffer = topBufferRef.current;
+    if (!topBuffer) return;
+
+    const bufferHeight = topBuffer.getBoundingClientRect().height;
+    window.scrollTo({ top: window.scrollY + bufferHeight, behavior: "instant" });
+    initializedRef.current = true;
   }, [enabled]);
 
-  // Set initial scroll position on activation; restore on posts change
-  useLayoutEffect(() => {
-    if (!enabled) return;
-
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const mainTop = getMainContentTop();
-
-    if (!initializedRef.current) {
-      // First activation: position at start of main content
-      container.scrollTop = mainTop;
-      scrollOffsetRef.current = 0;
-      initializedRef.current = true;
-    } else {
-      // Posts changed (pagination): restore relative position
-      container.scrollTop = mainTop + scrollOffsetRef.current;
+  // Reset initialized flag when disabled
+  useEffect(() => {
+    if (!enabled) {
+      initializedRef.current = false;
     }
-  }, [enabled, posts.length, getMainContentTop]);
+  }, [enabled]);
 
-  // Teleportation logic (RAF-gated)
+  // Teleportation via window scroll (RAF-gated)
   const handleScroll = useCallback(() => {
     if (isTeleportingRef.current) return;
 
-    const container = scrollContainerRef.current;
     const mainContent = mainContentRef.current;
-    if (!container || !mainContent) return;
+    if (!mainContent) return;
 
-    const mainTop = mainContent.offsetTop;
-    const mainHeight = mainContent.offsetHeight;
-    const { scrollTop, clientHeight } = container;
+    const mainRect = mainContent.getBoundingClientRect();
+    const mainTop = mainRect.top + window.scrollY;
+    const mainHeight = mainRect.height;
+    const scrollY = window.scrollY;
 
-    // Track position relative to main content top
-    scrollOffsetRef.current = scrollTop - mainTop;
-
-    // Scrolled past bottom of main content → teleport up
-    if (scrollTop >= mainTop + mainHeight) {
+    // DOWN: scrolled past bottom of main content → teleport up by mainHeight
+    if (scrollY >= mainTop + mainHeight) {
       isTeleportingRef.current = true;
-      container.scrollTop = scrollTop - mainHeight;
-      scrollOffsetRef.current = container.scrollTop - mainTop;
+      window.scrollTo({ top: scrollY - mainHeight, behavior: "instant" });
       requestAnimationFrame(() => {
         isTeleportingRef.current = false;
       });
       return;
     }
 
-    // Scrolled above top of main content minus one viewport → teleport down
-    if (scrollTop < mainTop - clientHeight) {
+    // UP: scrolled into top buffer → teleport down by mainHeight
+    if (scrollY < mainTop) {
       isTeleportingRef.current = true;
-      container.scrollTop = scrollTop + mainHeight;
-      scrollOffsetRef.current = container.scrollTop - mainTop;
+      window.scrollTo({ top: scrollY + mainHeight, behavior: "instant" });
       requestAnimationFrame(() => {
         isTeleportingRef.current = false;
       });
@@ -113,18 +85,15 @@ export function LoopScrollContainer({
   useEffect(() => {
     if (!enabled) return;
 
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
     let rafId: number;
     const onScroll = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(handleScroll);
     };
 
-    container.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
-      container.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll);
       cancelAnimationFrame(rafId);
     };
   }, [enabled, handleScroll]);
@@ -134,18 +103,9 @@ export function LoopScrollContainer({
   const topBufferPosts = posts.slice(-bufferCount);
   const bottomBufferPosts = posts.slice(0, bufferCount);
 
-  // Always render the same tree structure to prevent FeedGrid re-mounting.
-  // Use keys so React preserves the main-content div across enabled transitions.
+  // Use keys so React preserves the main-content div when buffers appear/disappear.
   return (
-    <div
-      ref={scrollContainerRef}
-      className={
-        enabled
-          ? "fixed inset-0 z-30 space-y-6 overflow-y-auto bg-[var(--page-bg)] px-6 pb-[calc(64px+4rem)]"
-          : ""
-      }
-      style={enabled ? { overscrollBehavior: "contain" } : undefined}
-    >
+    <>
       {enabled && (
         <BufferGrid
           key="top-buffer"
@@ -171,7 +131,7 @@ export function LoopScrollContainer({
           keyPrefix="bottom"
         />
       )}
-    </div>
+    </>
   );
 }
 
