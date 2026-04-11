@@ -2,34 +2,27 @@
 
 import { useState } from "react";
 
-export interface SpringConfig {
+export interface HoverSpringConfig {
   mass: number;
   stiffness: number;
   damping: number;
-  y: number;
-  z: number;
-  scale: number;
-  blur: number;
-  withinRowMs: number;
-  rowBreathMs: number;
+  letterY: number;
+  staggerMs: number;
+  paddingExpand: number;
 }
 
-export const DEFAULT_SPRING: SpringConfig = {
+export const DEFAULT_HOVER_SPRING: HoverSpringConfig = {
   mass: 2,
   stiffness: 100,
   damping: 16,
-  y: 24,
-  z: 80,
-  scale: 1.06,
-  blur: 0,
-  withinRowMs: 80,
-  rowBreathMs: 60,
+  letterY: 3,
+  staggerMs: 40,
+  paddingExpand: 8,
 };
 
 interface SpringTunerProps {
-  config: SpringConfig;
-  onChange: (config: SpringConfig) => void;
-  onReplay: () => void;
+  config: HoverSpringConfig;
+  onChange: (config: HoverSpringConfig) => void;
 }
 
 function Slider({
@@ -66,15 +59,14 @@ function Slider({
   );
 }
 
-export function SpringTuner({ config, onChange, onReplay }: SpringTunerProps) {
+export function SpringTuner({ config, onChange }: SpringTunerProps) {
   const [collapsed, setCollapsed] = useState(false);
 
-  const set = (key: keyof SpringConfig, value: number) =>
+  const set = (key: keyof HoverSpringConfig, value: number) =>
     onChange({ ...config, [key]: value });
 
   const configString = `mass: ${config.mass}, stiffness: ${config.stiffness}, damping: ${config.damping}
-y: ${config.y}, z: ${config.z}, scale: ${config.scale}, blur: ${config.blur}
-stagger: ${config.withinRowMs}ms / ${config.rowBreathMs}ms breath`;
+letterY: ${config.letterY}, stagger: ${config.staggerMs}ms, padding: +${config.paddingExpand}px`;
 
   return (
     <div className="fixed right-4 bottom-4 z-50 w-80 rounded-xl border border-neutral-700 bg-neutral-900 text-white shadow-2xl">
@@ -82,8 +74,8 @@ stagger: ${config.withinRowMs}ms / ${config.rowBreathMs}ms breath`;
         onClick={() => setCollapsed(!collapsed)}
         className="flex w-full items-center justify-between px-4 py-3 text-left"
       >
-        <span className="text-sm font-semibold">Spring Tuner</span>
-        <span className="text-xs text-neutral-500">{collapsed ? "▲" : "▼"}</span>
+        <span className="text-sm font-semibold">Hover Spring Tuner</span>
+        <span className="text-xs text-neutral-500">{collapsed ? "+" : "-"}</span>
       </button>
 
       {!collapsed && (
@@ -100,46 +92,28 @@ stagger: ${config.withinRowMs}ms / ${config.rowBreathMs}ms breath`;
             </div>
           </div>
 
-          {/* Initial transform */}
+          {/* Hover effect */}
           <div>
             <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
-              Initial Transform
+              Hover Effect
             </div>
             <div className="flex flex-col gap-2">
-              <Slider label="y (px)" value={config.y} min={0} max={100} step={2} onChange={(v) => set("y", v)} />
-              <Slider label="z (px)" value={config.z} min={-200} max={200} step={5} onChange={(v) => set("z", v)} />
-              <Slider label="scale" value={config.scale} min={0.8} max={1.3} step={0.01} onChange={(v) => set("scale", v)} />
-              <Slider label="blur (px)" value={config.blur} min={0} max={10} step={0.5} onChange={(v) => set("blur", v)} />
-            </div>
-          </div>
-
-          {/* Stagger */}
-          <div>
-            <div className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
-              Stagger Timing
-            </div>
-            <div className="flex flex-col gap-2">
-              <Slider label="within row" value={config.withinRowMs} min={0} max={200} step={5} onChange={(v) => set("withinRowMs", v)} />
-              <Slider label="row breath" value={config.rowBreathMs} min={0} max={200} step={5} onChange={(v) => set("rowBreathMs", v)} />
+              <Slider label="letter Y (px)" value={config.letterY} min={0} max={12} step={0.5} onChange={(v) => set("letterY", v)} />
+              <Slider label="stagger (ms)" value={config.staggerMs} min={0} max={120} step={5} onChange={(v) => set("staggerMs", v)} />
+              <Slider label="pad expand" value={config.paddingExpand} min={0} max={24} step={1} onChange={(v) => set("paddingExpand", v)} />
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex gap-2">
             <button
-              onClick={onReplay}
-              className="flex-1 rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold transition-colors hover:bg-orange-500"
-            >
-              ↻ Replay
-            </button>
-            <button
               onClick={() => navigator.clipboard.writeText(configString)}
-              className="rounded-lg bg-neutral-700 px-3 py-2 text-sm transition-colors hover:bg-neutral-600"
+              className="flex-1 rounded-lg bg-neutral-700 px-3 py-2 text-sm transition-colors hover:bg-neutral-600"
             >
               Copy
             </button>
             <button
-              onClick={() => onChange(DEFAULT_SPRING)}
+              onClick={() => onChange(DEFAULT_HOVER_SPRING)}
               className="rounded-lg bg-neutral-700 px-3 py-2 text-sm transition-colors hover:bg-neutral-600"
             >
               Reset

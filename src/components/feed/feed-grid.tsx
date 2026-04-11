@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useMemo, useState, useCallback } from "react";
+import { useEffect, useRef } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ExperimentCard,
   getPostOrientation,
   type FeedPost,
-  type CardSpringConfig,
 } from "./experiment-card";
-import { SpringTuner, DEFAULT_SPRING, type SpringConfig } from "./spring-tuner";
 
 function computeStaggerDelays(
   count: number,
@@ -55,12 +53,6 @@ function CardSkeleton() {
 
 export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const [springConfig, setSpringConfig] = useState<SpringConfig>(DEFAULT_SPRING);
-  const [replayKey, setReplayKey] = useState(0);
-
-  const handleReplay = useCallback(() => {
-    setReplayKey((k) => k + 1);
-  }, []);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -103,26 +95,11 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
   }
 
   const orientations = posts.map(getPostOrientation);
-  const delays = computeStaggerDelays(
-    posts.length,
-    springConfig.withinRowMs,
-    springConfig.rowBreathMs
-  );
-
-  const cardSpring: CardSpringConfig = {
-    mass: springConfig.mass,
-    stiffness: springConfig.stiffness,
-    damping: springConfig.damping,
-    y: springConfig.y,
-    z: springConfig.z,
-    scale: springConfig.scale,
-    blur: springConfig.blur,
-  };
+  const delays = computeStaggerDelays(posts.length, 80, 60);
 
   return (
     <>
       <div
-        key={replayKey}
         className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
         style={{
           gridAutoFlow: "dense",
@@ -145,7 +122,6 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
                 post={post}
                 orientation={orientation}
                 delay={delays[i]}
-                spring={cardSpring}
               />
             </div>
           );
@@ -160,12 +136,6 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
       </div>
 
       <div ref={sentinelRef} className="h-1" />
-
-      <SpringTuner
-        config={springConfig}
-        onChange={setSpringConfig}
-        onReplay={handleReplay}
-      />
     </>
   );
 }
