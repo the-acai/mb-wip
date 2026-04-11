@@ -12,11 +12,11 @@ export interface HoverSpringConfig {
 }
 
 export const DEFAULT_HOVER_SPRING: HoverSpringConfig = {
-  mass: 2,
-  stiffness: 100,
-  damping: 16,
+  mass: 1.6,
+  stiffness: 300,
+  damping: 8,
   letterY: 3,
-  staggerMs: 40,
+  staggerMs: 50,
   paddingExpand: 8,
 };
 
