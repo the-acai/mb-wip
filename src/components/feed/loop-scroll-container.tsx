@@ -3,7 +3,6 @@
 import {
   useRef,
   useEffect,
-  useLayoutEffect,
   useCallback,
   forwardRef,
   type ReactNode,
@@ -25,28 +24,16 @@ export function LoopScrollContainer({
   children,
 }: LoopScrollContainerProps) {
   const mainContentRef = useRef<HTMLDivElement>(null);
-  const topBufferRef = useRef<HTMLDivElement>(null);
+  const bottomBufferRef = useRef<HTMLDivElement>(null);
   const isTeleportingRef = useRef(false);
-  const initializedRef = useRef(false);
 
-  // When the top buffer first appears, it pushes main content down.
-  // Compensate scroll position so the user doesn't see a jump.
-  useLayoutEffect(() => {
-    if (!enabled || initializedRef.current) return;
-
-    const topBuffer = topBufferRef.current;
-    if (!topBuffer) return;
-
-    const bufferHeight = topBuffer.getBoundingClientRect().height;
-    window.scrollTo({ top: window.scrollY + bufferHeight, behavior: "instant" });
-    initializedRef.current = true;
-  }, [enabled]);
-
-  // Reset initialized flag when disabled
+  // Toggle scrollbar visibility
   useEffect(() => {
-    if (!enabled) {
-      initializedRef.current = false;
-    }
+    if (!enabled) return;
+    document.documentElement.classList.add("loop-active");
+    return () => {
+      document.documentElement.classList.remove("loop-active");
+    };
   }, [enabled]);
 
   // Teleportation via window scroll (RAF-gated)
@@ -54,31 +41,25 @@ export function LoopScrollContainer({
     if (isTeleportingRef.current) return;
 
     const mainContent = mainContentRef.current;
-    if (!mainContent) return;
+    const bottomBuffer = bottomBufferRef.current;
+    if (!mainContent || !bottomBuffer) return;
 
-    const mainRect = mainContent.getBoundingClientRect();
-    const mainTop = mainRect.top + window.scrollY;
-    const mainHeight = mainRect.height;
     const scrollY = window.scrollY;
+    const mainTop = mainContent.getBoundingClientRect().top + scrollY;
+    const bottomBufferTop = bottomBuffer.getBoundingClientRect().top + scrollY;
 
-    // DOWN: scrolled past bottom of main content → teleport up by mainHeight
-    if (scrollY >= mainTop + mainHeight) {
+    // cycleLength = distance from main content start to bottom buffer start.
+    // Teleporting by this distance maps bottom-buffer content to the
+    // visually identical position at the start of main content.
+    const cycleLength = bottomBufferTop - mainTop;
+
+    // Scrolled into the bottom buffer → teleport up to main content
+    if (scrollY >= bottomBufferTop) {
       isTeleportingRef.current = true;
-      window.scrollTo({ top: scrollY - mainHeight, behavior: "instant" });
+      window.scrollTo(0, scrollY - cycleLength);
       requestAnimationFrame(() => {
         isTeleportingRef.current = false;
       });
-      return;
-    }
-
-    // UP: scrolled into top buffer → teleport down by mainHeight
-    if (scrollY < mainTop) {
-      isTeleportingRef.current = true;
-      window.scrollTo({ top: scrollY + mainHeight, behavior: "instant" });
-      requestAnimationFrame(() => {
-        isTeleportingRef.current = false;
-      });
-      return;
     }
   }, []);
 
@@ -98,23 +79,12 @@ export function LoopScrollContainer({
     };
   }, [enabled, handleScroll]);
 
-  // Buffer posts: last N for top, first N for bottom
+  // Buffer: first N posts (matches start of main content for seamless wrap)
   const bufferCount = Math.min(posts.length, MAX_BUFFER_POSTS);
-  const topBufferPosts = posts.slice(-bufferCount);
   const bottomBufferPosts = posts.slice(0, bufferCount);
 
-  // Use keys so React preserves the main-content div when buffers appear/disappear.
   return (
     <>
-      {enabled && (
-        <BufferGrid
-          key="top-buffer"
-          ref={topBufferRef}
-          posts={topBufferPosts}
-          keyPrefix="top"
-        />
-      )}
-
       <div
         key="main-content"
         ref={mainContentRef}
@@ -127,8 +97,10 @@ export function LoopScrollContainer({
       {enabled && (
         <BufferGrid
           key="bottom-buffer"
+          ref={bottomBufferRef}
           posts={bottomBufferPosts}
           keyPrefix="bottom"
+          className="mt-6"
         />
       )}
     </>
@@ -142,14 +114,15 @@ export function LoopScrollContainer({
 interface BufferGridProps {
   posts: FeedPost[];
   keyPrefix: string;
+  className?: string;
 }
 
 const BufferGrid = forwardRef<HTMLDivElement, BufferGridProps>(
-  function BufferGrid({ posts, keyPrefix }, ref) {
+  function BufferGrid({ posts, keyPrefix, className }, ref) {
     return (
       <div
         ref={ref}
-        className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+        className={`grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3${className ? ` ${className}` : ""}`}
         style={{ gridAutoFlow: "dense", perspective: "1000px" }}
       >
         {posts.map((post) => {

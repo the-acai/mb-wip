@@ -133,6 +133,14 @@
   }
 }
 
+/* Hide scrollbar when infinite loop is active */
+html.loop-active {
+  scrollbar-width: none;          /* Firefox */
+}
+html.loop-active::-webkit-scrollbar {
+  display: none;                  /* Chrome / Safari / Edge */
+}
+
 @keyframes letter-bounce {
   0% { transform: translateY(0); }
   50% { transform: translateY(-3px); }
