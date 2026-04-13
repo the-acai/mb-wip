@@ -63,64 +63,44 @@ export function ExpandedPostOverlay() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [dismiss]);
 
-  // Scroll lock. Two modes depending on platform:
+  // Scroll lock — unified across platforms.
   //
-  // 1. Desktop / Android: `html { overflow: hidden }`. Light-touch — body
-  //    stays in normal flow, scrollY is preserved, and Motion's useScroll
-  //    consumers (ShrinkingHeader etc.) keep their scrollYProgress reading
-  //    so nothing animates in the background. We compensate for the
-  //    disappearing scrollbar with body padding-right to prevent grid reflow.
+  // Body stays in normal flow (no position:fixed) so window.scrollY is
+  // preserved and Motion's useScroll consumers (ShrinkingHeader etc.) don't
+  // re-emit and reflow the background. We rely on `html { overflow: hidden }`
+  // + `body { overflow: hidden }` + `body { overscroll-behavior: contain }`
+  // to stop the page scrolling on every platform, and on the overlay's own
+  // scroll containers having `overscroll-contain` to prevent rubber-band
+  // chaining to body on iOS.
   //
-  // 2. iOS Safari: position:fixed body lock. iOS ignores html overflow:hidden
-  //    for momentum scroll, so we have to pin the body in place with a
-  //    negative top offset. This unavoidably moves body out of html's flow
-  //    (which previously caused `useScroll` consumers to re-emit and reflow
-  //    the background during loop-active mode on desktop — hence the split).
+  // Previously iOS used the position:fixed body lock to defeat momentum
+  // scroll bleed (#45), but that pulled body out of html's flow which made
+  // useScroll consumers see scrollY = 0 and morph the shrinking header /
+  // headline behind the overlay. The combined overflow:hidden + overscroll
+  // approach gets us the lock without that side effect on modern iOS.
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
-    const isIOS =
-      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
     const scrollbarWidth = window.innerWidth - html.clientWidth;
-
-    if (isIOS) {
-      const scrollY = window.scrollY;
-      const prev = {
-        position: body.style.position,
-        top: body.style.top,
-        width: body.style.width,
-        overflow: body.style.overflow,
-        paddingRight: body.style.paddingRight,
-      };
-      body.style.position = "fixed";
-      body.style.top = `-${scrollY}px`;
-      body.style.width = "100%";
-      body.style.overflow = "hidden";
-      if (scrollbarWidth > 0) {
-        body.style.paddingRight = `${scrollbarWidth}px`;
-      }
-      return () => {
-        body.style.position = prev.position;
-        body.style.top = prev.top;
-        body.style.width = prev.width;
-        body.style.overflow = prev.overflow;
-        body.style.paddingRight = prev.paddingRight;
-        window.scrollTo(0, scrollY);
-      };
-    }
 
     const prev = {
       htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      bodyOverscroll: body.style.overscrollBehavior,
       bodyPaddingRight: body.style.paddingRight,
     };
+
     html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "contain";
     if (scrollbarWidth > 0) {
       body.style.paddingRight = `${scrollbarWidth}px`;
     }
+
     return () => {
       html.style.overflow = prev.htmlOverflow;
+      body.style.overflow = prev.bodyOverflow;
+      body.style.overscrollBehavior = prev.bodyOverscroll;
       body.style.paddingRight = prev.bodyPaddingRight;
     };
   }, []);
