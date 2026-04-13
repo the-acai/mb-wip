@@ -4,9 +4,11 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useState,
   forwardRef,
   type ReactNode,
 } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { InertCard } from "./inert-card";
 import { type FeedPost, getPostOrientation } from "./experiment-card";
 
@@ -26,6 +28,7 @@ export function LoopScrollContainer({
   const mainContentRef = useRef<HTMLDivElement>(null);
   const bottomBufferRef = useRef<HTMLDivElement>(null);
   const isTeleportingRef = useRef(false);
+  const [showCue, setShowCue] = useState(false);
 
   // Toggle scrollbar visibility
   useEffect(() => {
@@ -34,6 +37,15 @@ export function LoopScrollContainer({
     return () => {
       document.documentElement.classList.remove("loop-active");
     };
+  }, [enabled]);
+
+  // Subtle one-shot cue when loop activates so users have a quiet hint that
+  // the scrollbar disappearing is intentional. Auto-dismisses after ~2.5s.
+  useEffect(() => {
+    if (!enabled) return;
+    setShowCue(true);
+    const t = window.setTimeout(() => setShowCue(false), 2500);
+    return () => window.clearTimeout(t);
   }, [enabled]);
 
   // Teleportation via window scroll (RAF-gated)
@@ -103,6 +115,22 @@ export function LoopScrollContainer({
           className="mt-6"
         />
       )}
+
+      <AnimatePresence>
+        {showCue && (
+          <motion.div
+            role="status"
+            aria-live="polite"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="pointer-events-none fixed top-24 left-1/2 z-30 -translate-x-1/2 rounded-full border border-[var(--text-dark)]/15 bg-[var(--page-bg)]/90 px-3 py-1 font-heading text-xs text-[var(--text-caption)] shadow-sm backdrop-blur"
+          >
+            Infinite scroll on
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

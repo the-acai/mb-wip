@@ -17,7 +17,13 @@ export async function GET(request: Request) {
     .limit(5);
 
   if (error) {
-    return NextResponse.json([], { status: 500 });
+    // Return an error shape so the client can distinguish "no matches" (200, [])
+    // from a real failure. Previous behavior returned [] with status 500 which
+    // looked like a successful empty result if status wasn't checked.
+    return NextResponse.json(
+      { error: error.message || "Failed to search mentions" },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json(data);

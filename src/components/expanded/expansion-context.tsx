@@ -61,6 +61,10 @@ export function ExpansionProvider({ children }: { children: ReactNode }) {
     setPostData(data);
     window.history.pushState(null, "", `/post/${data.id}`);
     historyPushedRef.current = true;
+    // Subtle haptic on supporting devices (mobile). No-op on desktop.
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      navigator.vibrate([10, 5, 10]);
+    }
   }, []);
 
   const collapse = useCallback((historyAlreadyBack = false) => {

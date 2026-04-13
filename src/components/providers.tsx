@@ -9,7 +9,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60_000,
+            // 5min default — most queries change rarely. Per-query overrides
+            // exist for hot paths: useSearchPosts uses 30s, realtime-driven
+            // queries (comments, reactions, notifications) get reconciled
+            // by their dedicated realtime hooks instead of refetch.
+            staleTime: 5 * 60_000,
           },
         },
       })

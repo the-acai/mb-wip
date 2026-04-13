@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -24,6 +24,15 @@ export const metadata: Metadata = {
   metadataBase: new URL(resolveSiteUrl()),
   title: "Works in Progress",
   description: "Matchbox Studio experiments and creative work-in-progress",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f8f8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e1708" },
+  ],
 };
 
 export default function RootLayout({

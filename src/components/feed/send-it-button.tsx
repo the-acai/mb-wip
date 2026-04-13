@@ -148,8 +148,10 @@ export function SendItButton() {
       {/* Portal SpringTuner to body — its `fixed right-4 bottom-4` positioning
           would otherwise be relative to our flex wrapper because that wrapper
           uses transform (`-translate-x-1/2`), which CSS treats as a
-          containing block for fixed-positioned descendants. */}
-      {mounted &&
+          containing block for fixed-positioned descendants.
+          Dev-only — production builds skip this entirely. */}
+      {process.env.NODE_ENV !== "production" &&
+        mounted &&
         createPortal(
           <SpringTuner config={hoverSpring} onChange={setHoverSpring} />,
           document.body
