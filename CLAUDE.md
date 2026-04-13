@@ -34,10 +34,9 @@ Two route groups under `src/app/`:
 ### The feed (the visually complex part)
 
 `src/app/(app)/feed/page.tsx`:
-1. Server prefetches the newest page via `getFeedPosts` RPC (`get_feed_posts` Postgres function — handles tag filter + keyset pagination by `created_at`).
-2. Re-orders `.in()` results to match the RPC order (Supabase doesn't preserve `in()` order).
-3. Batch-fetches signed storage URLs via `getSignedUrls`, stitches onto first image asset per post.
-4. Dehydrates the `QueryClient` and hands off to `<FeedClient/>`.
+1. Server prefetches the newest page via `getFeedPosts` RPC (`get_feed_posts` Postgres function — handles tag filter + keyset pagination by `created_at`). As of migration `00016`, the RPC returns `setof posts`, so the client can chain `.select()` for joined data (author, assets, post_tags, counts) in a single round-trip without a follow-up `.in()` query or manual reorder.
+2. Batch-fetches signed storage URLs via `getSignedUrls`, stitches onto first image asset per post.
+3. Dehydrates the `QueryClient` and hands off to `<FeedClient/>`.
 
 `FeedClient` (`src/components/feed/feed-client.tsx`):
 - Uses `useFeedPosts` infinite query.

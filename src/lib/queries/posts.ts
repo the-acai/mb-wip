@@ -16,26 +16,16 @@ export async function getFeedPosts(
 ): Promise<FeedPageResult> {
   const limit = options.limit ?? 20;
 
-  // Use RPC to get sorted/filtered post IDs (handles tag filtering server-side)
-  const { data: idRows, error: rpcError } = await supabase.rpc(
-    "get_feed_posts",
-    {
+  // get_feed_posts (migration 00016) returns `setof posts` ordered by
+  // created_at desc — chain .select() to fetch joined data in the same
+  // round-trip. RPC ORDER BY is preserved by the result set, so no manual
+  // reorder.
+  const { data, error } = await supabase
+    .rpc("get_feed_posts", {
       p_tag_name: options.tag ?? null,
       p_cursor_created_at: options.cursor?.created_at ?? null,
       p_limit: limit,
-    }
-  );
-
-  if (rpcError) throw rpcError;
-  if (!idRows || idRows.length === 0) {
-    return { posts: [], nextCursor: null };
-  }
-
-  const ids = idRows.map((r: { post_id: string }) => r.post_id);
-
-  // Fetch full post data for those IDs
-  const { data, error } = await supabase
-    .from("posts")
+    })
     .select(
       `
       *,
@@ -45,19 +35,11 @@ export async function getFeedPosts(
       comments(count),
       reactions(count)
     `
-    )
-    .in("id", ids);
+    );
 
   if (error) throw error;
+  const posts = data ?? [];
 
-  // Re-sort to match RPC order (`.in()` doesn't preserve order)
-  const orderMap = new Map<string, number>(ids.map((id: string, i: number) => [id, i]));
-  const posts = (data ?? []).sort(
-    (a: { id: string }, b: { id: string }) =>
-      (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0)
-  );
-
-  // Build next cursor
   let nextCursor: FeedCursor | null = null;
   if (posts.length >= limit) {
     const last = posts[posts.length - 1] as { created_at: string };
