@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -11,14 +12,27 @@ interface Asset {
   file_path: string;
   mime_type: string;
   signed_url?: string;
+  width?: number | null;
+  height?: number | null;
 }
 
 interface MediaGalleryProps {
   assets: Asset[];
 }
 
+interface LightboxAsset {
+  url: string;
+  width: number;
+  height: number;
+}
+
+// Reasonable defaults when an older asset has no stored dimensions — these
+// only inform next/image's optimizer, CSS still controls display.
+const FALLBACK_W = 1600;
+const FALLBACK_H = 1200;
+
 export function MediaGallery({ assets }: MediaGalleryProps) {
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<LightboxAsset | null>(null);
 
   if (!assets.length) return null;
 
@@ -33,15 +47,25 @@ export function MediaGallery({ assets }: MediaGalleryProps) {
             <button
               key={asset.file_path}
               type="button"
-              className="group overflow-hidden rounded-lg border bg-muted/30 transition-colors hover:border-primary/30"
-              onClick={() => setLightboxUrl(asset.signed_url ?? null)}
+              className="group relative aspect-video w-full overflow-hidden rounded-lg border bg-muted/30 transition-colors hover:border-primary/30"
+              onClick={() =>
+                asset.signed_url &&
+                setLightbox({
+                  url: asset.signed_url,
+                  width: asset.width ?? FALLBACK_W,
+                  height: asset.height ?? FALLBACK_H,
+                })
+              }
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={asset.signed_url}
-                alt=""
-                className="aspect-video w-full object-cover transition-transform group-hover:scale-[1.02]"
-              />
+              {asset.signed_url && (
+                <Image
+                  src={asset.signed_url}
+                  alt=""
+                  fill
+                  sizes="(max-width: 640px) 100vw, 50vw"
+                  className="object-cover transition-transform group-hover:scale-[1.02]"
+                />
+              )}
             </button>
           ))}
         </div>
@@ -68,19 +92,21 @@ export function MediaGallery({ assets }: MediaGalleryProps) {
 
       {/* Lightbox dialog */}
       <Dialog
-        open={lightboxUrl !== null}
+        open={lightbox !== null}
         onOpenChange={(open) => {
-          if (!open) setLightboxUrl(null);
+          if (!open) setLightbox(null);
         }}
       >
         <DialogContent className="max-w-3xl p-2" showCloseButton>
           <DialogTitle className="sr-only">Image preview</DialogTitle>
-          {lightboxUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={lightboxUrl}
+          {lightbox && (
+            <Image
+              src={lightbox.url}
               alt=""
-              className="w-full rounded-lg object-contain"
+              width={lightbox.width}
+              height={lightbox.height}
+              sizes="(max-width: 768px) 100vw, 768px"
+              className="h-auto w-full rounded-lg object-contain"
             />
           )}
         </DialogContent>
