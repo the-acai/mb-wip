@@ -61,12 +61,30 @@ export function ExpandedPostOverlay() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [dismiss]);
 
-  // Scroll lock
+  // Scroll lock — uses the position:fixed body-lock pattern instead of
+  // overflow:hidden. iOS Safari ignores overflow:hidden on the body and lets
+  // momentum scroll bleed through; pinning the body in place with a negative
+  // top offset is the only reliable cross-platform lock.
   useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const prev = {
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    };
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = prev;
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.width = prev.width;
+      body.style.overflow = prev.overflow;
+      // Restore scroll without smooth-scroll behavior
+      window.scrollTo(0, scrollY);
     };
   }, []);
 
