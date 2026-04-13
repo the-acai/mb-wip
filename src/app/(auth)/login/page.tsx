@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useMotionValue, useTransform } from "motion/react";
 
 import { createClient } from "@/lib/supabase/client";
@@ -9,24 +9,25 @@ import { GradientBlobs } from "@/components/login/gradient-blobs";
 
 type Phase = "entering" | "idle" | "dragging" | "consuming";
 
-const CARD_WIDTH = 216;
 const CARD_HEIGHT = 379;
 
 export default function LoginPage() {
   const [phase, setPhase] = useState<Phase>("entering");
-  const windowHeightRef = useRef(typeof window !== "undefined" ? window.innerHeight : 900);
+  // Track viewport height in state so derived values can be read in render
+  // without violating the no-refs-in-render rule.
+  const [windowHeight, setWindowHeight] = useState(() =>
+    typeof window !== "undefined" ? window.innerHeight : 900
+  );
 
-  // Measure window on mount and resize
   useEffect(() => {
-    const update = () => { windowHeightRef.current = window.innerHeight; };
+    const update = () => setWindowHeight(window.innerHeight);
     update();
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
 
   // Distance from card's resting bottom edge to viewport bottom
-  const distanceToBottom =
-    windowHeightRef.current - (windowHeightRef.current / 2 + CARD_HEIGHT / 2);
+  const distanceToBottom = windowHeight - (windowHeight / 2 + CARD_HEIGHT / 2);
 
   // Drag motion values — owned here, shared with card and blobs
   const x = useMotionValue(0);

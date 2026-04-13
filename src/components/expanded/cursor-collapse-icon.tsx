@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence, useIsPresent } from "motion/react";
 
 const CURSOR_SPRING = {
@@ -29,19 +29,17 @@ export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconPr
   const hidden = !isPresent;
   const [hovering, setHovering] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const originRef = useRef({ x: 0, y: 0 });
+  // Captured at the moment hovering starts — read in motion.div initial,
+  // which must come from state (not refs) per react-compiler rules.
+  const [origin, setOrigin] = useState({ x: 0, y: 0 });
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const pos = { x: e.clientX + ICON_OFFSET, y: e.clientY + ICON_OFFSET };
-    setMousePos(pos);
-    if (!hovering) {
-      originRef.current = pos;
-    }
-  }, [hovering]);
+    setMousePos({ x: e.clientX + ICON_OFFSET, y: e.clientY + ICON_OFFSET });
+  }, []);
 
   const handleMouseEnter = useCallback((e: React.MouseEvent) => {
     const pos = { x: e.clientX + ICON_OFFSET, y: e.clientY + ICON_OFFSET };
-    originRef.current = pos;
+    setOrigin(pos);
     setMousePos(pos);
     setHovering(true);
   }, []);
@@ -65,8 +63,8 @@ export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconPr
           <motion.div
             className="pointer-events-none fixed z-50"
             initial={{
-              x: originRef.current.x,
-              y: originRef.current.y,
+              x: origin.x,
+              y: origin.y,
               scale: 0,
               opacity: 0,
             }}
