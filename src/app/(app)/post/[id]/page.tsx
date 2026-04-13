@@ -5,7 +5,7 @@ import { ArrowLeftIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getPost } from "@/lib/queries/posts";
 import { getComments } from "@/lib/queries/comments";
-import { getSignedUrl } from "@/lib/queries/storage";
+import { getSignedUrls } from "@/lib/queries/storage";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -111,17 +111,19 @@ export default async function PostDetailPage({
 
   const comments = await getComments(supabase, id);
 
-  // Get signed URLs for all assets
-  const assetsWithUrls = await Promise.all(
-    (post.assets ?? []).map(async (asset) => {
-      try {
-        const signed_url = await getSignedUrl(supabase, asset.file_path);
-        return { ...asset, signed_url };
-      } catch {
-        return { ...asset, signed_url: undefined };
-      }
-    })
-  );
+  // Batch-fetch signed URLs in a single storage API call instead of one request
+  // per asset (fixes the N+1 flagged in audit issue #50).
+  const assets = post.assets ?? [];
+  const urlMap = assets.length
+    ? await getSignedUrls(
+        supabase,
+        assets.map((a) => a.file_path)
+      ).catch(() => new Map<string, string>())
+    : new Map<string, string>();
+  const assetsWithUrls = assets.map((asset) => ({
+    ...asset,
+    signed_url: urlMap.get(asset.file_path),
+  }));
 
   const author = post.author;
 
