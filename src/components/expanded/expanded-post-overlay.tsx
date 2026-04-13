@@ -7,6 +7,7 @@ import { ExpandedCard } from "./expanded-card";
 import { ExpandedCommentCard } from "./expanded-comment-card";
 import { CursorCollapseIcon } from "./cursor-collapse-icon";
 import { useExpansion } from "./expansion-context";
+import { useIsMobile } from "@/hooks/use-media-query";
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -35,6 +36,7 @@ const INSTANT_TRANSITION = { duration: 0 };
 export function ExpandedPostOverlay() {
   const { postData, commentCache, prefetchComments, collapse } = useExpansion();
   const reducedMotion = useReducedMotion();
+  const isMobile = useIsMobile();
   const expansionTransition = reducedMotion ? INSTANT_TRANSITION : EXPANSION_SPRING;
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -175,23 +177,27 @@ export function ExpandedPostOverlay() {
 
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const margin = vw * 0.0833;
-  const gap = 24;
   const captionRowHeight = 48;
 
-  // Card target sized to preserve image aspect ratio
+  // ─── Mobile: card on top, comments below, single vertical scroll ───
+  // Matches the source card's containing padding (px-6 → 24px each side) so
+  // the FLIP from grid → overlay stays the same width.
+  const mobileMargin = 24;
+  const mobileCardWidth = vw - mobileMargin * 2;
+  const mobileImageHeight = mobileCardWidth / postData.imageAspect;
+  const mobileCardHeight = mobileImageHeight + captionRowHeight;
+
+  // ─── Desktop: card + comments side-by-side, vertically centered ───
+  const desktopMargin = vw * 0.0833;
+  const gap = 24;
   const cardWidth = vw * 0.38;
   const imageHeight = cardWidth / postData.imageAspect;
   const naturalCardHeight = imageHeight + captionRowHeight;
   const maxCardHeight = vh - 120;
   const totalCardHeight = Math.min(naturalCardHeight, maxCardHeight);
   const cardTop = (vh - totalCardHeight) / 2;
-
-  // Comment panel position
-  const commentLeft = margin + cardWidth + gap;
+  const commentLeft = desktopMargin + cardWidth + gap;
   const commentWidth = vw * 0.40;
-
-  // Comment card starts fully behind the experiment card's right edge
   const commentSlideX = -(gap + commentWidth);
 
   return (
@@ -224,47 +230,99 @@ export function ExpandedPostOverlay() {
         />
       </CursorCollapseIcon>
 
-      {/* Comment card — slides from behind experiment card (lower z) */}
-      <motion.div
-        className="pointer-events-auto absolute"
-        style={{
-          top: cardTop,
-          left: commentLeft,
-          width: commentWidth,
-          maxHeight: totalCardHeight,
-          zIndex: 0,
-        }}
-        initial={
-          reducedMotion
-            ? { x: 0, scale: 1, opacity: 0 }
-            : { x: commentSlideX, scale: 0.96, opacity: 0 }
-        }
-        animate={{ x: 0, scale: 1, opacity: 1 }}
-        exit={
-          reducedMotion
-            ? { x: 0, scale: 1, opacity: 0 }
-            : { x: commentSlideX, scale: 0.96, opacity: 0 }
-        }
-        transition={{
-          default: expansionTransition,
-          opacity: reducedMotion
-            ? INSTANT_TRANSITION
-            : { duration: 0.25, ease: "easeOut" },
-        }}
-      >
-        <ExpandedCommentCard postId={postData.id} initialComments={cachedComments as Comment[]} />
-      </motion.div>
+      {isMobile ? (
+        /* Mobile: card on top, comments stacked below, outer scroll. */
+        <div
+          className="pointer-events-auto absolute inset-0 overflow-y-auto overscroll-contain"
+          style={{ paddingTop: 24, paddingBottom: 32 }}
+        >
+          <div
+            className="mx-auto flex flex-col gap-4"
+            style={{ width: mobileCardWidth }}
+          >
+            <ExpandedCard
+              postData={postData}
+              style={{
+                position: "relative",
+                width: "100%",
+                height: mobileCardHeight,
+              }}
+            />
+            <motion.div
+              initial={
+                reducedMotion
+                  ? { y: 0, opacity: 0 }
+                  : { y: 20, opacity: 0 }
+              }
+              animate={{ y: 0, opacity: 1 }}
+              exit={
+                reducedMotion
+                  ? { y: 0, opacity: 0 }
+                  : { y: 20, opacity: 0 }
+              }
+              transition={{
+                default: expansionTransition,
+                opacity: reducedMotion
+                  ? INSTANT_TRANSITION
+                  : { duration: 0.25, ease: "easeOut" },
+              }}
+            >
+              <ExpandedCommentCard
+                postId={postData.id}
+                initialComments={cachedComments as Comment[]}
+                noMaxHeight
+              />
+            </motion.div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Comment card — slides from behind experiment card (lower z) */}
+          <motion.div
+            className="pointer-events-auto absolute"
+            style={{
+              top: cardTop,
+              left: commentLeft,
+              width: commentWidth,
+              maxHeight: totalCardHeight,
+              zIndex: 0,
+            }}
+            initial={
+              reducedMotion
+                ? { x: 0, scale: 1, opacity: 0 }
+                : { x: commentSlideX, scale: 0.96, opacity: 0 }
+            }
+            animate={{ x: 0, scale: 1, opacity: 1 }}
+            exit={
+              reducedMotion
+                ? { x: 0, scale: 1, opacity: 0 }
+                : { x: commentSlideX, scale: 0.96, opacity: 0 }
+            }
+            transition={{
+              default: expansionTransition,
+              opacity: reducedMotion
+                ? INSTANT_TRANSITION
+                : { duration: 0.25, ease: "easeOut" },
+            }}
+          >
+            <ExpandedCommentCard
+              postId={postData.id}
+              initialComments={cachedComments as Comment[]}
+            />
+          </motion.div>
 
-      {/* Expanded card — on top of comment card (higher z) */}
-      <ExpandedCard
-        postData={postData}
-        style={{
-          top: cardTop,
-          left: margin,
-          width: cardWidth,
-          height: totalCardHeight,
-        }}
-      />
+          {/* Expanded card — on top of comment card (higher z) */}
+          <ExpandedCard
+            postData={postData}
+            style={{
+              top: cardTop,
+              left: desktopMargin,
+              width: cardWidth,
+              height: totalCardHeight,
+            }}
+          />
+        </>
+      )}
     </motion.div>
   );
 }

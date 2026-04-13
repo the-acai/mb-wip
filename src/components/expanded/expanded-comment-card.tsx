@@ -34,9 +34,19 @@ const STAGGER_MS = 80;
 interface ExpandedCommentCardProps {
   postId: string;
   initialComments: Comment[];
+  /**
+   * On mobile the overlay scrolls as one unit (card + comments stacked), so
+   * the comment card itself shouldn't constrain its own height or take its own
+   * scroll. Pass true to disable the desktop max-height + inner scroll.
+   */
+  noMaxHeight?: boolean;
 }
 
-export function ExpandedCommentCard({ postId, initialComments }: ExpandedCommentCardProps) {
+export function ExpandedCommentCard({
+  postId,
+  initialComments,
+  noMaxHeight = false,
+}: ExpandedCommentCardProps) {
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string } | null>(null);
   const supabase = createClient();
@@ -152,7 +162,11 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
 
   return (
     <motion.div
-      className="flex max-h-[calc(100vh-120px)] flex-col rounded-2xl bg-white overflow-y-auto overflow-x-hidden"
+      className={
+        noMaxHeight
+          ? "flex flex-col rounded-2xl bg-white overflow-x-hidden"
+          : "flex max-h-[calc(100vh-120px)] flex-col rounded-2xl bg-white overflow-y-auto overflow-x-hidden"
+      }
       layout
       transition={COMMENT_SPRING}
     >
