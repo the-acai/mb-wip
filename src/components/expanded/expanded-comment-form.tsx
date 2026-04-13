@@ -105,6 +105,11 @@ export function ExpandedCommentForm({
           aria-label="Add a comment (⌘+Enter to send)"
           aria-keyshortcuts="Meta+Enter Control+Enter"
           disabled={submitting}
+          // Marker the overlay's focus-trap effect targets so opening a card
+          // always lands focus in the comment box (even when comments exist
+          // and otherwise-focusable Reply/Edit buttons would win the
+          // "first focusable" lookup).
+          data-overlay-autofocus
           className="flex-1 bg-transparent font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-dark)] placeholder:text-[var(--text-caption)] focus:outline-none"
         />
       </motion.div>

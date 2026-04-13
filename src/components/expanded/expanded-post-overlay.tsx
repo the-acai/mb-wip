@@ -125,12 +125,17 @@ export function ExpandedPostOverlay() {
 
   // Capture the trigger element so focus can be restored on close, and move
   // focus into the dialog once it mounts.
+  //
+  // Prefer an element marked with [data-overlay-autofocus] (the comment input)
+  // so opening a card always lands focus in the reply box. Falls back to the
+  // first focusable element, then the container itself.
   useEffect(() => {
     restoreFocusRef.current = document.activeElement as HTMLElement | null;
     const container = containerRef.current;
     if (container) {
+      const explicit = container.querySelector<HTMLElement>("[data-overlay-autofocus]");
       const focusable = container.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-      (focusable ?? container).focus({ preventScroll: true });
+      (explicit ?? focusable ?? container).focus({ preventScroll: true });
     }
     return () => {
       restoreFocusRef.current?.focus?.({ preventScroll: true });

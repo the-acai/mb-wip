@@ -28,10 +28,10 @@ export default function AppLayout({
       <div className="min-h-screen bg-[var(--page-bg)]">
         <ShrinkingHeader />
         <main className="px-6 pb-[calc(64px+4rem)]">{children}</main>
-        {/* Bottom-center action group: search trigger sits 24px (gap-6)
+        {/* Bottom-center action group: search trigger sits 12px (gap-3)
             to the left of SEND IT, sharing one centered flex container so
             both stay visually paired regardless of viewport width. */}
-        <div className="pointer-events-none fixed bottom-[4svh] left-1/2 z-50 flex -translate-x-1/2 items-center gap-6">
+        <div className="pointer-events-none fixed bottom-[4svh] left-1/2 z-50 flex -translate-x-1/2 items-center gap-3">
           <FeedSearchTrigger />
           <SendItButton />
         </div>
