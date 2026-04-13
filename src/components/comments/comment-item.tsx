@@ -26,6 +26,7 @@ function getAvatarColor(name: string) {
 interface CommentItemProps {
   comment: {
     id: string;
+    author_id: string;
     body: string;
     created_at: string;
     author: { full_name: string | null; email: string; avatar_url: string | null };
@@ -45,7 +46,7 @@ export function CommentItem({
   depth = 0,
 }: CommentItemProps) {
   const authorName = comment.author.full_name || comment.author.email.split("@")[0];
-  const isOwn = currentUserId === (comment as Record<string, unknown>).author_id;
+  const isOwn = !!currentUserId && currentUserId === comment.author_id;
   const timeAgo = formatDistanceToNow(new Date(comment.created_at), { addSuffix: false });
 
   return (

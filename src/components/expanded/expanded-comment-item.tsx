@@ -1,6 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
+import { Trash2Icon } from "lucide-react";
 import { getAuthorColor } from "@/lib/utils";
 
 interface Comment {
@@ -14,16 +15,33 @@ interface Comment {
   reactions: { emoji: string; user_id: string }[];
 }
 
-export function ExpandedCommentItem({ comment }: { comment: Comment }) {
+interface ExpandedCommentItemProps {
+  comment: Comment;
+  currentUserId?: string;
+  onDelete?: (commentId: string) => void;
+}
+
+export function ExpandedCommentItem({
+  comment,
+  currentUserId,
+  onDelete,
+}: ExpandedCommentItemProps) {
   const authorName =
     comment.author.full_name || comment.author.email.split("@")[0] || "Anonymous";
   const color = getAuthorColor(authorName);
   const timeAgo = formatDistanceToNow(new Date(comment.created_at), {
     addSuffix: false,
   });
+  const isOwn = !!currentUserId && currentUserId === comment.author_id;
+
+  const handleDelete = () => {
+    if (!onDelete) return;
+    if (!window.confirm("Delete this comment?")) return;
+    onDelete(comment.id);
+  };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="group flex flex-col gap-3">
       {/* Author row */}
       <div className="flex items-center gap-3">
         {/* Profile color circle */}
@@ -32,7 +50,7 @@ export function ExpandedCommentItem({ comment }: { comment: Comment }) {
           style={{ backgroundColor: color }}
         />
         {/* Name + time */}
-        <div className="flex items-center gap-1 font-heading text-lg leading-[1.28] tracking-[-0.18px]">
+        <div className="flex flex-1 items-center gap-1 font-heading text-lg leading-[1.28] tracking-[-0.18px]">
           <span className="font-bold text-[var(--text-dark)]">
             @{authorName.toLowerCase()}
           </span>
@@ -40,6 +58,16 @@ export function ExpandedCommentItem({ comment }: { comment: Comment }) {
             {timeAgo === "less than a minute" ? "just now" : `${timeAgo} ago`}
           </span>
         </div>
+        {isOwn && onDelete && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            aria-label="Delete comment"
+            className="opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100 text-[var(--text-caption)] hover:text-destructive"
+          >
+            <Trash2Icon className="size-4" aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       {/* Comment body — indented past the profile circle */}

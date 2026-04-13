@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { motion } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
-import { createComment } from "@/lib/queries/comments";
+import { createComment, deleteComment } from "@/lib/queries/comments";
 import { useRealtimeComments } from "@/hooks/use-realtime-comments";
 import { useUser } from "@/hooks/use-user";
 import { ExpandedCommentItem } from "./expanded-comment-item";
@@ -101,6 +101,20 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
     await handleSubmit(cleanBody, parentId);
   };
 
+  const handleDeleteComment = useCallback(
+    async (commentId: string) => {
+      // Optimistic remove; realtime DELETE will confirm or correct.
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+      try {
+        await deleteComment(supabase, commentId);
+      } catch (err) {
+        // Reload from server on failure — simplest recovery
+        console.error("Failed to delete comment", err);
+      }
+    },
+    [supabase]
+  );
+
   const getAuthorName = (c: Comment) =>
     c.author.full_name || c.author.email.split("@")[0] || "Anonymous";
 
@@ -137,7 +151,11 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
                 delay: i * STAGGER_MS / 1000,
               }}
             >
-              <ExpandedCommentItem comment={comment} />
+              <ExpandedCommentItem
+                comment={comment}
+                currentUserId={user?.id}
+                onDelete={handleDeleteComment}
+              />
               {nextColor && (
                 <ThreadLine
                   colorTop={currentColor}

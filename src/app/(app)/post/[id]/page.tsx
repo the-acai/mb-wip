@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { MarkdownRenderer } from "@/components/post/markdown-renderer";
 import { MediaGallery } from "@/components/post/media-gallery";
 import { ShareButton } from "@/components/post/share-button";
+import { PostActions } from "@/components/post/post-actions";
 import { CommentThread } from "@/components/comments/comment-thread";
 
 interface PostData {
@@ -19,6 +20,7 @@ interface PostData {
   title: string;
   body: string | null;
   created_at: string;
+  author_id: string;
   author: {
     full_name?: string;
     avatar_url?: string;
@@ -28,6 +30,8 @@ interface PostData {
     file_path: string;
     mime_type: string;
     display_order: number;
+    width?: number | null;
+    height?: number | null;
   }[];
   post_tags: { tag: { id: string; name: string } }[];
   reactions: Record<string, unknown>[];
@@ -155,7 +159,10 @@ export default async function PostDetailPage({
           <ArrowLeftIcon className="size-4" />
           Back to feed
         </Link>
-        <ShareButton url={`/post/${id}`} title={post.title} />
+        <div className="flex items-center gap-2">
+          <ShareButton url={`/post/${id}`} title={post.title} />
+          <PostActions postId={id} authorId={post.author_id} />
+        </div>
       </div>
 
       {/* Header */}
