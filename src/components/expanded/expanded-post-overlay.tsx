@@ -65,24 +65,37 @@ export function ExpandedPostOverlay() {
   // overflow:hidden. iOS Safari ignores overflow:hidden on the body and lets
   // momentum scroll bleed through; pinning the body in place with a negative
   // top offset is the only reliable cross-platform lock.
+  //
+  // We also compensate for the disappearing scrollbar: once body becomes
+  // position:fixed, the desktop scrollbar goes away and frees its width back
+  // to layout — without padding-right compensation the 3-column feed grid
+  // would reflow when the overlay opens. Design intent is "card lifts off the
+  // page" — the background must stay perfectly still.
   useEffect(() => {
     const scrollY = window.scrollY;
     const body = document.body;
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
     const prev = {
       position: body.style.position,
       top: body.style.top,
       width: body.style.width,
       overflow: body.style.overflow,
+      paddingRight: body.style.paddingRight,
     };
     body.style.position = "fixed";
     body.style.top = `-${scrollY}px`;
     body.style.width = "100%";
     body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      body.style.paddingRight = `${scrollbarWidth}px`;
+    }
     return () => {
       body.style.position = prev.position;
       body.style.top = prev.top;
       body.style.width = prev.width;
       body.style.overflow = prev.overflow;
+      body.style.paddingRight = prev.paddingRight;
       // Restore scroll without smooth-scroll behavior
       window.scrollTo(0, scrollY);
     };
