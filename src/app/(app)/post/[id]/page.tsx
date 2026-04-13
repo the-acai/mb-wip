@@ -13,6 +13,7 @@ import { MarkdownRenderer } from "@/components/post/markdown-renderer";
 import { MediaGallery } from "@/components/post/media-gallery";
 import { ShareButton } from "@/components/post/share-button";
 import { PostActions } from "@/components/post/post-actions";
+import { ReactionPicker } from "@/components/reactions/reaction-picker";
 import { CommentThread } from "@/components/comments/comment-thread";
 
 interface PostData {
@@ -34,7 +35,11 @@ interface PostData {
     height?: number | null;
   }[];
   post_tags: { tag: { id: string; name: string } }[];
-  reactions: Record<string, unknown>[];
+  reactions: {
+    id: string;
+    user_id: string;
+    emoji: string;
+  }[];
 }
 
 type PostMetaRow = {
@@ -115,6 +120,12 @@ export default async function PostDetailPage({
   if (!post) notFound();
 
   const comments = await getComments(supabase, id);
+
+  // Current user — pass id to the reaction picker so it can highlight own
+  // selections + gate the toggle on auth presence.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // Batch-fetch signed URLs in a single storage API call instead of one request
   // per asset (fixes the N+1 flagged in audit issue #50).
@@ -205,6 +216,13 @@ export default async function PostDetailPage({
 
         {/* Body */}
         {post.body && <MarkdownRenderer content={post.body} />}
+
+        {/* Reactions — directly below body */}
+        <ReactionPicker
+          postId={id}
+          initialReactions={post.reactions ?? []}
+          currentUserId={user?.id}
+        />
 
         <Separator />
 

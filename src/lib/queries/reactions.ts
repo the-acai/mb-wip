@@ -1,5 +1,26 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 
+export interface ReactionRow {
+  id: string;
+  user_id: string;
+  post_id: string | null;
+  comment_id: string | null;
+  emoji: string;
+  created_at: string;
+}
+
+export async function getPostReactions(
+  supabase: SupabaseClient,
+  postId: string
+): Promise<ReactionRow[]> {
+  const { data, error } = await supabase
+    .from("reactions")
+    .select("*")
+    .eq("post_id", postId);
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function toggleReaction(
   supabase: SupabaseClient,
   reaction: {
