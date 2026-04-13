@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { motion } from "motion/react";
 import { getAuthorColor } from "@/lib/utils";
 import type { ExpandedPostData } from "./expansion-context";
@@ -32,11 +33,13 @@ export function ExpandedCard({ postData, style }: ExpandedCardProps) {
       {/* Image — flex-1 fills remaining space after caption */}
       <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg">
         {postData.imageUrl ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
+          <Image
             src={postData.imageUrl}
             alt={postData.title}
-            className="absolute inset-0 h-full w-full object-cover"
+            fill
+            sizes="(max-width: 767px) 100vw, 40vw"
+            className="object-cover"
+            priority
           />
         ) : (
           <div className="flex h-full items-center justify-center bg-white text-[var(--text-caption)]">

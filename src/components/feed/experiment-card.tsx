@@ -115,8 +115,10 @@ export function ExperimentCard({
     expand(data);
   };
 
-  // Preload image + comments on hover so they're ready before the FLIP
-  const handleMouseEnter = () => {
+  // Preload image + comments on the earliest available signal of intent.
+  // Desktop fires onMouseEnter on hover; touch devices don't, so we also
+  // bind onPointerDown — preloaded ref guards against duplicate work.
+  const handlePreloadIntent = () => {
     if (!preloaded.current) {
       preloaded.current = true;
       if (thumbnailUrl) {
@@ -129,7 +131,8 @@ export function ExperimentCard({
 
   return (
     <motion.div
-      onMouseEnter={handleMouseEnter}
+      onMouseEnter={handlePreloadIntent}
+      onPointerDown={handlePreloadIntent}
       style={{
         transformStyle: "preserve-3d",
       }}
