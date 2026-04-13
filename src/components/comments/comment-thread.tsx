@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { createComment, deleteComment } from "@/lib/queries/comments";
+import { createComment, deleteComment, updateComment } from "@/lib/queries/comments";
 import { useRealtimeComments } from "@/hooks/use-realtime-comments";
 import { useUser } from "@/hooks/use-user";
 import { CommentItem } from "./comment-item";
@@ -64,6 +64,11 @@ export function CommentThread({ postId, initialComments }: CommentThreadProps) {
     setComments((prev) => prev.filter((c) => c.id !== id));
   };
 
+  const handleEditComment = async (id: string, body: string) => {
+    const updated = (await updateComment(supabase, id, body)) as Comment;
+    setComments((prev) => prev.map((c) => (c.id === id ? { ...c, ...updated } : c)));
+  };
+
   const renderComment = (comment: Comment, depth: number) => (
     <div key={comment.id}>
       <CommentItem
@@ -72,6 +77,7 @@ export function CommentThread({ postId, initialComments }: CommentThreadProps) {
         depth={depth}
         onReply={() => setReplyingTo(comment.id)}
         onDelete={handleDeleteComment}
+        onEdit={handleEditComment}
       />
       {replyingTo === comment.id && (
         <div className="ml-12 mb-2">

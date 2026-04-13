@@ -172,7 +172,12 @@ export default async function PostDetailPage({
         </Link>
         <div className="flex items-center gap-2">
           <ShareButton url={`/post/${id}`} title={post.title} />
-          <PostActions postId={id} authorId={post.author_id} />
+          <PostActions
+            postId={id}
+            authorId={post.author_id}
+            initialTitle={post.title}
+            initialBody={post.body}
+          />
         </div>
       </div>
 

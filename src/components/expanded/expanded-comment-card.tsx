@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
-import { createComment, deleteComment } from "@/lib/queries/comments";
+import { createComment, deleteComment, updateComment } from "@/lib/queries/comments";
 import { useRealtimeComments } from "@/hooks/use-realtime-comments";
 import { useUser } from "@/hooks/use-user";
 import { ExpandedCommentItem } from "./expanded-comment-item";
@@ -137,6 +137,16 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
     [supabase]
   );
 
+  const handleEditComment = useCallback(
+    async (commentId: string, body: string) => {
+      const updated = (await updateComment(supabase, commentId, body)) as Comment;
+      setComments((prev) =>
+        prev.map((c) => (c.id === commentId ? { ...c, ...updated } : c))
+      );
+    },
+    [supabase]
+  );
+
   const getAuthorName = (c: Comment) =>
     c.author.full_name || c.author.email.split("@")[0] || "Anonymous";
 
@@ -184,6 +194,7 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
                   comment={comment}
                   currentUserId={user?.id}
                   onDelete={handleDeleteComment}
+                  onEdit={handleEditComment}
                   onReply={() =>
                     setReplyingTo({
                       id: comment.id,

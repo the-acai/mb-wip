@@ -154,3 +154,27 @@ export async function deletePost(supabase: SupabaseClient, id: string) {
   const { error } = await supabase.from("posts").delete().eq("id", id);
   if (error) throw error;
 }
+
+export async function updatePost(
+  supabase: SupabaseClient,
+  id: string,
+  patch: { title?: string; body?: string | null }
+) {
+  const update: { title?: string; body?: string | null } = {};
+  if (patch.title !== undefined) {
+    const trimmed = patch.title.trim();
+    if (trimmed.length === 0) throw new Error("Title cannot be empty");
+    update.title = trimmed;
+  }
+  if (patch.body !== undefined) {
+    update.body = patch.body && patch.body.trim().length > 0 ? patch.body : null;
+  }
+  const { data, error } = await supabase
+    .from("posts")
+    .update(update)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}

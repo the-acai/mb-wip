@@ -73,3 +73,20 @@ export async function deleteComment(supabase: SupabaseClient, id: string) {
   const { error } = await supabase.from("comments").delete().eq("id", id);
   if (error) throw error;
 }
+
+export async function updateComment(
+  supabase: SupabaseClient,
+  id: string,
+  body: string
+) {
+  const trimmed = body.trim();
+  if (trimmed.length === 0) throw new Error("Comment body cannot be empty");
+  const { data, error } = await supabase
+    .from("comments")
+    .update({ body: trimmed })
+    .eq("id", id)
+    .select("*, author:profiles!author_id(*)")
+    .single();
+  if (error) throw error;
+  return data;
+}
