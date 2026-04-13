@@ -61,43 +61,65 @@ export function ExpandedPostOverlay() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [dismiss]);
 
-  // Scroll lock — uses the position:fixed body-lock pattern instead of
-  // overflow:hidden. iOS Safari ignores overflow:hidden on the body and lets
-  // momentum scroll bleed through; pinning the body in place with a negative
-  // top offset is the only reliable cross-platform lock.
+  // Scroll lock. Two modes depending on platform:
   //
-  // We also compensate for the disappearing scrollbar: once body becomes
-  // position:fixed, the desktop scrollbar goes away and frees its width back
-  // to layout — without padding-right compensation the 3-column feed grid
-  // would reflow when the overlay opens. Design intent is "card lifts off the
-  // page" — the background must stay perfectly still.
+  // 1. Desktop / Android: `html { overflow: hidden }`. Light-touch — body
+  //    stays in normal flow, scrollY is preserved, and Motion's useScroll
+  //    consumers (ShrinkingHeader etc.) keep their scrollYProgress reading
+  //    so nothing animates in the background. We compensate for the
+  //    disappearing scrollbar with body padding-right to prevent grid reflow.
+  //
+  // 2. iOS Safari: position:fixed body lock. iOS ignores html overflow:hidden
+  //    for momentum scroll, so we have to pin the body in place with a
+  //    negative top offset. This unavoidably moves body out of html's flow
+  //    (which previously caused `useScroll` consumers to re-emit and reflow
+  //    the background during loop-active mode on desktop — hence the split).
   useEffect(() => {
-    const scrollY = window.scrollY;
+    const html = document.documentElement;
     const body = document.body;
-    const scrollbarWidth =
-      window.innerWidth - document.documentElement.clientWidth;
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+    const scrollbarWidth = window.innerWidth - html.clientWidth;
+
+    if (isIOS) {
+      const scrollY = window.scrollY;
+      const prev = {
+        position: body.style.position,
+        top: body.style.top,
+        width: body.style.width,
+        overflow: body.style.overflow,
+        paddingRight: body.style.paddingRight,
+      };
+      body.style.position = "fixed";
+      body.style.top = `-${scrollY}px`;
+      body.style.width = "100%";
+      body.style.overflow = "hidden";
+      if (scrollbarWidth > 0) {
+        body.style.paddingRight = `${scrollbarWidth}px`;
+      }
+      return () => {
+        body.style.position = prev.position;
+        body.style.top = prev.top;
+        body.style.width = prev.width;
+        body.style.overflow = prev.overflow;
+        body.style.paddingRight = prev.paddingRight;
+        window.scrollTo(0, scrollY);
+      };
+    }
+
     const prev = {
-      position: body.style.position,
-      top: body.style.top,
-      width: body.style.width,
-      overflow: body.style.overflow,
-      paddingRight: body.style.paddingRight,
+      htmlOverflow: html.style.overflow,
+      bodyPaddingRight: body.style.paddingRight,
     };
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.width = "100%";
-    body.style.overflow = "hidden";
+    html.style.overflow = "hidden";
     if (scrollbarWidth > 0) {
       body.style.paddingRight = `${scrollbarWidth}px`;
     }
     return () => {
-      body.style.position = prev.position;
-      body.style.top = prev.top;
-      body.style.width = prev.width;
-      body.style.overflow = prev.overflow;
-      body.style.paddingRight = prev.paddingRight;
-      // Restore scroll without smooth-scroll behavior
-      window.scrollTo(0, scrollY);
+      html.style.overflow = prev.htmlOverflow;
+      body.style.paddingRight = prev.bodyPaddingRight;
     };
   }, []);
 
