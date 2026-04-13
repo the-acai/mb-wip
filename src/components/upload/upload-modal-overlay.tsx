@@ -382,7 +382,13 @@ export function UploadModalOverlay() {
   }, [submitting, files, user, caption, queryClient, handleClose]);
 
   return (
-    <div className="fixed inset-0 z-40" onPaste={handlePaste}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Post an experiment"
+      className="fixed inset-0 z-40"
+      onPaste={handlePaste}
+    >
       {/* Backdrop */}
       <CursorCollapseIcon onDismiss={handleClose}>
         <motion.div
@@ -428,16 +434,19 @@ export function UploadModalOverlay() {
           </div>
           <div ref={captionRef} className="flex-1" style={{ opacity: 0, transformOrigin: "left center" }}>
             <input type="text" value={caption} onChange={(e) => setCaption(e.target.value)}
+              aria-label="Caption"
               placeholder="is designing the greatest thing since sliced bread."
               className="h-14 w-full rounded-lg border border-[#3d4141] bg-[#222520] px-4 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#f7f8f8] placeholder:text-[#8b8b8b] focus:outline-none" />
           </div>
         </div>
 
         <div ref={uploadAreaRef} style={{ opacity: 0 }}>
-          <div {...getRootProps()}
+          <div {...getRootProps({
+              "aria-label": "Drop, paste, or click to upload images and video",
+            })}
             className={`flex h-[240px] cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border transition-colors ${
               isDragActive ? "border-[#f7f8f8] bg-[#2a2d28]" : "border-[#3d4141] bg-[#222520]"}`}>
-            <input {...getInputProps()} />
+            <input {...getInputProps({ "aria-label": "Choose files to upload" })} />
             {files.length > 0 ? (
               <div className="flex flex-col items-center gap-2">
                 <p className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#d3d3d3]">{files.length} file{files.length > 1 ? "s" : ""} selected</p>
@@ -456,6 +465,8 @@ export function UploadModalOverlay() {
         <div className="flex w-full items-center gap-0.5">
           <div ref={readyBtnRef} className="flex-1" style={{ opacity: 0, transformOrigin: "left center" }}>
             <button onClick={handleSubmit} disabled={submitting || files.length === 0}
+              aria-busy={submitting}
+              aria-label={submitting ? "Sending your post" : "Submit post"}
               className="flex h-12 w-full items-center justify-center rounded-full bg-[#f7f8f8] px-6 disabled:opacity-50">
               <span className="font-heading text-base font-bold leading-[1.28] tracking-[-0.16px] text-[#0e1708] whitespace-nowrap">
                 {submitting ? "SENDING..." : "I'M READY"}
@@ -469,7 +480,7 @@ export function UploadModalOverlay() {
           </div>
         </div>
 
-        {error && <p className="font-heading text-sm text-red-400 text-center">{error}</p>}
+        {error && <p role="alert" className="font-heading text-sm text-red-400 text-center">{error}</p>}
       </div>
     </div>
   );

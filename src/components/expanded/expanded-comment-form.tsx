@@ -42,6 +42,7 @@ export function ExpandedCommentForm({ onSubmit }: ExpandedCommentFormProps) {
       className="flex h-14 items-center overflow-hidden rounded-lg border bg-[var(--page-bg)] px-4"
       animate={{ borderColor: focused ? userColor : "#dfe0e0" }}
       transition={{ type: "spring", mass: 1.2, stiffness: 170, damping: 16 }}
+      aria-busy={submitting}
     >
       <input
         type="text"
@@ -51,6 +52,8 @@ export function ExpandedCommentForm({ onSubmit }: ExpandedCommentFormProps) {
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder="@user to reply, or add to the conversation."
+        aria-label="Add a comment (⌘+Enter to send)"
+        aria-keyshortcuts="Meta+Enter Control+Enter"
         disabled={submitting}
         className="flex-1 bg-transparent font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-dark)] placeholder:text-[var(--text-caption)] focus:outline-none"
       />
