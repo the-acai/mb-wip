@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
 import { createComment, deleteComment } from "@/lib/queries/comments";
@@ -38,6 +38,7 @@ interface ExpandedCommentCardProps {
 
 export function ExpandedCommentCard({ postId, initialComments }: ExpandedCommentCardProps) {
   const [comments, setComments] = useState<Comment[]>(initialComments);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string } | null>(null);
   const supabase = createClient();
   const { user } = useUser();
   const commentListRef = useRef<HTMLDivElement>(null);
@@ -64,6 +65,21 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
   useRealtimeComments(postId, handleInsert, handleDelete);
 
   const topLevel = comments.filter((c) => !c.parent_comment_id);
+
+  // Group replies by parent for O(1) lookup during recursive render.
+  const repliesByParent = useMemo(() => {
+    const map = new Map<string, Comment[]>();
+    for (const c of comments) {
+      if (!c.parent_comment_id) continue;
+      const list = map.get(c.parent_comment_id) ?? [];
+      list.push(c);
+      map.set(c.parent_comment_id, list);
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => a.created_at.localeCompare(b.created_at));
+    }
+    return map;
+  }, [comments]);
 
   const handleSubmit = async (body: string, parentId?: string) => {
     await createComment(supabase, {
@@ -97,6 +113,12 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
   };
 
   const handleFormSubmit = async (body: string) => {
+    // Explicit Reply selection wins over @-mention parsing.
+    if (replyingTo) {
+      await handleSubmit(body, replyingTo.id);
+      setReplyingTo(null);
+      return;
+    }
     const { parentId, cleanBody } = resolveParentFromMention(body);
     await handleSubmit(cleanBody, parentId);
   };
@@ -131,46 +153,83 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
             No comments yet. Be the first to reply.
           </p>
         )}
-        {topLevel.map((comment, i) => {
-          const nextComment = topLevel[i + 1];
-          const currentColor = getAuthorColor(getAuthorName(comment));
-          const nextColor = nextComment
-            ? getAuthorColor(getAuthorName(nextComment))
-            : null;
+        {(() => {
+          // Stagger index walks the rendered tree in DFS so animation cascade
+          // matches DOM order even as replies are nested inside parents.
+          let staggerIndex = 0;
 
-          return (
-            <motion.div
-              key={comment.id}
-              className="relative"
-              layout
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{
-                default: COMMENT_SPRING,
-                layout: COMMENT_SPRING,
-                delay: i * STAGGER_MS / 1000,
-              }}
-            >
-              <ExpandedCommentItem
-                comment={comment}
-                currentUserId={user?.id}
-                onDelete={handleDeleteComment}
-              />
-              {nextColor && (
-                <ThreadLine
-                  colorTop={currentColor}
-                  colorBottom={nextColor}
-                  delay={(i + 1) * STAGGER_MS / 1000 + 0.15}
+          const renderComment = (
+            comment: Comment,
+            isTopLevel: boolean,
+            nextSiblingColor: string | null
+          ): React.ReactNode => {
+            const myIndex = staggerIndex++;
+            const children = repliesByParent.get(comment.id) ?? [];
+            const currentColor = getAuthorColor(getAuthorName(comment));
+
+            return (
+              <motion.div
+                key={comment.id}
+                className="relative"
+                layout
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{
+                  default: COMMENT_SPRING,
+                  layout: COMMENT_SPRING,
+                  delay: (myIndex * STAGGER_MS) / 1000,
+                }}
+              >
+                <ExpandedCommentItem
+                  comment={comment}
+                  currentUserId={user?.id}
+                  onDelete={handleDeleteComment}
+                  onReply={() =>
+                    setReplyingTo({
+                      id: comment.id,
+                      authorName: getAuthorName(comment),
+                    })
+                  }
                 />
-              )}
-            </motion.div>
-          );
-        })}
+                {children.length > 0 && (
+                  <div className="mt-8 ml-12 flex flex-col gap-8">
+                    {children.map((child, ci) => {
+                      const nextChild = children[ci + 1];
+                      const nextChildColor = nextChild
+                        ? getAuthorColor(getAuthorName(nextChild))
+                        : null;
+                      return renderComment(child, false, nextChildColor);
+                    })}
+                  </div>
+                )}
+                {isTopLevel && nextSiblingColor && (
+                  <ThreadLine
+                    colorTop={currentColor}
+                    colorBottom={nextSiblingColor}
+                    delay={((myIndex + 1) * STAGGER_MS) / 1000 + 0.15}
+                  />
+                )}
+              </motion.div>
+            );
+          };
+
+          return topLevel.map((comment, i) => {
+            const next = topLevel[i + 1];
+            const nextColor = next
+              ? getAuthorColor(getAuthorName(next))
+              : null;
+            return renderComment(comment, true, nextColor);
+          });
+        })()}
       </div>
 
       {/* Comment input — sticky so it stays visible when scrolling long threads */}
       <div className="sticky bottom-0 bg-white px-6 pb-6 pt-2">
-        <ExpandedCommentForm onSubmit={handleFormSubmit} />
+        <ExpandedCommentForm
+          onSubmit={handleFormSubmit}
+          replyingTo={replyingTo}
+          onCancelReply={() => setReplyingTo(null)}
+        />
       </div>
     </motion.div>
   );

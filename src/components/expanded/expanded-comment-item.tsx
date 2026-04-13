@@ -1,7 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { Trash2Icon } from "lucide-react";
+import { Trash2Icon, CornerDownRightIcon } from "lucide-react";
 import { getAuthorColor } from "@/lib/utils";
 
 interface Comment {
@@ -19,12 +19,14 @@ interface ExpandedCommentItemProps {
   comment: Comment;
   currentUserId?: string;
   onDelete?: (commentId: string) => void;
+  onReply?: () => void;
 }
 
 export function ExpandedCommentItem({
   comment,
   currentUserId,
   onDelete,
+  onReply,
 }: ExpandedCommentItemProps) {
   const authorName =
     comment.author.full_name || comment.author.email.split("@")[0] || "Anonymous";
@@ -58,16 +60,28 @@ export function ExpandedCommentItem({
             {timeAgo === "less than a minute" ? "just now" : `${timeAgo} ago`}
           </span>
         </div>
-        {isOwn && onDelete && (
-          <button
-            type="button"
-            onClick={handleDelete}
-            aria-label="Delete comment"
-            className="opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100 text-[var(--text-caption)] hover:text-destructive"
-          >
-            <Trash2Icon className="size-4" aria-hidden="true" />
-          </button>
-        )}
+        <div className="flex items-center gap-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+          {onReply && (
+            <button
+              type="button"
+              onClick={onReply}
+              aria-label={`Reply to @${authorName.toLowerCase()}`}
+              className="text-[var(--text-caption)] hover:text-[var(--text-dark)]"
+            >
+              <CornerDownRightIcon className="size-4" aria-hidden="true" />
+            </button>
+          )}
+          {isOwn && onDelete && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              aria-label="Delete comment"
+              className="text-[var(--text-caption)] hover:text-destructive"
+            >
+              <Trash2Icon className="size-4" aria-hidden="true" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Comment body — indented past the profile circle */}
