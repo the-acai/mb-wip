@@ -44,14 +44,26 @@ export async function createComment(
 
   if (error) throw error;
 
-  // Insert mentions
+  // Insert mentions. Validate that every mentioned user id exists as a real
+  // profile before inserting — the DB RLS policy now also enforces that the
+  // caller is the comment author, but we strip bogus ids here so we never
+  // hand Supabase a row that will 4xx and confuse the client.
   if (comment.mentions?.length && data) {
-    await supabase.from("mentions").insert(
-      comment.mentions.map((userId) => ({
+    const unique = Array.from(new Set(comment.mentions));
+    const { data: validProfiles } = await supabase
+      .from("profiles")
+      .select("id")
+      .in("id", unique);
+    const validIds = new Set((validProfiles ?? []).map((p) => p.id as string));
+    const rows = unique
+      .filter((id) => validIds.has(id))
+      .map((userId) => ({
         comment_id: data.id,
         mentioned_user_id: userId,
-      }))
-    );
+      }));
+    if (rows.length > 0) {
+      await supabase.from("mentions").insert(rows);
+    }
   }
 
   return data;

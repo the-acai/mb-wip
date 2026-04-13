@@ -96,58 +96,34 @@ export async function createPost(
     assets?: { file_path: string; mime_type: string; size_bytes: number; width?: number | null; height?: number | null }[];
   }
 ) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  // All inserts happen inside a single DB transaction via RPC so a mid-flight
+  // failure (tag upsert, asset insert) no longer leaves an orphan post.
+  const { data: postId, error: rpcError } = await supabase.rpc(
+    "create_post_with_relations",
+    {
+      p_title: post.title,
+      p_body: post.body ?? "",
+      p_visibility: post.visibility ?? "internal",
+      p_tag_names: post.tags ?? [],
+      p_assets: (post.assets ?? []).map((a) => ({
+        file_path: a.file_path,
+        mime_type: a.mime_type,
+        size_bytes: String(a.size_bytes),
+        width: a.width == null ? "" : String(a.width),
+        height: a.height == null ? "" : String(a.height),
+      })),
+    }
+  );
 
-  // Insert post
-  const { data: newPost, error: postError } = await supabase
+  if (rpcError) throw rpcError;
+
+  const { data: newPost, error: fetchError } = await supabase
     .from("posts")
-    .insert({
-      author_id: user.id,
-      title: post.title,
-      body: post.body || null,
-      visibility: post.visibility || "internal",
-    })
     .select()
+    .eq("id", postId)
     .single();
 
-  if (postError) throw postError;
-
-  // Insert tags
-  if (post.tags?.length) {
-    for (const tagName of post.tags) {
-      // Upsert tag
-      const { data: tag } = await supabase
-        .from("tags")
-        .upsert({ name: tagName.toLowerCase().trim() }, { onConflict: "name" })
-        .select()
-        .single();
-
-      if (tag) {
-        await supabase
-          .from("post_tags")
-          .insert({ post_id: newPost.id, tag_id: tag.id });
-      }
-    }
-  }
-
-  // Insert assets
-  if (post.assets?.length) {
-    await supabase.from("assets").insert(
-      post.assets.map((asset, i) => ({
-        post_id: newPost.id,
-        file_path: asset.file_path,
-        mime_type: asset.mime_type,
-        size_bytes: asset.size_bytes,
-        width: asset.width ?? null,
-        height: asset.height ?? null,
-        display_order: i,
-      }))
-    );
-  }
-
+  if (fetchError) throw fetchError;
   return newPost;
 }
 
