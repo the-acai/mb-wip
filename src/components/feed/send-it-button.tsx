@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, animate, useReducedMotion } from "motion/react";
 import { ArrowRight } from "lucide-react";
 import { useUploadModal } from "@/components/upload/upload-modal-context";
@@ -23,9 +24,13 @@ export function SendItButton() {
   const { isOpen, open, buttonPillRef } = useUploadModal();
   const containerRef = useRef<HTMLDivElement>(null);
   const hasAnimated = useRef(false);
+  const [mounted, setMounted] = useState(false);
   const reducedMotion = useReducedMotion();
   const [hoverSpring, setHoverSpring] =
     useState<HoverSpringConfig>(DEFAULT_HOVER_SPRING);
+
+  // Defer SpringTuner portal until after first client paint so SSR matches.
+  useEffect(() => setMounted(true), []);
 
   const springTransition = reducedMotion
     ? { duration: 0 }
@@ -140,7 +145,15 @@ export function SendItButton() {
         </motion.button>
       </div>
 
-      <SpringTuner config={hoverSpring} onChange={setHoverSpring} />
+      {/* Portal SpringTuner to body — its `fixed right-4 bottom-4` positioning
+          would otherwise be relative to our flex wrapper because that wrapper
+          uses transform (`-translate-x-1/2`), which CSS treats as a
+          containing block for fixed-positioned descendants. */}
+      {mounted &&
+        createPortal(
+          <SpringTuner config={hoverSpring} onChange={setHoverSpring} />,
+          document.body
+        )}
     </>
   );
 }
