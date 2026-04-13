@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
-import { motion } from "motion/react";
+import { useEffect, useCallback, useRef } from "react";
+import { motion, useReducedMotion } from "motion/react";
 
 import { ExpandedCard } from "./expanded-card";
 import { ExpandedCommentCard } from "./expanded-comment-card";
 import { CursorCollapseIcon } from "./cursor-collapse-icon";
 import { useExpansion } from "./expansion-context";
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 interface Comment {
   id: string;
@@ -27,8 +30,15 @@ const EXPANSION_SPRING = {
   damping: 16,
 };
 
+const INSTANT_TRANSITION = { duration: 0 };
+
 export function ExpandedPostOverlay() {
   const { postData, commentCache, prefetchComments, collapse } = useExpansion();
+  const reducedMotion = useReducedMotion();
+  const expansionTransition = reducedMotion ? INSTANT_TRANSITION : EXPANSION_SPRING;
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
 
   // Read from cache, trigger fetch if miss
   const cachedComments = postData ? (commentCache.get(postData.id) ?? []) : [];
@@ -60,6 +70,49 @@ export function ExpandedPostOverlay() {
     };
   }, []);
 
+  // Capture the trigger element so focus can be restored on close, and move
+  // focus into the dialog once it mounts.
+  useEffect(() => {
+    restoreFocusRef.current = document.activeElement as HTMLElement | null;
+    const container = containerRef.current;
+    if (container) {
+      const focusable = container.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      (focusable ?? container).focus({ preventScroll: true });
+    }
+    return () => {
+      restoreFocusRef.current?.focus?.({ preventScroll: true });
+    };
+  }, []);
+
+  // Tab key focus trap — keep focus within the dialog while it's open.
+  useEffect(() => {
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const container = containerRef.current;
+      if (!container) return;
+      const focusables = Array.from(
+        container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+      ).filter((el) => !el.hasAttribute("aria-hidden"));
+      if (focusables.length === 0) {
+        e.preventDefault();
+        container.focus({ preventScroll: true });
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && (active === first || !container.contains(active))) {
+        e.preventDefault();
+        last.focus({ preventScroll: true });
+      } else if (!e.shiftKey && (active === last || !container.contains(active))) {
+        e.preventDefault();
+        first.focus({ preventScroll: true });
+      }
+    };
+    window.addEventListener("keydown", handleTab);
+    return () => window.removeEventListener("keydown", handleTab);
+  }, []);
+
   if (!postData) return null;
 
   const vw = window.innerWidth;
@@ -84,14 +137,28 @@ export function ExpandedPostOverlay() {
   const commentSlideX = -(gap + commentWidth);
 
   return (
-    <motion.div className="fixed inset-0 z-40" exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+    <motion.div
+      ref={containerRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={postData.title ?? "Expanded post"}
+      tabIndex={-1}
+      className="fixed inset-0 z-40 outline-none"
+      exit={{ opacity: 0 }}
+      transition={reducedMotion ? INSTANT_TRANSITION : { duration: 0.2 }}
+    >
       {/* Backdrop */}
       <CursorCollapseIcon onDismiss={dismiss}>
         <motion.div
           className="absolute inset-0 bg-[var(--page-bg)]"
           variants={{
-            hidden: { opacity: 0, transition: { duration: 0.2, ease: "easeOut" } },
-            visible: { opacity: 0.96, transition: EXPANSION_SPRING },
+            hidden: {
+              opacity: 0,
+              transition: reducedMotion
+                ? INSTANT_TRANSITION
+                : { duration: 0.2, ease: "easeOut" },
+            },
+            visible: { opacity: 0.96, transition: expansionTransition },
           }}
           initial="hidden"
           animate="visible"
@@ -109,12 +176,22 @@ export function ExpandedPostOverlay() {
           maxHeight: totalCardHeight,
           zIndex: 0,
         }}
-        initial={{ x: commentSlideX, scale: 0.96, opacity: 0 }}
+        initial={
+          reducedMotion
+            ? { x: 0, scale: 1, opacity: 0 }
+            : { x: commentSlideX, scale: 0.96, opacity: 0 }
+        }
         animate={{ x: 0, scale: 1, opacity: 1 }}
-        exit={{ x: commentSlideX, scale: 0.96, opacity: 0 }}
+        exit={
+          reducedMotion
+            ? { x: 0, scale: 1, opacity: 0 }
+            : { x: commentSlideX, scale: 0.96, opacity: 0 }
+        }
         transition={{
-          default: EXPANSION_SPRING,
-          opacity: { duration: 0.25, ease: "easeOut" },
+          default: expansionTransition,
+          opacity: reducedMotion
+            ? INSTANT_TRANSITION
+            : { duration: 0.25, ease: "easeOut" },
         }}
       >
         <ExpandedCommentCard postId={postData.id} initialComments={cachedComments as Comment[]} />
