@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { MessageCircleIcon } from "lucide-react";
 
 import { getAuthorColor } from "@/lib/utils";
@@ -83,6 +83,7 @@ export function ExperimentCard({
   spring = defaultSpring,
 }: ExperimentCardProps) {
   const preloaded = useRef(false);
+  const reducedMotion = useReducedMotion();
   const { expand, prefetchComments, postData } = useExpansion();
 
   const firstImageAsset = post.assets?.find((a) =>
@@ -132,32 +133,44 @@ export function ExperimentCard({
       style={{
         transformStyle: "preserve-3d",
       }}
-      initial={{
-        opacity: 0,
-        y: spring.y,
-        z: spring.z,
-        scale: spring.scale,
-        filter: `blur(${spring.blur}px)`,
-      }}
-      whileInView={{
-        opacity: 1,
-        y: 0,
-        z: 0,
-        scale: 1,
-        filter: "blur(0px)",
-      }}
+      initial={
+        reducedMotion
+          ? false
+          : {
+              opacity: 0,
+              y: spring.y,
+              z: spring.z,
+              scale: spring.scale,
+              filter: `blur(${spring.blur}px)`,
+            }
+      }
+      whileInView={
+        reducedMotion
+          ? undefined
+          : {
+              opacity: 1,
+              y: 0,
+              z: 0,
+              scale: 1,
+              filter: "blur(0px)",
+            }
+      }
       viewport={{ once: true, margin: "0px 0px 200px 0px" }}
-      transition={{
-        default: {
-          type: "spring",
-          mass: spring.mass,
-          stiffness: spring.stiffness,
-          damping: spring.damping,
-          delay,
-        },
-        opacity: { duration: 0.4, ease: "easeOut", delay },
-        filter: { duration: 0.6, ease: "easeOut", delay },
-      }}
+      transition={
+        reducedMotion
+          ? { duration: 0 }
+          : {
+              default: {
+                type: "spring",
+                mass: spring.mass,
+                stiffness: spring.stiffness,
+                damping: spring.damping,
+                delay,
+              },
+              opacity: { duration: 0.4, ease: "easeOut", delay },
+              filter: { duration: 0.6, ease: "easeOut", delay },
+            }
+      }
     >
       <motion.div
         layoutId={`card-${post.id}`}

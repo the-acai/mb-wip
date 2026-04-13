@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { motion, animate } from "motion/react";
+import { motion, animate, useReducedMotion } from "motion/react";
 import { ArrowRight } from "lucide-react";
 import { useUploadModal } from "@/components/upload/upload-modal-context";
 import {
@@ -23,26 +23,32 @@ export function SendItButton() {
   const { isOpen, open, buttonPillRef } = useUploadModal();
   const containerRef = useRef<HTMLDivElement>(null);
   const hasAnimated = useRef(false);
+  const reducedMotion = useReducedMotion();
   const [hoverSpring, setHoverSpring] =
     useState<HoverSpringConfig>(DEFAULT_HOVER_SPRING);
 
-  const springTransition = {
-    type: "spring" as const,
-    mass: hoverSpring.mass,
-    stiffness: hoverSpring.stiffness,
-    damping: hoverSpring.damping,
-  };
+  const springTransition = reducedMotion
+    ? { duration: 0 }
+    : {
+        type: "spring" as const,
+        mass: hoverSpring.mass,
+        stiffness: hoverSpring.stiffness,
+        damping: hoverSpring.damping,
+      };
 
-  // Entrance animation (first load only)
+  // Entrance animation (first load only). With reduced motion, snap to final
+  // state with no stagger and no spring.
   useEffect(() => {
     if (hasAnimated.current || !containerRef.current) return;
     hasAnimated.current = true;
 
     const container = containerRef.current;
+    container.style.opacity = "1";
+
+    if (reducedMotion) return;
+
     const chars = container.querySelectorAll("[data-char]");
     const arrowWrap = container.querySelector("[data-arrow-wrap]") as HTMLElement | null;
-
-    container.style.opacity = "1";
 
     // Stagger chars in
     chars.forEach((char, i) => {
@@ -62,7 +68,7 @@ export function SendItButton() {
         animate(arrowWrap, { opacity: 1, x: 0 }, ENTRANCE_SPRING);
       }, BREATH_DELAY_MS + chars.length * 30);
     }
-  }, []);
+  }, [reducedMotion]);
 
   // On open: hide container + reset arrow for next close cycle
   useEffect(() => {

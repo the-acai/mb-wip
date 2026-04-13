@@ -1,13 +1,14 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useScroll, useTransform } from "motion/react";
+import { motion, useScroll, useTransform, useReducedMotion } from "motion/react";
 import Link from "next/link";
 
 const CARD_SPRING = { type: "spring" as const, mass: 2, stiffness: 100, damping: 16 };
 
 export function ShrinkingHeader() {
   const headerRef = useRef<HTMLDivElement>(null);
+  const reducedMotion = useReducedMotion();
 
   const { scrollYProgress } = useScroll({
     target: headerRef,
@@ -31,6 +32,13 @@ export function ShrinkingHeader() {
     v > 0.5 ? "difference" : "normal"
   );
 
+  // Reduced-motion path: render the header at its final-state position with no
+  // entrance spring and no scroll-driven transforms. The 40svh spacer stays so
+  // the page layout is unchanged.
+  const headlineStyle = reducedMotion
+    ? { fontSize: 24, opacity: 1 }
+    : { fontSize, opacity: scrollOpacity, y: scrollY, mixBlendMode: blendMode as never };
+
   return (
     <>
       {/* Spacer — defines the scroll range for the shrink animation */}
@@ -39,17 +47,18 @@ export function ShrinkingHeader() {
       {/* Entrance wrapper — fades/slides in, then scroll takes over */}
       <motion.div
         className="fixed top-4 left-0 right-0 z-40 pointer-events-none"
-        initial={{ opacity: 0, y: 24 }}
+        initial={reducedMotion ? false : { opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{
-          default: CARD_SPRING,
-          opacity: { duration: 0.4, ease: "easeOut" },
-        }}
+        transition={
+          reducedMotion
+            ? { duration: 0 }
+            : { default: CARD_SPRING, opacity: { duration: 0.4, ease: "easeOut" } }
+        }
       >
         <Link href="/feed" className="pointer-events-auto">
           <motion.h1
             className="text-center font-heading font-black leading-[1.18] tracking-[-0.01em] text-[var(--text-dark)]"
-            style={{ fontSize, opacity: scrollOpacity, y: scrollY, mixBlendMode: blendMode as never }}
+            style={headlineStyle}
           >
             WORKS IN PROGRESS
           </motion.h1>
