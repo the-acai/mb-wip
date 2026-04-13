@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { MarkdownRenderer } from "@/components/post/markdown-renderer";
 import { MediaGallery } from "@/components/post/media-gallery";
+import { ShareButton } from "@/components/post/share-button";
 import { CommentThread } from "@/components/comments/comment-thread";
 
 interface PostData {
@@ -145,14 +146,17 @@ export default async function PostDetailPage({
 
   return (
     <div className="mx-auto max-w-3xl py-4">
-      {/* Back link */}
-      <Link
-        href="/feed"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeftIcon className="size-4" />
-        Back to feed
-      </Link>
+      {/* Back / share row */}
+      <div className="mb-6 flex items-center justify-between gap-2">
+        <Link
+          href="/feed"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeftIcon className="size-4" />
+          Back to feed
+        </Link>
+        <ShareButton url={`/post/${id}`} title={post.title} />
+      </div>
 
       {/* Header */}
       <article className="space-y-6">
