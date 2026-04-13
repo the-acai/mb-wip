@@ -30,11 +30,15 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Redirect unauthenticated users to /login
+  // Redirect unauthenticated users to /login.
+  // /api/og/* is exempt so OG image crawlers (Slack, Twitter, etc.) can generate
+  // unfurl thumbnails without a session — the route handler renders a fallback
+  // when RLS denies post access.
   if (
     !user &&
     !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
+    !request.nextUrl.pathname.startsWith("/auth") &&
+    !request.nextUrl.pathname.startsWith("/api/og")
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
