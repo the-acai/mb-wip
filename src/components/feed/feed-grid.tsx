@@ -73,12 +73,13 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
 
   if (posts.length === 0 && !loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <h2 className="text-xl font-semibold text-foreground">
-          No experiments yet
+      <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+        <h2 className="font-heading text-2xl tracking-[-0.2px] text-foreground">
+          Nothing in progress yet
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Be the first to share something.
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Hit <span className="font-heading">Send It</span> in the corner to
+          post the first experiment.
         </p>
       </div>
     );

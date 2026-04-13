@@ -112,6 +112,11 @@ export function ExpandedCommentCard({ postId, initialComments }: ExpandedComment
     >
       {/* Comment list — no inner overflow so entrance animations clip at card edge */}
       <div ref={commentListRef} className="relative flex flex-col gap-8 p-6">
+        {topLevel.length === 0 && (
+          <p className="py-4 text-center text-sm text-[var(--text-caption)]">
+            No comments yet. Be the first to reply.
+          </p>
+        )}
         {topLevel.map((comment, i) => {
           const nextComment = topLevel[i + 1];
           const currentColor = getAuthorColor(getAuthorName(comment));

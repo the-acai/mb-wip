@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import Image from "next/image";
 import { motion } from "motion/react";
+import { MessageCircleIcon } from "lucide-react";
 
 import { getAuthorColor } from "@/lib/utils";
 import { useExpansion, type ExpandedPostData } from "@/components/expanded/expansion-context";
@@ -92,6 +93,7 @@ export function ExperimentCard({
     post.author?.full_name || post.author?.email?.split("@")[0] || "Anonymous";
   const badgeColor = getAuthorColor(authorName);
   const caption = post.body?.slice(0, 120) || post.title;
+  const commentCount = post.comments?.[0]?.count ?? 0;
 
   const aspectRatio = orientation === "portrait" ? "2/3" : "3/2";
 
@@ -201,6 +203,15 @@ export function ExperimentCard({
             <p className="min-w-0 flex-1 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[var(--text-caption)]">
               {caption}
             </p>
+            {commentCount > 0 && (
+              <span
+                className="inline-flex shrink-0 items-center gap-1 font-heading text-sm tracking-[-0.14px] text-[var(--text-caption)]"
+                aria-label={`${commentCount} comment${commentCount === 1 ? "" : "s"}`}
+              >
+                <MessageCircleIcon className="size-3.5" aria-hidden="true" />
+                {commentCount}
+              </span>
+            )}
           </div>
         </div>
       </motion.div>
