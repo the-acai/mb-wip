@@ -8,29 +8,7 @@ import {
   getPostOrientation,
   type FeedPost,
 } from "./experiment-card";
-
-function computeStaggerDelays(
-  count: number,
-  withinRowMs: number,
-  rowBreathMs: number
-): number[] {
-  const COLS = 3;
-  const delays: number[] = [];
-  let time = 0;
-  let colInRow = 0;
-
-  for (let i = 0; i < count; i++) {
-    delays.push(time / 1000);
-    colInRow++;
-    if (colInRow >= COLS) {
-      colInRow = 0;
-      time += withinRowMs + rowBreathMs;
-    } else {
-      time += withinRowMs;
-    }
-  }
-  return delays;
-}
+import { computeStaggerDelays } from "./stagger";
 
 interface FeedGridProps {
   posts: FeedPost[];
