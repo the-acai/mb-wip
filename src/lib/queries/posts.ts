@@ -49,6 +49,47 @@ export async function getFeedPosts(
   return { posts, nextCursor };
 }
 
+export async function searchPosts(
+  supabase: SupabaseClient,
+  options: { query: string; cursor?: FeedCursor; limit?: number }
+): Promise<FeedPageResult> {
+  const limit = options.limit ?? 20;
+  const trimmed = options.query.trim();
+  if (trimmed.length === 0) {
+    return { posts: [], nextCursor: null };
+  }
+
+  // search_posts (migration 00017) returns setof posts ordered by ts_rank
+  // desc, created_at desc — chain .select() for joined data in one round-trip.
+  const { data, error } = await supabase
+    .rpc("search_posts", {
+      p_query: trimmed,
+      p_cursor_created_at: options.cursor?.created_at ?? null,
+      p_limit: limit,
+    })
+    .select(
+      `
+      *,
+      author:profiles!author_id(*),
+      assets(*),
+      post_tags(tag:tags(*)),
+      comments(count),
+      reactions(count)
+    `
+    );
+
+  if (error) throw error;
+  const posts = data ?? [];
+
+  let nextCursor: FeedCursor | null = null;
+  if (posts.length >= limit) {
+    const last = posts[posts.length - 1] as { created_at: string };
+    nextCursor = { created_at: last.created_at };
+  }
+
+  return { posts, nextCursor };
+}
+
 export async function getPost(supabase: SupabaseClient, id: string) {
   const { data, error } = await supabase
     .from("posts")
