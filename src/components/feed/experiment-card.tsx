@@ -8,7 +8,6 @@ import { MessageCircleIcon } from "lucide-react";
 import { getAuthorColor } from "@/lib/utils";
 import { useExpansion, type ExpandedPostData } from "@/components/expanded/expansion-context";
 import { thumbHashToPlaceholderURL } from "@/lib/thumb-hash";
-import { useScrollReveal } from "@/hooks/use-scroll-reveal";
 
 export interface FeedPost {
   id: string;
@@ -51,19 +50,44 @@ export function getPostOrientation(post: FeedPost): Orientation {
   return "landscape";
 }
 
+export interface CardSpringConfig {
+  mass: number;
+  stiffness: number;
+  damping: number;
+  y: number;
+  z: number;
+  scale: number;
+  blur: number;
+}
+
 interface ExperimentCardProps {
   post: FeedPost;
   orientation: Orientation;
+  /** Stagger delay in seconds */
+  delay?: number;
+  /** Spring config (passed from tuner or defaults) */
+  spring?: CardSpringConfig;
 }
+
+const defaultSpring: CardSpringConfig = {
+  mass: 1.2,
+  stiffness: 140,
+  damping: 18,
+  y: 24,
+  z: 80,
+  scale: 1.06,
+  blur: 0,
+};
 
 export function ExperimentCard({
   post,
   orientation,
+  delay = 0,
+  spring = defaultSpring,
 }: ExperimentCardProps) {
   const preloaded = useRef(false);
   const reducedMotion = useReducedMotion();
   const { expand, prefetchComments, postData } = useExpansion();
-  const { ref: scrollRef, opacity: scrollOpacity, y: scrollY, scale: scrollScale } = useScrollReveal();
 
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -121,15 +145,49 @@ export function ExperimentCard({
 
   return (
     <motion.div
-      ref={scrollRef}
       onMouseEnter={handlePreloadIntent}
       onPointerDown={handlePreloadIntent}
       style={{
         transformStyle: "preserve-3d",
-        opacity: scrollOpacity,
-        y: scrollY,
-        scale: scrollScale,
       }}
+      initial={
+        reducedMotion
+          ? false
+          : {
+              opacity: 0,
+              y: spring.y,
+              z: spring.z,
+              scale: spring.scale,
+              filter: `blur(${spring.blur}px)`,
+            }
+      }
+      whileInView={
+        reducedMotion
+          ? undefined
+          : {
+              opacity: 1,
+              y: 0,
+              z: 0,
+              scale: 1,
+              filter: "blur(0px)",
+            }
+      }
+      viewport={{ once: true, margin: "0px 0px -300px 0px" }}
+      transition={
+        reducedMotion
+          ? { duration: 0 }
+          : {
+              default: {
+                type: "spring",
+                mass: spring.mass,
+                stiffness: spring.stiffness,
+                damping: spring.damping,
+                delay,
+              },
+              opacity: { duration: 0.4, ease: "easeOut", delay },
+              filter: { duration: 0.6, ease: "easeOut", delay },
+            }
+      }
     >
       <motion.div
         layoutId={`card-${post.id}`}
