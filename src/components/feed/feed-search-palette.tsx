@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
+import { CursorCollapseIcon } from "@/components/expanded/cursor-collapse-icon";
 import { useSearchPalette } from "./search-context";
 import { useSearchPosts } from "@/hooks/use-search-posts";
 import {
@@ -83,6 +84,16 @@ export function FeedSearchPalette() {
     };
   }, [isOpen]);
 
+  // Window-level Escape — works even when input isn't focused
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [isOpen, close]);
+
   const handleSelect = useCallback(
     (post: FeedPost) => {
       close();
@@ -146,15 +157,16 @@ export function FeedSearchPalette() {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {/* Backdrop — same as expanded card overlay */}
-          <motion.div
-            className="absolute inset-0 bg-[var(--page-bg)]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.96 }}
-            exit={{ opacity: 0 }}
-            transition={SPRING}
-            onClick={close}
-          />
+          {/* Backdrop — same hover-to-collapse treatment as other overlays */}
+          <CursorCollapseIcon onDismiss={close}>
+            <motion.div
+              className="absolute inset-0 bg-[var(--page-bg)]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.96 }}
+              exit={{ opacity: 0 }}
+              transition={SPRING}
+            />
+          </CursorCollapseIcon>
 
           {/* Centered content column */}
           <div className="relative z-10 flex h-full flex-col items-center justify-center px-6">
