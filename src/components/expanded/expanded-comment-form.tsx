@@ -52,14 +52,18 @@ export function ExpandedCommentForm({
     user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
   const userColor = userName ? getAuthorColor(userName) : "#dfe0e0";
 
-  // Debounced fetch for mention suggestions
+  // Fetch mention suggestions — fires immediately on the first character
+  // after @, then debounces subsequent keystrokes by 150ms so we don't
+  // hammer the API while still feeling instant on initial trigger.
+  const lastFetchedRef = useRef<string | null>(null);
   useEffect(() => {
     if (mentionQuery === null || mentionQuery.length === 0) {
       setMentionResults([]);
+      lastFetchedRef.current = null;
       return;
     }
 
-    const timer = setTimeout(async () => {
+    const doFetch = async () => {
       try {
         const res = await fetch(
           `/api/mentions/search?q=${encodeURIComponent(mentionQuery)}`
@@ -73,8 +77,17 @@ export function ExpandedCommentForm({
       } catch {
         // best-effort
       }
-    }, 200);
+      lastFetchedRef.current = mentionQuery;
+    };
 
+    // First character after @ — fire immediately (no debounce)
+    if (lastFetchedRef.current === null) {
+      doFetch();
+      return;
+    }
+
+    // Subsequent keystrokes — debounce
+    const timer = setTimeout(doFetch, 150);
     return () => clearTimeout(timer);
   }, [mentionQuery]);
 
