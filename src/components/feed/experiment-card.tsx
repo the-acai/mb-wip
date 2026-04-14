@@ -54,24 +54,11 @@ export function getPostOrientation(post: FeedPost): Orientation {
 interface ExperimentCardProps {
   post: FeedPost;
   orientation: Orientation;
-  /** Grid index — used for stagger delay on mount entrance */
-  index?: number;
-}
-
-// Stagger delay from grid index (50ms within-row, 30ms breath between rows)
-const COLS = 3;
-const WITHIN_MS = 50;
-const BREATH_MS = 30;
-function staggerDelay(i: number): number {
-  const row = Math.floor(i / COLS);
-  const col = i % COLS;
-  return (row * (COLS * WITHIN_MS + BREATH_MS) + col * WITHIN_MS) / 1000;
 }
 
 export function ExperimentCard({
   post,
   orientation,
-  index = 0,
 }: ExperimentCardProps) {
   const preloaded = useRef(false);
   const reducedMotion = useReducedMotion();
@@ -137,21 +124,18 @@ export function ExperimentCard({
       ref={scrollRef}
       onMouseEnter={handlePreloadIntent}
       onPointerDown={handlePreloadIntent}
-      // In-viewport cards: staggered spring entrance matching original feel.
+      // In-viewport cards: mount entrance via initial/animate (scroll-linked
+      // can't work because scroll progress is already past the reveal zone).
       // Below-fold cards: scroll-linked transforms via style.
       {...(!scrollLinked && !reducedMotion
         ? {
-            initial: { opacity: 0, y: 24, z: 80, scale: 1.06 },
-            animate: { opacity: 1, y: 0, z: 0, scale: 1 },
+            initial: { opacity: 0, y: 16, scale: 0.98 },
+            animate: { opacity: 1, y: 0, scale: 1 },
             transition: {
-              default: {
-                type: "spring" as const,
-                mass: 1.2,
-                stiffness: 140,
-                damping: 18,
-                delay: staggerDelay(index),
-              },
-              opacity: { duration: 0.4, ease: "easeOut" as const, delay: staggerDelay(index) },
+              type: "spring" as const,
+              mass: 1,
+              stiffness: 200,
+              damping: 20,
             },
           }
         : {})}
