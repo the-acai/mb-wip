@@ -35,6 +35,7 @@ export function ExpandedCard({ postData, style }: ExpandedCardProps) {
     : {
         initial: reducedMotion ? { opacity: 1 } : { opacity: 0, scale: 0.96 },
         animate: { opacity: 1, scale: 1 },
+        exit: reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 },
         transition: reducedMotion ? { duration: 0 } : EXPANSION_SPRING,
       };
 

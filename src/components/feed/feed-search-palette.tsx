@@ -138,7 +138,7 @@ export function FeedSearchPalette() {
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-40 outline-none"
+          className={`fixed inset-0 z-40 outline-none ${!isOpen ? "pointer-events-none" : ""}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
