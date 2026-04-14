@@ -42,8 +42,8 @@ export function ExpandedCard({ postData, style }: ExpandedCardProps) {
   return (
     <motion.div
       {...flipProps}
-      className="pointer-events-auto flex flex-col gap-4 overflow-hidden"
-      style={{ position: "fixed", zIndex: 1, borderRadius: 16, ...style }}
+      className="pointer-events-auto flex flex-col gap-4"
+      style={{ position: "fixed", zIndex: 1, ...style }}
     >
       {/* Image — flex-1 fills remaining space after caption */}
       <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg">

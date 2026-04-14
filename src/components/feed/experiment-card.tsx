@@ -180,7 +180,7 @@ export function ExperimentCard({
         layoutId={`card-${post.id}`}
         onClick={handleClick}
         className="group block cursor-pointer"
-        style={{ opacity: isLifted ? 0 : 1 }}
+        style={{ opacity: isLifted ? 0 : 1, borderRadius: 0 }}
         transition={{ layout: { type: "spring", mass: 1.2, stiffness: 170, damping: 16 } }}
       >
         <div className="flex flex-col gap-4">
