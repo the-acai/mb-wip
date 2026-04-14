@@ -63,7 +63,7 @@ export function ExperimentCard({
   const preloaded = useRef(false);
   const reducedMotion = useReducedMotion();
   const { expand, prefetchComments, postData } = useExpansion();
-  const { ref: scrollRef, opacity: scrollOpacity, y: scrollY, scale: scrollScale, scrollLinked } = useScrollReveal();
+  const { ref: scrollRef, opacity: scrollOpacity, y: scrollY, scale: scrollScale } = useScrollReveal();
 
   const [imageLoaded, setImageLoaded] = useState(false);
 
@@ -124,30 +124,11 @@ export function ExperimentCard({
       ref={scrollRef}
       onMouseEnter={handlePreloadIntent}
       onPointerDown={handlePreloadIntent}
-      // In-viewport cards: mount entrance via initial/animate (scroll-linked
-      // can't work because scroll progress is already past the reveal zone).
-      // Below-fold cards: scroll-linked transforms via style.
-      {...(!scrollLinked && !reducedMotion
-        ? {
-            initial: { opacity: 0, y: 16, scale: 0.98 },
-            animate: { opacity: 1, y: 0, scale: 1 },
-            transition: {
-              type: "spring" as const,
-              mass: 1,
-              stiffness: 200,
-              damping: 20,
-            },
-          }
-        : {})}
       style={{
         transformStyle: "preserve-3d",
-        ...(scrollLinked
-          ? {
-              opacity: scrollOpacity,
-              y: scrollY,
-              scale: scrollScale,
-            }
-          : {}),
+        opacity: scrollOpacity,
+        y: scrollY,
+        scale: scrollScale,
       }}
     >
       <motion.div
