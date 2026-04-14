@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { getAuthorColor } from "@/lib/utils";
 import type { ExpandedPostData } from "./expansion-context";
 
@@ -18,17 +18,31 @@ interface ExpandedCardProps {
 }
 
 export function ExpandedCard({ postData, style }: ExpandedCardProps) {
+  const reducedMotion = useReducedMotion();
   const authorName =
     postData.author?.full_name || postData.author?.email?.split("@")[0] || "Anonymous";
   const badgeColor = getAuthorColor(authorName);
   const caption = postData.body?.slice(0, 120) || postData.title;
 
+  // When the source isn't a real grid card (buffer clone, search result),
+  // skip layoutId FLIP and spring in with opacity + scale instead.
+  const skipFlip = postData.skipFlip;
+  const flipProps = skipFlip
+    ? {
+        initial: reducedMotion ? { opacity: 1 } : { opacity: 0, scale: 0.96 },
+        animate: { opacity: 1, scale: 1 },
+        transition: reducedMotion ? { duration: 0 } : EXPANSION_SPRING,
+      }
+    : {
+        layoutId: `card-${postData.id}`,
+        transition: { layout: EXPANSION_SPRING },
+      };
+
   return (
     <motion.div
-      layoutId={`card-${postData.id}`}
+      {...flipProps}
       className="pointer-events-auto flex flex-col gap-4 overflow-hidden"
       style={{ position: "fixed", zIndex: 1, borderRadius: 16, ...style }}
-      transition={{ layout: EXPANSION_SPRING }}
     >
       {/* Image — flex-1 fills remaining space after caption */}
       <div className="relative min-h-0 flex-1 overflow-hidden rounded-lg">

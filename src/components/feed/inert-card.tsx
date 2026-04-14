@@ -42,6 +42,7 @@ export function InertCard({ post, orientation }: InertCardProps) {
       author: post.author,
       imageUrl: thumbnailUrl ?? null,
       imageAspect: orientation === "portrait" ? 2 / 3 : 3 / 2,
+      skipFlip: true,
     };
     expand(data);
   };
