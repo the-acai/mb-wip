@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { XIcon } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
+import { createClient } from "@/lib/supabase/client";
 import { getAuthorColor } from "@/lib/utils";
 
 interface Profile {
@@ -39,7 +40,6 @@ export function ExpandedCommentForm({
 
   // Mention autocomplete state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-  const [mentionResults, setMentionResults] = useState<Profile[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const mentionStartRef = useRef<number>(-1);
   const mentionIdsRef = useRef<Set<string>>(new Set());
@@ -52,44 +52,39 @@ export function ExpandedCommentForm({
     user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
   const userColor = userName ? getAuthorColor(userName) : "#dfe0e0";
 
-  // Fetch mention suggestions — fires immediately on the first character
-  // after @, then debounces subsequent keystrokes by 150ms so we don't
-  // hammer the API while still feeling instant on initial trigger.
-  const lastFetchedRef = useRef<string | null>(null);
+  // Prefetch all profiles on mount — small team, so load once and filter
+  // client-side for instant autocomplete (no network per keystroke).
+  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   useEffect(() => {
-    if (mentionQuery === null || mentionQuery.length === 0) {
-      setMentionResults([]);
-      lastFetchedRef.current = null;
-      return;
-    }
+    const supabase = createClient();
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, avatar_url")
+      .then(({ data }) => {
+        if (data) setAllProfiles(data as Profile[]);
+      });
+  }, []);
 
-    const doFetch = async () => {
-      try {
-        const res = await fetch(
-          `/api/mentions/search?q=${encodeURIComponent(mentionQuery)}`
+  // Client-side filter — instant, no debounce needed.
+  const mentionResults = useMemo(() => {
+    if (mentionQuery === null || mentionQuery.length === 0 || allProfiles.length === 0) return [];
+    const q = mentionQuery.toLowerCase();
+    return allProfiles
+      .filter((p) => {
+        // Exclude current user
+        if (user && p.id === user.id) return false;
+        return (
+          p.full_name?.toLowerCase().includes(q) ||
+          p.email?.toLowerCase().includes(q)
         );
-        if (!res.ok) return;
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setMentionResults(data);
-          setActiveIndex(0);
-        }
-      } catch {
-        // best-effort
-      }
-      lastFetchedRef.current = mentionQuery;
-    };
+      })
+      .slice(0, 5);
+  }, [mentionQuery, allProfiles, user]);
 
-    // First character after @ — fire immediately (no debounce)
-    if (lastFetchedRef.current === null) {
-      doFetch();
-      return;
-    }
-
-    // Subsequent keystrokes — debounce
-    const timer = setTimeout(doFetch, 150);
-    return () => clearTimeout(timer);
-  }, [mentionQuery]);
+  // Reset active index when results change
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [mentionResults]);
 
   // Detect @mention context from input value + caret position
   const detectMention = useCallback((value: string, caretPos: number) => {
@@ -143,7 +138,6 @@ export function ExpandedCommentForm({
 
       // Close popover
       setMentionQuery(null);
-      setMentionResults([]);
 
       // Restore focus and caret
       requestAnimationFrame(() => {
@@ -216,7 +210,6 @@ export function ExpandedCommentForm({
         e.preventDefault();
         e.stopPropagation();
         setMentionQuery(null);
-        setMentionResults([]);
         return;
       }
     }
