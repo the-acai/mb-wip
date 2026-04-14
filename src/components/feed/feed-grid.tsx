@@ -98,6 +98,7 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
               <ExperimentCard
                 post={post}
                 orientation={orientation}
+                index={i}
               />
             </div>
           );

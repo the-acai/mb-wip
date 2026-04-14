@@ -54,7 +54,7 @@ export function useScrollReveal() {
       revealedRef.current = true;
       return 0;
     }
-    return 16 * (1 - ease(v));
+    return 24 * (1 - ease(v));
   });
 
   const scale = useTransform(scrollYProgress, (v) => {
