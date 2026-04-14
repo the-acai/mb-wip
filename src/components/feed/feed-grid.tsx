@@ -74,7 +74,7 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
   }
 
   const orientations = posts.map(getPostOrientation);
-  const delays = computeStaggerDelays(posts.length, 80, 60);
+  const delays = computeStaggerDelays(posts.length, 50, 30);
 
   return (
     <>

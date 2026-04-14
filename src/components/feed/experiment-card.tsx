@@ -70,9 +70,9 @@ interface ExperimentCardProps {
 }
 
 const defaultSpring: CardSpringConfig = {
-  mass: 2,
-  stiffness: 100,
-  damping: 16,
+  mass: 1.2,
+  stiffness: 140,
+  damping: 18,
   y: 24,
   z: 80,
   scale: 1.06,
@@ -172,7 +172,7 @@ export function ExperimentCard({
               filter: "blur(0px)",
             }
       }
-      viewport={{ once: true, margin: "0px 0px -150px 0px" }}
+      viewport={{ once: true, margin: "0px 0px -300px 0px" }}
       transition={
         reducedMotion
           ? { duration: 0 }
