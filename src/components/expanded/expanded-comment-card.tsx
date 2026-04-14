@@ -91,11 +91,12 @@ export function ExpandedCommentCard({
     return map;
   }, [comments]);
 
-  const handleSubmit = async (body: string, parentId?: string) => {
+  const handleSubmit = async (body: string, parentId?: string, mentions?: string[]) => {
     await createComment(supabase, {
       post_id: postId,
       body,
       parent_comment_id: parentId,
+      mentions,
     });
   };
 
@@ -122,15 +123,15 @@ export function ExpandedCommentCard({
     return { cleanBody: body };
   };
 
-  const handleFormSubmit = async (body: string) => {
+  const handleFormSubmit = async (body: string, mentions?: string[]) => {
     // Explicit Reply selection wins over @-mention parsing.
     if (replyingTo) {
-      await handleSubmit(body, replyingTo.id);
+      await handleSubmit(body, replyingTo.id, mentions);
       setReplyingTo(null);
       return;
     }
     const { parentId, cleanBody } = resolveParentFromMention(body);
-    await handleSubmit(cleanBody, parentId);
+    await handleSubmit(cleanBody, parentId, mentions);
   };
 
   const handleDeleteComment = useCallback(
