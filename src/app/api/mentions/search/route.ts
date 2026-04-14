@@ -10,11 +10,20 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+
+  // Exclude the current user — you don't @-mention yourself.
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let builder = supabase
     .from("profiles")
     .select("id, full_name, email, avatar_url")
-    .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
-    .limit(5);
+    .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`);
+
+  if (user) {
+    builder = builder.neq("id", user.id);
+  }
+
+  const { data, error } = await builder.limit(5);
 
   if (error) {
     // Return an error shape so the client can distinguish "no matches" (200, [])
