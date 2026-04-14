@@ -3,7 +3,7 @@
 import { useRef, useState, useMemo } from "react";
 import Image from "next/image";
 import { motion, useReducedMotion } from "motion/react";
-import { MessageCircleIcon } from "lucide-react";
+import { MessageCircleIcon, PlayIcon } from "lucide-react";
 
 import { getAuthorColor } from "@/lib/utils";
 import { useExpansion, type ExpandedPostData } from "@/components/expanded/expansion-context";
@@ -30,6 +30,8 @@ export interface FeedPost {
     signed_url?: string;
     thumb_hash?: string | null;
     dominant_color?: string | null;
+    poster_path?: string | null;
+    poster_signed_url?: string;
   }[];
   post_tags: {
     tag: {
@@ -47,6 +49,13 @@ export function getPostOrientation(post: FeedPost): Orientation {
   const firstImage = post.assets?.find((a) => a.mime_type?.startsWith("image/"));
   if (firstImage?.width && firstImage?.height && firstImage.height > firstImage.width) {
     return "portrait";
+  }
+  // Fall back to video dimensions if no image
+  if (!firstImage) {
+    const firstVideo = post.assets?.find((a) => a.mime_type?.startsWith("video/"));
+    if (firstVideo?.width && firstVideo?.height && firstVideo.height > firstVideo.width) {
+      return "portrait";
+    }
   }
   return "landscape";
 }
@@ -95,9 +104,18 @@ export function ExperimentCard({
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
   );
-  const thumbnailUrl = firstImageAsset?.signed_url;
-  const thumbHash = firstImageAsset?.thumb_hash;
-  const dominantColor = firstImageAsset?.dominant_color;
+  const firstVideoWithPoster = !firstImageAsset
+    ? post.assets?.find(
+        (a) => a.mime_type?.startsWith("video/") && a.poster_signed_url
+      )
+    : null;
+  const displayAsset = firstImageAsset || firstVideoWithPoster;
+  const isVideoDisplay = displayAsset?.mime_type?.startsWith("video/");
+  const thumbnailUrl = isVideoDisplay
+    ? displayAsset?.poster_signed_url
+    : displayAsset?.signed_url;
+  const thumbHash = displayAsset?.thumb_hash;
+  const dominantColor = displayAsset?.dominant_color;
   const placeholderUrl = useMemo(
     () => (thumbHash ? thumbHashToPlaceholderURL(thumbHash) : null),
     [thumbHash]
@@ -124,8 +142,8 @@ export function ExperimentCard({
       imageUrl: thumbnailUrl ?? null,
       imageAspect: orientation === "portrait" ? 2 / 3 : 3 / 2,
       layoutSource: `card-${post.id}`,
-      thumbHash,
-      dominantColor,
+      thumbHash: thumbHash ?? undefined,
+      dominantColor: dominantColor ?? undefined,
     };
     expand(data);
   };
@@ -228,6 +246,11 @@ export function ExperimentCard({
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 onLoad={() => setImageLoaded(true)}
               />
+              {isVideoDisplay && (
+                <div className="absolute bottom-2 left-2 flex size-7 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm">
+                  <PlayIcon className="size-3.5 fill-current" />
+                </div>
+              )}
             </div>
           ) : (
             <div

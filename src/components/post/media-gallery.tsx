@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { LazyVideo } from "./lazy-video";
 
 interface Asset {
   file_path: string;
@@ -14,6 +15,8 @@ interface Asset {
   signed_url?: string;
   width?: number | null;
   height?: number | null;
+  poster_path?: string | null;
+  poster_signed_url?: string;
 }
 
 interface MediaGalleryProps {
@@ -71,21 +74,16 @@ export function MediaGallery({ assets }: MediaGalleryProps) {
         </div>
       )}
 
-      {/* Videos */}
+      {/* Videos — lazy-loaded with poster frames and buffer cleanup */}
       {videos.length > 0 && (
         <div className="space-y-3">
           {videos.map((asset) => (
-            <div
+            <LazyVideo
               key={asset.file_path}
+              src={asset.signed_url}
+              posterUrl={asset.poster_signed_url}
               className="overflow-hidden rounded-lg border"
-            >
-              <video
-                src={asset.signed_url}
-                controls
-                className="w-full"
-                preload="metadata"
-              />
-            </div>
+            />
           ))}
         </div>
       )}

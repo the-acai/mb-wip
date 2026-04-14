@@ -57,6 +57,7 @@ Two route groups under `src/app/`:
 `ExperimentCard`:
 - `motion.div` with `layoutId={`card-${post.id}`}` — this is the FLIP source. Entrance animates `y/z/scale/opacity/blur` springs (tunable via `CardSpringConfig`).
 - **Image loading:** Three-layer progressive reveal — dominant color bg (instant) → ThumbHash blurry preview (decoded from `thumb_hash` via `thumbHashToPlaceholderURL`) → full image crossfade (500ms `onLoad` transition). Both the card and expanded overlay share this pattern. Assets without `thumb_hash` fall back to white bg + fade-in.
+- **Video display in cards:** Feed cards show a static poster image (extracted at upload time by `src/lib/video-thumbnail.ts`) with a play icon badge — no autoplay. Video-only posts fall back to the poster via `poster_signed_url` on the asset. The poster WebP is uploaded as a sibling file and stored in `assets.poster_path`. `LazyVideo` (`src/components/post/lazy-video.tsx`) handles IO-based lazy mounting and buffer cleanup in `MediaGallery`.
 - On hover, preloads the image + prefetches comments (`prefetchComments(post.id)`).
 - On click, calls `expand(data)` from `ExpansionContext`, which `setPostData(...)` + `window.history.pushState` to `/post/{id}` (URL changes without re-render).
 - When this card is the lifted one, sets `opacity: 0` but keeps grid space (so the overlay's `layoutId` flies from this position).
@@ -89,7 +90,7 @@ Two route groups under `src/app/`:
 
 ### Data model (supabase/migrations/)
 
-`profiles` (+ `color text`, `onboarding_complete boolean` from `00020`), `posts`, `assets` (post media + width/height + display_order + thumb_hash + dominant_color for placeholders), `tags` + `post_tags`, `comments` (threaded), `reactions`, `mentions`, `notifications`, DB triggers (`00009_create_triggers.sql`), storage bucket config (`00010` + `00013`), `get_feed_posts` RPC + reverse index on `post_tags(tag_id)` (`00011` — note the file name "create_post_stats" is misleading; there is no `post_stats` table), `create_post_with_relations` RPC + tightened mentions RLS (`00014`), ThumbHash placeholder columns on assets (`00019`), onboarding fields on profiles (`00020`). RLS on every table — policies key off `auth.uid()`.
+`profiles` (+ `color text`, `onboarding_complete boolean` from `00020`), `posts`, `assets` (post media + width/height + display_order + thumb_hash + dominant_color for placeholders + poster_path for video poster frames), `tags` + `post_tags`, `comments` (threaded), `reactions`, `mentions`, `notifications`, DB triggers (`00009_create_triggers.sql`), storage bucket config (`00010` + `00013`), `get_feed_posts` RPC + reverse index on `post_tags(tag_id)` (`00011` — note the file name "create_post_stats" is misleading; there is no `post_stats` table), `create_post_with_relations` RPC + tightened mentions RLS (`00014`), ThumbHash placeholder columns on assets (`00019`), onboarding fields on profiles (`00020`), video poster_path on assets (`00021`). RLS on every table — policies key off `auth.uid()`.
 
 ### Conventions
 
@@ -108,6 +109,7 @@ Two route groups under `src/app/`:
 - **`.in()` doesn't preserve order.** Any time we fetch by a list of IDs, re-sort client-side (see `getFeedPosts`).
 - **Overlay animations must respect `useReducedMotion()`.** `ExpandedPostOverlay` already gates its springs; if you add new Motion components inside the overlay, do the same. The container is a `role="dialog"` with focus trap + restore — don't break the trap by rendering focusable elements outside `containerRef`.
 - **Posts must be created via the RPC, not direct inserts.** Atomicity matters; `createPost` is the only call site, keep it the only one.
+- **Don't add autoplay video to feed cards.** Use poster images instead. Multi-column autoplay (6-9 simultaneous decoders) destroys mobile perf. Don't use `preload="auto"` on `<video>` elements. The `LazyVideo` component handles IO-based lazy loading and explicit buffer release — use it instead of bare `<video>` tags.
 - **Test on Vercel, not localhost** (per `feedback_test_on_vercel.md` memory).
 
 ---

@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { convertToWebp } from "@/lib/image-convert";
 import { extractPlaceholderData } from "@/lib/thumb-hash";
+import { extractVideoMetadata } from "@/lib/video-thumbnail";
 
 const BUCKET = "experiment-assets";
 
@@ -28,6 +29,12 @@ export async function uploadFile(
   userId: string,
   postId: string
 ) {
+  const isVideo = file.type.startsWith("video/");
+
+  if (isVideo) {
+    return uploadVideoFile(supabase, file, userId, postId);
+  }
+
   // Convert raster images (JPEG, PNG) to WebP client-side
   const processed = await convertToWebp(file);
 
@@ -54,6 +61,57 @@ export async function uploadFile(
     height: dimensions?.height ?? null,
     thumb_hash: placeholder?.thumbHash ?? null,
     dominant_color: placeholder?.dominantColor ?? null,
+    poster_path: null as string | null,
+  };
+}
+
+async function uploadVideoFile(
+  supabase: SupabaseClient,
+  file: File,
+  userId: string,
+  postId: string
+) {
+  const ext = file.name.split(".").pop();
+  const uuid = crypto.randomUUID();
+  const filePath = `${userId}/${postId}/${uuid}.${ext}`;
+
+  // Extract poster frame + metadata in parallel with the video upload
+  const [uploadResult, videoMeta] = await Promise.all([
+    supabase.storage.from(BUCKET).upload(filePath, file, {
+      cacheControl: "3600",
+      contentType: file.type,
+      upsert: false,
+    }),
+    extractVideoMetadata(file),
+  ]);
+
+  if (uploadResult.error) throw uploadResult.error;
+
+  // Upload poster frame as a sibling WebP file
+  let posterPath: string | null = null;
+  if (videoMeta?.posterBlob) {
+    const posterFilePath = `${userId}/${postId}/${uuid}_poster.webp`;
+    const posterResult = await supabase.storage
+      .from(BUCKET)
+      .upload(posterFilePath, videoMeta.posterBlob, {
+        cacheControl: "3600",
+        contentType: "image/webp",
+        upsert: false,
+      });
+    if (!posterResult.error) {
+      posterPath = posterResult.data.path;
+    }
+  }
+
+  return {
+    file_path: uploadResult.data.path,
+    mime_type: file.type,
+    size_bytes: file.size,
+    width: videoMeta?.width ?? null,
+    height: videoMeta?.height ?? null,
+    thumb_hash: videoMeta?.thumbHash ?? null,
+    dominant_color: videoMeta?.dominantColor ?? null,
+    poster_path: posterPath,
   };
 }
 
