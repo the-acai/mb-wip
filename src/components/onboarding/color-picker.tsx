@@ -20,6 +20,14 @@ const ENTRANCE_SPRING = {
   damping: 18,
 };
 
+// Same spring as the send-it button hover
+const HOVER_SPRING = {
+  type: "spring" as const,
+  mass: 1.6,
+  stiffness: 300,
+  damping: 8,
+};
+
 export function ColorPicker({
   layoutId,
   color,
@@ -79,7 +87,12 @@ export function ColorPicker({
         dragMomentum={false}
         onDragStart={handleDragStart}
         onDrag={handleDrag}
-        whileDrag={{ cursor: "grabbing" }}
+        variants={{
+          hover: { scale: 1.1, transition: HOVER_SPRING },
+          drag: { scale: 0.95, transition: HOVER_SPRING },
+        }}
+        whileHover={draggable ? "hover" : undefined}
+        whileDrag="drag"
       />
     </motion.div>
   );
