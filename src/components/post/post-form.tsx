@@ -229,7 +229,7 @@ export function PostForm() {
         assets: uploadedAssets,
       });
 
-      router.push(`/post/${newPost.id}`);
+      router.push("/feed");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setIsSubmitting(false);

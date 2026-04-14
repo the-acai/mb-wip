@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import {
   Command,
   CommandDialog,
@@ -13,20 +12,35 @@ import {
 } from "@/components/ui/command";
 import { useSearchPalette } from "./search-context";
 import { useSearchPosts } from "@/hooks/use-search-posts";
+import { useExpansion, type ExpandedPostData } from "@/components/expanded/expansion-context";
 import { getAuthorColor } from "@/lib/utils";
+import type { FeedPost } from "./experiment-card";
 
 export function FeedSearchPalette() {
   const { isOpen, close } = useSearchPalette();
-  const router = useRouter();
+  const { expand } = useExpansion();
   const [query, setQuery] = useState("");
 
   const { data, isFetching } = useSearchPosts(query);
   const results = data ?? [];
 
-  const handleSelect = (postId: string) => {
+  const handleSelect = (post: FeedPost) => {
     close();
     setQuery("");
-    router.push(`/post/${postId}`);
+    const firstImage = post.assets?.find((a) => a.mime_type?.startsWith("image/"));
+    const data: ExpandedPostData = {
+      id: post.id,
+      title: post.title,
+      body: post.body,
+      created_at: post.created_at,
+      author: post.author,
+      imageUrl: firstImage?.signed_url ?? null,
+      imageAspect:
+        firstImage?.width && firstImage?.height
+          ? firstImage.width / firstImage.height
+          : 3 / 2,
+    };
+    expand(data);
   };
 
   return (
@@ -73,7 +87,7 @@ export function FeedSearchPalette() {
               <CommandItem
                 key={post.id}
                 value={`${post.id} ${post.title} ${authorName}`}
-                onSelect={() => handleSelect(post.id)}
+                onSelect={() => handleSelect(post)}
                 className="flex items-center gap-3"
               >
                 <div className="relative size-10 shrink-0 overflow-hidden rounded-md bg-muted">

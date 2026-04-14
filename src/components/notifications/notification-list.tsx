@@ -53,7 +53,7 @@ export function NotificationList({ notifications }: NotificationListProps) {
           return (
             <Link
               key={notification.id}
-              href={notification.post ? `/post/${notification.post.id}` : "#"}
+              href="/feed"
               className={cn(
                 "flex flex-col gap-1 px-4 py-3 text-sm transition-colors hover:bg-muted/50",
                 !notification.read && "bg-muted/30"
