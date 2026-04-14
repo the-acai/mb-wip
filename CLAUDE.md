@@ -27,7 +27,7 @@ Two route groups under `src/app/`:
 - `(auth)/` — public. `login/page.tsx`, `auth/callback/route.ts` for OAuth/magic-link return.
 - `(app)/` — authenticated shell. `layout.tsx` stacks: `Providers` (TanStack) → `ExpansionProvider` → `UploadModalProvider` → `LayoutGroupWrapper` (Motion) → `TooltipProvider`. Renders `<ShrinkingHeader/>`, `<main/>`, `<SendItButton/>`, `{modal}` slot, `<OverlayPortal/>`, `<UploadModalPortal/>`.
 - Parallel `@modal` slot + intercepting route `(.)post/[id]` gives card → overlay transitions with shareable URLs. The intercepted page is a no-op (`return null`) — the actual overlay is rendered by `OverlayPortal` reading from `ExpansionContext`, so the card hide and overlay appear are truly zero-gap within the same React tree.
-- `/` redirects to `/feed`. Detail route `post/[id]/page.tsx` is the full-page fallback for direct links / no-JS, and exports `generateMetadata` + uses batched `getSignedUrls` for the asset gallery.
+- `/` redirects to `/feed`. The route `post/[id]/page.tsx` exists only for OG metadata (`generateMetadata`) — its page body client-redirects to `/feed`. There is no full-page post view; all post viewing happens through the expanded card overlay.
 - Public OG image route at `src/app/api/og/[id]/route.tsx` returns a 1200×630 `ImageResponse` for unfurls. It falls back to generic branding when RLS denies (no service role yet).
 - Middleware (`src/middleware.ts`) runs Supabase session refresh on every non-static request and redirects unauthed users to `/login`. **Exempted paths:** `/login`, `/auth`, and `/api/og/*` (so OG crawlers can fetch the unfurl image without a session).
 
@@ -73,7 +73,7 @@ Two route groups under `src/app/`:
 - `createComment` validates the `mentions[]` array against real `profiles.id` rows before insert, then writes through the `mentions` table whose RLS only allows the comment author to write/delete (also from `00014`).
 - Realtime: `use-realtime-comments.ts`, `use-realtime-notifications.ts` subscribe to Supabase Realtime channels.
 - Comment editor uses Tiptap + a mention plugin backed by `/api/mentions/search/route.ts`.
-- Storage: Supabase storage with RLS; `signed-url-cache.ts` caches signed URLs client-side; server batch-fetches with `getSignedUrls`. Both feed and `/post/[id]` use the batch variant.
+- Storage: Supabase storage with RLS; `signed-url-cache.ts` caches signed URLs client-side; server batch-fetches with `getSignedUrls`.
 
 ### Data model (supabase/migrations/)
 
