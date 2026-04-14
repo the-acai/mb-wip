@@ -76,19 +76,9 @@ export function ReplyConnector({
   if (children.length === 0) return <div ref={markerRef} className="hidden" />;
 
   const last = children[children.length - 1];
+  const isSingle = children.length === 1;
   const svgW = CHILD_LEFT + SW;
   const svgH = last.cy + SW;
-
-  // Main L-path: trunk from parent avatar → L-curve at last child → horizontal
-  const mainPath = [
-    `M ${PARENT_CX} ${PARENT_BOTTOM}`,
-    `V ${last.cy - R}`,
-    `A ${R} ${R} 0 0 1 ${PARENT_CX + R} ${last.cy}`,
-    `H ${CHILD_LEFT}`,
-  ].join(" ");
-
-  // Non-last children get straight horizontal branches from the trunk
-  const branches = children.slice(0, -1);
 
   return (
     <>
@@ -100,27 +90,7 @@ export function ReplyConnector({
         aria-hidden="true"
       >
         <defs>
-          {/* Gradient for the main L-path */}
-          <linearGradient
-            id={`${svgId}-main`}
-            gradientUnits="userSpaceOnUse"
-            x1={PARENT_CX}
-            y1={PARENT_BOTTOM}
-            x2={CHILD_LEFT}
-            y2={last.cy}
-          >
-            <stop offset="0%" style={{ stopColor: parentColor }} />
-            <stop
-              offset="50%"
-              style={{
-                stopColor: `color-mix(in oklch, ${parentColor} 50%, ${last.color})`,
-              }}
-            />
-            <stop offset="100%" style={{ stopColor: last.color }} />
-          </linearGradient>
-
-          {/* Gradient per horizontal branch (non-last children) */}
-          {branches.map((child) => (
+          {children.map((child) => (
             <linearGradient
               key={child.id}
               id={`${svgId}-b-${child.id}`}
@@ -141,30 +111,49 @@ export function ReplyConnector({
           ))}
         </defs>
 
-        {/* Main L-path: trunk + curve + horizontal to last child */}
-        <motion.path
-          d={mainPath}
-          stroke={`url(#${svgId}-main)`}
-          strokeWidth={SW}
-          strokeLinecap="round"
-          initial={reducedMotion ? false : { pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ ...LINE_SPRING, delay }}
-        />
-
-        {/* Straight horizontal branches for non-last children */}
-        {branches.map((child, i) => (
+        {isSingle ? (
+          /* Single child: one L-path with rounded corner */
           <motion.path
-            key={child.id}
-            d={`M ${PARENT_CX} ${child.cy} H ${CHILD_LEFT}`}
-            stroke={`url(#${svgId}-b-${child.id})`}
+            d={[
+              `M ${PARENT_CX} ${PARENT_BOTTOM}`,
+              `V ${last.cy - R}`,
+              `A ${R} ${R} 0 0 1 ${PARENT_CX + R} ${last.cy}`,
+              `H ${CHILD_LEFT}`,
+            ].join(" ")}
+            stroke={`url(#${svgId}-b-${last.id})`}
             strokeWidth={SW}
             strokeLinecap="round"
             initial={reducedMotion ? false : { pathLength: 0 }}
             animate={{ pathLength: 1 }}
-            transition={{ ...LINE_SPRING, delay: delay + 0.08 * (i + 1) }}
+            transition={{ ...LINE_SPRING, delay }}
           />
-        ))}
+        ) : (
+          <>
+            {/* Vertical trunk down to last child */}
+            <motion.path
+              d={`M ${PARENT_CX} ${PARENT_BOTTOM} V ${last.cy}`}
+              stroke={parentColor}
+              strokeWidth={SW}
+              strokeLinecap="round"
+              initial={reducedMotion ? false : { pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ ...LINE_SPRING, delay }}
+            />
+            {/* Straight horizontal branch for every child */}
+            {children.map((child, i) => (
+              <motion.path
+                key={child.id}
+                d={`M ${PARENT_CX} ${child.cy} H ${CHILD_LEFT}`}
+                stroke={`url(#${svgId}-b-${child.id})`}
+                strokeWidth={SW}
+                strokeLinecap="round"
+                initial={reducedMotion ? false : { pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ ...LINE_SPRING, delay: delay + 0.08 * (i + 1) }}
+              />
+            ))}
+          </>
+        )}
       </svg>
     </>
   );
