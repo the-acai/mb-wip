@@ -30,7 +30,7 @@ export function InertCard({ post, orientation }: InertCardProps) {
   const thumbnailUrl = firstImageAsset?.signed_url;
   const authorName =
     post.author?.full_name || post.author?.email?.split("@")[0] || "Anonymous";
-  const badgeColor = getAuthorColor(authorName);
+  const badgeColor = getAuthorColor(authorName, post.author?.color);
   const caption = post.body?.slice(0, 120) || post.title;
   const commentCount = post.comments?.[0]?.count ?? 0;
   const aspectRatio = orientation === "portrait" ? "2/3" : "3/2";

@@ -19,7 +19,7 @@ interface Comment {
   parent_comment_id: string | null;
   body: string;
   created_at: string;
-  author: { full_name: string | null; email: string; avatar_url: string | null };
+  author: { full_name: string | null; email: string; avatar_url: string | null; color: string | null };
   reactions: { emoji: string; user_id: string }[];
 }
 
@@ -191,7 +191,7 @@ export function ExpandedCommentCard({
           ): React.ReactNode => {
             const myIndex = staggerIndex++;
             const children = repliesByParent.get(comment.id) ?? [];
-            const currentColor = getAuthorColor(getAuthorName(comment));
+            const currentColor = getAuthorColor(getAuthorName(comment), comment.author?.color);
 
             return (
               <motion.div
@@ -224,7 +224,7 @@ export function ExpandedCommentCard({
                       parentColor={currentColor}
                       childEntries={children.map((child) => ({
                         id: child.id,
-                        color: getAuthorColor(getAuthorName(child)),
+                        color: getAuthorColor(getAuthorName(child), child.author?.color),
                       }))}
                       delay={(myIndex * STAGGER_MS) / 1000 + 0.15}
                     />
@@ -232,7 +232,7 @@ export function ExpandedCommentCard({
                       {children.map((child, ci) => {
                         const nextChild = children[ci + 1];
                         const nextChildColor = nextChild
-                          ? getAuthorColor(getAuthorName(nextChild))
+                          ? getAuthorColor(getAuthorName(nextChild), nextChild.author?.color)
                           : null;
                         return renderComment(child, false, nextChildColor);
                       })}
@@ -253,7 +253,7 @@ export function ExpandedCommentCard({
           return topLevel.map((comment, i) => {
             const next = topLevel[i + 1];
             const nextColor = next
-              ? getAuthorColor(getAuthorName(next))
+              ? getAuthorColor(getAuthorName(next), next.author?.color)
               : null;
             return renderComment(comment, true, nextColor);
           });

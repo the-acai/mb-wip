@@ -61,7 +61,20 @@ export function UploadModalOverlay() {
   const [error, setError] = useState<string | null>(null);
 
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
-  const userColor = userName ? getAuthorColor(userName) : "#dfe0e0";
+  const [profileColor, setProfileColor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    supabase
+      .from("profiles")
+      .select("color")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.color) setProfileColor(data.color);
+      });
+  }, [user]);
+  const userColor = userName ? getAuthorColor(userName, profileColor) : "#dfe0e0";
 
   /** Track an animation for later cleanup */
   const track = useCallback((ctrl: AnimationPlaybackControls) => {

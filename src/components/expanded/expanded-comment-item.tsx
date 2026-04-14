@@ -12,7 +12,7 @@ interface Comment {
   parent_comment_id: string | null;
   body: string;
   created_at: string;
-  author: { full_name: string | null; email: string; avatar_url: string | null };
+  author: { full_name: string | null; email: string; avatar_url: string | null; color: string | null };
   reactions: { emoji: string; user_id: string }[];
 }
 
@@ -33,7 +33,7 @@ export function ExpandedCommentItem({
 }: ExpandedCommentItemProps) {
   const authorName =
     comment.author.full_name || comment.author.email.split("@")[0] || "Anonymous";
-  const color = getAuthorColor(authorName);
+  const color = getAuthorColor(authorName, comment.author?.color);
   const timeAgo = formatDistanceToNow(new Date(comment.created_at), {
     addSuffix: false,
   });

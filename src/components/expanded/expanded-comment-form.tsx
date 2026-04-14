@@ -13,6 +13,7 @@ interface Profile {
   full_name: string | null;
   email: string;
   avatar_url: string | null;
+  color: string | null;
 }
 
 interface ReplyTarget {
@@ -50,8 +51,6 @@ export function ExpandedCommentForm({
   const { user } = useUser();
   const userName =
     user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
-  const userColor = userName ? getAuthorColor(userName) : "#dfe0e0";
-
   // Prefetch all profiles on mount — small team, so load once and filter
   // client-side for instant autocomplete (no network per keystroke).
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
@@ -59,11 +58,14 @@ export function ExpandedCommentForm({
     const supabase = createClient();
     supabase
       .from("profiles")
-      .select("id, full_name, email, avatar_url")
+      .select("id, full_name, email, avatar_url, color")
       .then(({ data }) => {
         if (data) setAllProfiles(data as Profile[]);
       });
   }, []);
+
+  const myProfile = allProfiles.find((p) => user && p.id === user.id);
+  const userColor = userName ? getAuthorColor(userName, myProfile?.color) : "#dfe0e0";
 
   // Client-side filter — instant, no debounce needed.
   const mentionResults = useMemo(() => {
@@ -319,7 +321,7 @@ export function ExpandedCommentForm({
                     profile.full_name ||
                     profile.email?.split("@")[0] ||
                     "user";
-                  const color = getAuthorColor(name);
+                  const color = getAuthorColor(name, profile.color);
                   const isActive = i === activeIndex;
 
                   return (

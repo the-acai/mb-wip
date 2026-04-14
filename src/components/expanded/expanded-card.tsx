@@ -28,7 +28,7 @@ export function ExpandedCard({ postData, style }: ExpandedCardProps) {
   );
   const authorName =
     postData.author?.full_name || postData.author?.email?.split("@")[0] || "Anonymous";
-  const badgeColor = getAuthorColor(authorName);
+  const badgeColor = getAuthorColor(authorName, postData.author?.color);
   const caption = postData.body?.slice(0, 120) || postData.title;
 
   // layoutSource tells us which card to FLIP from. When absent (e.g. search

@@ -15,6 +15,7 @@ export interface ExpandedPostData {
     full_name: string | null;
     email: string;
     avatar_url: string | null;
+    color: string | null;
   };
   imageUrl: string | null;
   /** width / height of the image area (e.g. 1.5 for 3:2, 0.667 for 2:3) */

@@ -9,14 +9,52 @@ import { ShrinkingHeader } from "@/components/feed/shrinking-header";
 import { BottomActionGroup } from "@/components/feed/bottom-action-group";
 import { SearchPaletteProvider } from "@/components/feed/search-context";
 import { FeedSearchPalette } from "@/components/feed/feed-search-palette";
+import { OnboardingOverlay } from "@/components/onboarding/onboarding-overlay";
+import { createClient } from "@/lib/supabase/server";
 
-export default function AppLayout({
+export default async function AppLayout({
   children,
   modal,
 }: {
   children: React.ReactNode;
   modal: React.ReactNode;
 }) {
+  // Check if the current user needs onboarding
+  let onboardingProps: {
+    userName: string;
+    userId: string;
+    postCount: number;
+  } | null = null;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const [{ data: profile }, { count }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("full_name, email, onboarding_complete")
+        .eq("id", user.id)
+        .single(),
+      supabase
+        .from("posts")
+        .select("id", { count: "exact", head: true }),
+    ]);
+
+    if (profile && !profile.onboarding_complete) {
+      onboardingProps = {
+        userName:
+          profile.full_name ||
+          profile.email.split("@")[0] ||
+          "friend",
+        userId: user.id,
+        postCount: count ?? 0,
+      };
+    }
+  }
+
   return (
     <Providers>
     <ExpansionProvider>
@@ -40,6 +78,7 @@ export default function AppLayout({
     </SearchPaletteProvider>
     </UploadModalProvider>
     </ExpansionProvider>
+    {onboardingProps && <OnboardingOverlay {...onboardingProps} />}
     </Providers>
   );
 }

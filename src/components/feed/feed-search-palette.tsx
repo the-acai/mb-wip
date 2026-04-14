@@ -238,7 +238,7 @@ export function FeedSearchPalette() {
                       post.author?.full_name ||
                       post.author?.email?.split("@")[0] ||
                       "Anonymous";
-                    const badgeColor = getAuthorColor(authorName);
+                    const badgeColor = getAuthorColor(authorName, post.author?.color);
                     const isActive = i === activeIndex;
 
                     return (

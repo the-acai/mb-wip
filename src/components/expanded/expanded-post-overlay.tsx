@@ -19,7 +19,7 @@ interface Comment {
   parent_comment_id: string | null;
   body: string;
   created_at: string;
-  author: { full_name: string | null; email: string; avatar_url: string | null };
+  author: { full_name: string | null; email: string; avatar_url: string | null; color: string | null };
   reactions: { emoji: string; user_id: string }[];
 }
 

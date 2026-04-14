@@ -25,7 +25,7 @@ An internal feed of creative experiments. Users post titled cards with body copy
 Two route groups under `src/app/`:
 
 - `(auth)/` — public. `login/page.tsx`, `auth/callback/route.ts` for OAuth/magic-link return.
-- `(app)/` — authenticated shell. `layout.tsx` stacks: `Providers` (TanStack) → `ExpansionProvider` → `UploadModalProvider` → `LayoutGroupWrapper` (Motion) → `TooltipProvider`. Renders `<ShrinkingHeader/>`, `<main/>`, `<SendItButton/>`, `{modal}` slot, `<OverlayPortal/>`, `<UploadModalPortal/>`.
+- `(app)/` — authenticated shell. `layout.tsx` is an **async server component** that fetches the user's profile (for onboarding detection) and post count. Provider stack: `Providers` (TanStack) → `ExpansionProvider` → `UploadModalProvider` → `LayoutGroupWrapper` (Motion) → `TooltipProvider`. Renders `<ShrinkingHeader/>`, `<main/>`, `<BottomActionGroup/>`, `{modal}` slot, `<OverlayPortal/>`, `<UploadModalPortal/>`. Conditionally renders `<OnboardingOverlay/>` (z-[60]) for users with `onboarding_complete = false`.
 - Parallel `@modal` slot + intercepting route `(.)post/[id]` gives card → overlay transitions with shareable URLs. The intercepted page is a no-op (`return null`) — the actual overlay is rendered by `OverlayPortal` reading from `ExpansionContext`, so the card hide and overlay appear are truly zero-gap within the same React tree.
 - `/` redirects to `/feed`. The route `post/[id]/page.tsx` exists only for OG metadata (`generateMetadata`) — its page body client-redirects to `/feed`. There is no full-page post view; all post viewing happens through the expanded card overlay.
 - Public OG image route at `src/app/api/og/[id]/route.tsx` returns a 1200×630 `ImageResponse` for unfurls. It falls back to generic branding when RLS denies (no service role yet).
@@ -67,6 +67,17 @@ Two route groups under `src/app/`:
 - `collapse`: if `historyAlreadyBack` flag isn't set, calls `history.back()` to pop the pushed entry. The `OverlayPortal`'s `popstate` listener calls `collapse(true)` so forward/back buttons work correctly.
 - `prefetchComments`: single-flight via `fetchingRef: Set<string>`.
 
+### Onboarding overlay
+
+`OnboardingOverlay` (`src/components/onboarding/onboarding-overlay.tsx`):
+- Fullscreen `z-[60]` overlay for first-time users (`profiles.onboarding_complete = false`).
+- 6-phase state machine: `circle-entrance` → `color-picker` → `confirm-visible` → `morphing` → `greeting` → `fade-out`.
+- `ColorPicker` (`color-picker.tsx`): draggable 48px circle; position maps to WCAG AA-safe HSL color via `positionToColor()` from `src/lib/color-utils.ts` (angle → hue, distance → lightness, clamped to 4.5:1 contrast against `#F7F8F8`).
+- On Enter, the circle FLIP-morphs into a tag pill (`layoutId="onboarding-badge"` shared between circle and pill within `<LayoutGroup id="onboarding">`). The chosen color is saved to `profiles.color`.
+- Greeting text ("Howdy," + "There are N works in progress.") uses `easeOutExpo` with staggered delays.
+- On fade-out complete, sets `onboarding_complete = true` and unmounts.
+- All animations gate on `useReducedMotion()`.
+
 ### Posts, comments, reactions, notifications
 
 - Queries live in `src/lib/queries/` (`posts.ts`, `comments.ts`, `reactions.ts`, `notifications.ts`, `storage.ts`, `tags.ts`).
@@ -78,14 +89,14 @@ Two route groups under `src/app/`:
 
 ### Data model (supabase/migrations/)
 
-`profiles`, `posts`, `assets` (post media + width/height + display_order + thumb_hash + dominant_color for placeholders), `tags` + `post_tags`, `comments` (threaded), `reactions`, `mentions`, `notifications`, DB triggers (`00009_create_triggers.sql`), storage bucket config (`00010` + `00013`), `get_feed_posts` RPC + reverse index on `post_tags(tag_id)` (`00011` — note the file name "create_post_stats" is misleading; there is no `post_stats` table), `create_post_with_relations` RPC + tightened mentions RLS (`00014`), ThumbHash placeholder columns on assets (`00019`). RLS on every table — policies key off `auth.uid()`.
+`profiles` (+ `color text`, `onboarding_complete boolean` from `00020`), `posts`, `assets` (post media + width/height + display_order + thumb_hash + dominant_color for placeholders), `tags` + `post_tags`, `comments` (threaded), `reactions`, `mentions`, `notifications`, DB triggers (`00009_create_triggers.sql`), storage bucket config (`00010` + `00013`), `get_feed_posts` RPC + reverse index on `post_tags(tag_id)` (`00011` — note the file name "create_post_stats" is misleading; there is no `post_stats` table), `create_post_with_relations` RPC + tightened mentions RLS (`00014`), ThumbHash placeholder columns on assets (`00019`), onboarding fields on profiles (`00020`). RLS on every table — policies key off `auth.uid()`.
 
 ### Conventions
 
 - `"use client"` only where needed; server components fetch via `createClient()` from `@/lib/supabase/server`.
 - Path alias `@/*` → `src/*`.
 - shadcn registry configured in `components.json`.
-- Author badge colors derived from name hash via `getAuthorColor` in `src/lib/utils.ts`.
+- Author badge colors: `getAuthorColor(name, profileColor?)` in `src/lib/utils.ts` checks the user's stored `profiles.color` first, falls back to the hash-based palette. All badge call sites pass `author.color` from the joined profile data.
 - Spring configs tend to be co-located or tunable live via `<SpringTuner/>` — check `src/components/feed/spring-tuner.tsx` before guessing spring values.
 
 ### Gotchas
