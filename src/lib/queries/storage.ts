@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { convertToWebp } from "@/lib/image-convert";
+import { extractPlaceholderData } from "@/lib/thumb-hash";
 
 const BUCKET = "experiment-assets";
 
@@ -33,13 +34,14 @@ export async function uploadFile(
   const ext = processed.name.split(".").pop();
   const filePath = `${userId}/${postId}/${crypto.randomUUID()}.${ext}`;
 
-  const [uploadResult, dimensions] = await Promise.all([
+  const [uploadResult, dimensions, placeholder] = await Promise.all([
     supabase.storage.from(BUCKET).upload(filePath, processed, {
       cacheControl: "3600",
       contentType: processed.type,
       upsert: false,
     }),
     getImageDimensions(processed),
+    extractPlaceholderData(processed),
   ]);
 
   if (uploadResult.error) throw uploadResult.error;
@@ -50,6 +52,8 @@ export async function uploadFile(
     size_bytes: processed.size,
     width: dimensions?.width ?? null,
     height: dimensions?.height ?? null,
+    thumb_hash: placeholder?.thumbHash ?? null,
+    dominant_color: placeholder?.dominantColor ?? null,
   };
 }
 

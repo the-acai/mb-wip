@@ -100,6 +100,8 @@ export function FeedSearchPalette() {
           firstImage?.width && firstImage?.height
             ? firstImage.width / firstImage.height
             : 3 / 2,
+        thumbHash: firstImage?.thumb_hash,
+        dominantColor: firstImage?.dominant_color,
       };
       expand(data);
     },

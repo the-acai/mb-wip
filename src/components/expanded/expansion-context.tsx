@@ -21,6 +21,10 @@ export interface ExpandedPostData {
   imageAspect: number;
   /** layoutId of the source card element — overlay matches this for FLIP. */
   layoutSource?: string;
+  /** Base64-encoded ThumbHash for blurry placeholder */
+  thumbHash?: string | null;
+  /** Hex dominant color for instant background fill */
+  dominantColor?: string | null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

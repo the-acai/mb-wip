@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useMemo } from "react";
 import Image from "next/image";
 import { motion, useReducedMotion } from "motion/react";
 import { MessageCircleIcon } from "lucide-react";
 
 import { getAuthorColor } from "@/lib/utils";
 import { useExpansion, type ExpandedPostData } from "@/components/expanded/expansion-context";
+import { thumbHashToPlaceholderURL } from "@/lib/thumb-hash";
 
 export interface FeedPost {
   id: string;
@@ -26,6 +27,8 @@ export interface FeedPost {
     width?: number | null;
     height?: number | null;
     signed_url?: string;
+    thumb_hash?: string | null;
+    dominant_color?: string | null;
   }[];
   post_tags: {
     tag: {
@@ -86,10 +89,18 @@ export function ExperimentCard({
   const reducedMotion = useReducedMotion();
   const { expand, prefetchComments, postData } = useExpansion();
 
+  const [imageLoaded, setImageLoaded] = useState(false);
+
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
   );
   const thumbnailUrl = firstImageAsset?.signed_url;
+  const thumbHash = firstImageAsset?.thumb_hash;
+  const dominantColor = firstImageAsset?.dominant_color;
+  const placeholderUrl = useMemo(
+    () => (thumbHash ? thumbHashToPlaceholderURL(thumbHash) : null),
+    [thumbHash]
+  );
   const authorName =
     post.author?.full_name || post.author?.email?.split("@")[0] || "Anonymous";
   const badgeColor = getAuthorColor(authorName);
@@ -112,6 +123,8 @@ export function ExperimentCard({
       imageUrl: thumbnailUrl ?? null,
       imageAspect: orientation === "portrait" ? 2 / 3 : 3 / 2,
       layoutSource: `card-${post.id}`,
+      thumbHash,
+      dominantColor,
     };
     expand(data);
   };
@@ -187,15 +200,32 @@ export function ExperimentCard({
           {/* Image */}
           {thumbnailUrl ? (
             <div
-              className="relative overflow-hidden rounded-lg bg-white"
-              style={{ aspectRatio }}
+              className="relative overflow-hidden rounded-lg"
+              style={{ aspectRatio, backgroundColor: dominantColor || "#fff" }}
             >
+              {/* ThumbHash blurry placeholder */}
+              {placeholderUrl && (
+                <img
+                  src={placeholderUrl}
+                  alt=""
+                  aria-hidden
+                  className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ease-out"
+                  style={{
+                    filter: "blur(4px)",
+                    transform: "scale(1.1)",
+                    opacity: imageLoaded ? 0 : 1,
+                  }}
+                />
+              )}
               <Image
                 src={thumbnailUrl}
                 alt={post.title}
                 fill
-                className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                className={`object-cover transition-all duration-500 ease-out group-hover:scale-[1.02] ${
+                  reducedMotion || imageLoaded ? "opacity-100" : "opacity-0"
+                }`}
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                onLoad={() => setImageLoaded(true)}
               />
             </div>
           ) : (

@@ -116,7 +116,7 @@ export async function createPost(
     body?: string;
     visibility?: string;
     tags?: string[];
-    assets?: { file_path: string; mime_type: string; size_bytes: number; width?: number | null; height?: number | null }[];
+    assets?: { file_path: string; mime_type: string; size_bytes: number; width?: number | null; height?: number | null; thumb_hash?: string | null; dominant_color?: string | null }[];
   }
 ) {
   // All inserts happen inside a single DB transaction via RPC so a mid-flight
@@ -134,6 +134,8 @@ export async function createPost(
         size_bytes: String(a.size_bytes),
         width: a.width == null ? "" : String(a.width),
         height: a.height == null ? "" : String(a.height),
+        thumb_hash: a.thumb_hash ?? "",
+        dominant_color: a.dominant_color ?? "",
       })),
     }
   );
