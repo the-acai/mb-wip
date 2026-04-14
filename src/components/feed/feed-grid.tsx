@@ -8,7 +8,6 @@ import {
   getPostOrientation,
   type FeedPost,
 } from "./experiment-card";
-import { computeStaggerDelays } from "./stagger";
 
 interface FeedGridProps {
   posts: FeedPost[];
@@ -74,7 +73,6 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
   }
 
   const orientations = posts.map(getPostOrientation);
-  const delays = computeStaggerDelays(posts.length, 50, 30);
 
   return (
     <>
@@ -100,7 +98,6 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
               <ExperimentCard
                 post={post}
                 orientation={orientation}
-                delay={delays[i]}
               />
             </div>
           );

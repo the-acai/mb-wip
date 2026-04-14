@@ -51,11 +51,11 @@ Two route groups under `src/app/`:
 
 `FeedGrid`:
 - 3-column dense grid, `perspective: 1000px`. Portrait posts (`height > width`) span 2 rows.
-- Stagger delays computed by `computeStaggerDelays` (80ms within row, 60ms extra between rows).
+- Card entrances are scroll-linked via `useScrollReveal` hook — opacity, y-translate, and scale driven by scroll position (not viewport triggers). Once a card is fully revealed it locks visible.
 - IntersectionObserver sentinel (`rootMargin: 400px`) drives infinite-scroll fetch.
 
 `ExperimentCard`:
-- `motion.div` with `layoutId={`card-${post.id}`}` — this is the FLIP source. Entrance animates `y/z/scale/opacity/blur` springs (tunable via `CardSpringConfig`).
+- `motion.div` with `layoutId={`card-${post.id}`}` — this is the FLIP source. Entrance is scroll-linked (see `useScrollReveal` in `src/hooks/use-scroll-reveal.ts`).
 - **Image loading:** Three-layer progressive reveal — dominant color bg (instant) → ThumbHash blurry preview (decoded from `thumb_hash` via `thumbHashToPlaceholderURL`) → full image crossfade (500ms `onLoad` transition). Both the card and expanded overlay share this pattern. Assets without `thumb_hash` fall back to white bg + fade-in.
 - On hover, preloads the image + prefetches comments (`prefetchComments(post.id)`).
 - On click, calls `expand(data)` from `ExpansionContext`, which `setPostData(...)` + `window.history.pushState` to `/post/{id}` (URL changes without re-render).
