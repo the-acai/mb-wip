@@ -80,6 +80,7 @@ export function ExpandedCommentItem({
         <div
           className="size-9 shrink-0 rounded-full"
           style={{ backgroundColor: color }}
+          data-reply-avatar={comment.id}
         />
         {/* Name + time */}
         <div className="flex flex-1 items-center gap-1 font-heading text-lg leading-[1.28] tracking-[-0.18px]">

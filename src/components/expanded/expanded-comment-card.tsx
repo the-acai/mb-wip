@@ -9,6 +9,7 @@ import { useUser } from "@/hooks/use-user";
 import { ExpandedCommentItem } from "./expanded-comment-item";
 import { ExpandedCommentForm } from "./expanded-comment-form";
 import { ThreadLine } from "./thread-line";
+import { ReplyConnector } from "./reply-connector";
 import { getAuthorColor } from "@/lib/utils";
 
 interface Comment {
@@ -218,15 +219,25 @@ export function ExpandedCommentCard({
                   }
                 />
                 {children.length > 0 && (
-                  <div className="mt-8 ml-12 flex flex-col gap-8">
-                    {children.map((child, ci) => {
-                      const nextChild = children[ci + 1];
-                      const nextChildColor = nextChild
-                        ? getAuthorColor(getAuthorName(nextChild))
-                        : null;
-                      return renderComment(child, false, nextChildColor);
-                    })}
-                  </div>
+                  <>
+                    <ReplyConnector
+                      parentColor={currentColor}
+                      childEntries={children.map((child) => ({
+                        id: child.id,
+                        color: getAuthorColor(getAuthorName(child)),
+                      }))}
+                      delay={(myIndex * STAGGER_MS) / 1000 + 0.15}
+                    />
+                    <div className="mt-8 ml-12 flex flex-col gap-8">
+                      {children.map((child, ci) => {
+                        const nextChild = children[ci + 1];
+                        const nextChildColor = nextChild
+                          ? getAuthorColor(getAuthorName(nextChild))
+                          : null;
+                        return renderComment(child, false, nextChildColor);
+                      })}
+                    </div>
+                  </>
                 )}
                 {isTopLevel && nextSiblingColor && (
                   <ThreadLine
