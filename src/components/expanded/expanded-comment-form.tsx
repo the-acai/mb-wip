@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { XIcon } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
@@ -43,6 +44,8 @@ export function ExpandedCommentForm({
   const mentionStartRef = useRef<number>(-1);
   const mentionIdsRef = useRef<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputWrapperRef = useRef<HTMLDivElement>(null);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const { user } = useUser();
   const userName =
@@ -144,6 +147,22 @@ export function ExpandedCommentForm({
   const popoverOpen =
     mentionQuery !== null && mentionQuery.length > 0 && mentionResults.length > 0;
 
+  // Measure input wrapper position for portal-rendered popover
+  useEffect(() => {
+    if (!popoverOpen) {
+      setPopoverPos(null);
+      return;
+    }
+    const el = inputWrapperRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPopoverPos({
+      top: rect.bottom + 8,
+      left: rect.left,
+      width: rect.width,
+    });
+  }, [popoverOpen]);
+
   const handleSubmit = async () => {
     if (!body.trim() || submitting) return;
     setSubmitting(true);
@@ -232,8 +251,8 @@ export function ExpandedCommentForm({
         )}
       </AnimatePresence>
 
-      {/* Input + mention popover wrapper */}
-      <div className="relative">
+      {/* Input wrapper */}
+      <div ref={inputWrapperRef}>
         <motion.div
           className="flex h-14 items-center overflow-hidden rounded-lg border bg-[var(--page-bg)] px-4"
           animate={{ borderColor: focused ? userColor : "#dfe0e0" }}
@@ -267,57 +286,66 @@ export function ExpandedCommentForm({
           />
         </motion.div>
 
-        {/* Mention autofill popover */}
-        <AnimatePresence>
-          {popoverOpen && (
-            <motion.div
-              className="absolute left-0 right-0 z-50 mt-2 flex flex-col bg-white p-2 rounded-2xl"
-              style={{ boxShadow: MENTION_SHADOW }}
-              role="listbox"
-              aria-label="Mention suggestions"
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.12 }}
-            >
-              {mentionResults.map((profile, i) => {
-                const name =
-                  profile.full_name ||
-                  profile.email?.split("@")[0] ||
-                  "user";
-                const color = getAuthorColor(name);
-                const isActive = i === activeIndex;
-
-                return (
-                  <div
-                    key={profile.id}
-                    id={`mention-${profile.id}`}
-                    role="option"
-                    aria-selected={isActive}
-                    className={`flex cursor-pointer items-center gap-3 p-2 rounded-lg transition-colors ${
-                      isActive ? "bg-[#eceded]" : ""
-                    }`}
-                    onMouseEnter={() => setActiveIndex(i)}
-                    onMouseDown={(e) => {
-                      // mouseDown (not click) so it fires before input blur
-                      e.preventDefault();
-                      acceptMention(profile);
-                    }}
-                  >
-                    <div
-                      className="size-9 shrink-0 rounded-full"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className="font-heading text-lg font-bold tracking-[-0.18px] text-[var(--text-dark)] whitespace-nowrap">
-                      @{name.toLowerCase()}
-                    </span>
-                  </div>
-                );
-              })}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
+
+      {/* Mention autofill popover — portaled to body to escape overflow clipping */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {popoverOpen && popoverPos && (
+              <motion.div
+                className="pointer-events-auto fixed z-[9999] flex flex-col bg-white p-2 rounded-2xl"
+                style={{
+                  top: popoverPos.top,
+                  left: popoverPos.left,
+                  width: popoverPos.width,
+                  boxShadow: MENTION_SHADOW,
+                }}
+                role="listbox"
+                aria-label="Mention suggestions"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+              >
+                {mentionResults.map((profile, i) => {
+                  const name =
+                    profile.full_name ||
+                    profile.email?.split("@")[0] ||
+                    "user";
+                  const color = getAuthorColor(name);
+                  const isActive = i === activeIndex;
+
+                  return (
+                    <div
+                      key={profile.id}
+                      id={`mention-${profile.id}`}
+                      role="option"
+                      aria-selected={isActive}
+                      className={`flex cursor-pointer items-center gap-3 p-2 rounded-lg transition-colors ${
+                        isActive ? "bg-[#eceded]" : ""
+                      }`}
+                      onMouseEnter={() => setActiveIndex(i)}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        acceptMention(profile);
+                      }}
+                    >
+                      <div
+                        className="size-9 shrink-0 rounded-full"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="font-heading text-lg font-bold tracking-[-0.18px] text-[var(--text-dark)] whitespace-nowrap">
+                        @{name.toLowerCase()}
+                      </span>
+                    </div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </div>
   );
 }
