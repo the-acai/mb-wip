@@ -56,6 +56,7 @@ Two route groups under `src/app/`:
 
 `ExperimentCard`:
 - `motion.div` with `layoutId={`card-${post.id}`}` — this is the FLIP source. Entrance animates `y/z/scale/opacity/blur` springs (tunable via `CardSpringConfig`).
+- **Image loading:** Three-layer progressive reveal — dominant color bg (instant) → ThumbHash blurry preview (decoded from `thumb_hash` via `thumbHashToPlaceholderURL`) → full image crossfade (500ms `onLoad` transition). Both the card and expanded overlay share this pattern. Assets without `thumb_hash` fall back to white bg + fade-in.
 - On hover, preloads the image + prefetches comments (`prefetchComments(post.id)`).
 - On click, calls `expand(data)` from `ExpansionContext`, which `setPostData(...)` + `window.history.pushState` to `/post/{id}` (URL changes without re-render).
 - When this card is the lifted one, sets `opacity: 0` but keeps grid space (so the overlay's `layoutId` flies from this position).
@@ -77,7 +78,7 @@ Two route groups under `src/app/`:
 
 ### Data model (supabase/migrations/)
 
-`profiles`, `posts`, `assets` (post media + width/height + display_order), `tags` + `post_tags`, `comments` (threaded), `reactions`, `mentions`, `notifications`, DB triggers (`00009_create_triggers.sql`), storage bucket config (`00010` + `00013`), `get_feed_posts` RPC + reverse index on `post_tags(tag_id)` (`00011` — note the file name "create_post_stats" is misleading; there is no `post_stats` table), `create_post_with_relations` RPC + tightened mentions RLS (`00014`). RLS on every table — policies key off `auth.uid()`.
+`profiles`, `posts`, `assets` (post media + width/height + display_order + thumb_hash + dominant_color for placeholders), `tags` + `post_tags`, `comments` (threaded), `reactions`, `mentions`, `notifications`, DB triggers (`00009_create_triggers.sql`), storage bucket config (`00010` + `00013`), `get_feed_posts` RPC + reverse index on `post_tags(tag_id)` (`00011` — note the file name "create_post_stats" is misleading; there is no `post_stats` table), `create_post_with_relations` RPC + tightened mentions RLS (`00014`), ThumbHash placeholder columns on assets (`00019`). RLS on every table — policies key off `auth.uid()`.
 
 ### Conventions
 
