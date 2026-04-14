@@ -168,11 +168,11 @@ export function FeedSearchPalette() {
             />
           </CursorCollapseIcon>
 
-          {/* Centered content column */}
-          <div className="relative z-10 flex h-full flex-col items-center justify-center px-6">
+          {/* Centered content column — pointer-events-none so backdrop hover reaches CursorCollapseIcon */}
+          <div className="pointer-events-none relative z-10 flex h-full flex-col items-center justify-center px-6">
             {/* Input card */}
             <motion.div
-              className="w-full max-w-[686px] rounded-2xl bg-white p-6"
+              className="pointer-events-auto w-full max-w-[686px] rounded-2xl bg-white p-6"
               initial={{ opacity: 0, y: 12, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -222,7 +222,7 @@ export function FeedSearchPalette() {
             <AnimatePresence>
               {query.trim().length > 0 && results.length > 0 && (
                 <motion.div
-                  className="mt-2 w-full max-w-[686px] flex-col gap-2 rounded-2xl bg-white p-2"
+                  className="pointer-events-auto mt-2 w-full max-w-[686px] flex-col gap-2 rounded-2xl bg-white p-2"
                   role="listbox"
                   aria-label="Search results"
                   initial={{ opacity: 0, y: -4 }}
@@ -295,7 +295,7 @@ export function FeedSearchPalette() {
             {/* Empty / loading states */}
             {query.trim().length > 0 && results.length === 0 && (
               <motion.div
-                className="mt-2 w-full max-w-[686px] rounded-2xl bg-white p-6"
+                className="pointer-events-auto mt-2 w-full max-w-[686px] rounded-2xl bg-white p-6"
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.12 }}
