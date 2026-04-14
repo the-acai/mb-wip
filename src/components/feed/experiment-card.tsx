@@ -179,8 +179,8 @@ export function ExperimentCard({
       <motion.div
         layoutId={`card-${post.id}`}
         onClick={handleClick}
-        className="group block cursor-pointer"
-        style={{ opacity: isLifted ? 0 : 1, borderRadius: 0 }}
+        className="group block cursor-pointer !rounded-none !overflow-visible"
+        style={{ opacity: isLifted ? 0 : 1 }}
         transition={{ layout: { type: "spring", mass: 1.2, stiffness: 170, damping: 16 } }}
       >
         <div className="flex flex-col gap-4">

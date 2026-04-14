@@ -70,8 +70,8 @@ export function InertCard({ post, orientation }: InertCardProps) {
       onClick={handleClick}
       onMouseEnter={handlePreloadIntent}
       onPointerDown={handlePreloadIntent}
-      className="group block cursor-pointer"
-      style={{ opacity: isLifted ? 0 : 1, borderRadius: 0 }}
+      className="group block cursor-pointer !rounded-none !overflow-visible"
+      style={{ opacity: isLifted ? 0 : 1 }}
       transition={{ layout: LAYOUT_SPRING }}
     >
       <div className="flex flex-col gap-4">
