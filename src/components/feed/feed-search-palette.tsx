@@ -39,7 +39,6 @@ export function FeedSearchPalette() {
         firstImage?.width && firstImage?.height
           ? firstImage.width / firstImage.height
           : 3 / 2,
-      skipFlip: true,
     };
     expand(data);
   };

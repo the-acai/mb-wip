@@ -111,6 +111,7 @@ export function ExperimentCard({
       author: post.author,
       imageUrl: thumbnailUrl ?? null,
       imageAspect: orientation === "portrait" ? 2 / 3 : 3 / 2,
+      layoutSource: `card-${post.id}`,
     };
     expand(data);
   };

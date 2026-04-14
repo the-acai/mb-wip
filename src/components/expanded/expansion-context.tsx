@@ -19,8 +19,8 @@ export interface ExpandedPostData {
   imageUrl: string | null;
   /** width / height of the image area (e.g. 1.5 for 3:2, 0.667 for 2:3) */
   imageAspect: number;
-  /** Skip layoutId FLIP — used when the source isn't a real grid card (buffer clone, search). */
-  skipFlip?: boolean;
+  /** layoutId of the source card element — overlay matches this for FLIP. */
+  layoutSource?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

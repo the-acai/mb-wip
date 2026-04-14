@@ -24,18 +24,18 @@ export function ExpandedCard({ postData, style }: ExpandedCardProps) {
   const badgeColor = getAuthorColor(authorName);
   const caption = postData.body?.slice(0, 120) || postData.title;
 
-  // When the source isn't a real grid card (buffer clone, search result),
-  // skip layoutId FLIP and spring in with opacity + scale instead.
-  const skipFlip = postData.skipFlip;
-  const flipProps = skipFlip
+  // layoutSource tells us which card to FLIP from. When absent (e.g. search
+  // palette — no visible source card) we fade in instead.
+  const hasFlipSource = !!postData.layoutSource;
+  const flipProps = hasFlipSource
     ? {
+        layoutId: postData.layoutSource,
+        transition: { layout: EXPANSION_SPRING },
+      }
+    : {
         initial: reducedMotion ? { opacity: 1 } : { opacity: 0, scale: 0.96 },
         animate: { opacity: 1, scale: 1 },
         transition: reducedMotion ? { duration: 0 } : EXPANSION_SPRING,
-      }
-    : {
-        layoutId: `card-${postData.id}`,
-        transition: { layout: EXPANSION_SPRING },
       };
 
   return (
