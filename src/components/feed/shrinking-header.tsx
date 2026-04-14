@@ -8,7 +8,6 @@ import {
   useReducedMotion,
   useMotionValue,
 } from "motion/react";
-import Link from "next/link";
 
 const CARD_SPRING = { type: "spring" as const, mass: 2, stiffness: 100, damping: 16 };
 const HEADLINE_TEXT = "WORKS IN PROGRESS";
@@ -118,14 +117,12 @@ export function ShrinkingHeader() {
             : { default: CARD_SPRING, opacity: { duration: 0.4, ease: "easeOut" } }
         }
       >
-        <Link href="/feed" className="pointer-events-auto">
-          <motion.h1
-            className="text-center font-heading font-black leading-[1.18] tracking-[-0.01em] text-[var(--text-dark)]"
-            style={headlineStyle}
-          >
-            WORKS IN PROGRESS
-          </motion.h1>
-        </Link>
+        <motion.h1
+          className="text-center font-heading font-black leading-[1.18] tracking-[-0.01em] text-[var(--text-dark)]"
+          style={headlineStyle}
+        >
+          WORKS IN PROGRESS
+        </motion.h1>
       </motion.div>
     </>
   );
