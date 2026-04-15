@@ -292,8 +292,23 @@ export function ExpandedCommentForm({
             role="combobox"
             disabled={submitting}
             data-overlay-autofocus
-            className="flex-1 bg-transparent font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-dark)] placeholder:text-[var(--text-caption)] focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-dark)] placeholder:text-[var(--text-caption)] focus:outline-none"
           />
+          <AnimatePresence initial={false}>
+            {body.length > 0 && (
+              <motion.span
+                key="send-helper"
+                className="pointer-events-none shrink-0 font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-caption)] whitespace-nowrap"
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+                aria-hidden="true"
+              >
+                ⏎ to send
+              </motion.span>
+            )}
+          </AnimatePresence>
         </motion.div>
 
       </div>
