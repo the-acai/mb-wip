@@ -24,6 +24,8 @@
     "@tiptap/react": "^3.22.2",
     "@tiptap/starter-kit": "^3.22.2",
     "@uiw/react-md-editor": "^4.1.0",
+    "agentation": "^3.0.2",
+    "agentation-mcp": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

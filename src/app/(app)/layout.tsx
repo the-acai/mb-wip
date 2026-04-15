@@ -11,7 +11,9 @@ import { SearchPaletteProvider } from "@/components/feed/search-context";
 import { FeedSearchPalette } from "@/components/feed/feed-search-palette";
 import { OnboardingOverlay } from "@/components/onboarding/onboarding-overlay";
 import { ProfileColorInjector } from "@/components/profile-color-injector";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { AgentationDev } from "@/components/agentation-dev";
 
 export default async function AppLayout({
   children,
@@ -86,6 +88,9 @@ export default async function AppLayout({
     </UploadModalProvider>
     </ExpansionProvider>
     {onboardingProps && <OnboardingOverlay {...onboardingProps} />}
+    <Suspense fallback={null}>
+      <AgentationDev />
+    </Suspense>
     </Providers>
   );
 }
