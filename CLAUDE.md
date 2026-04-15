@@ -19,6 +19,7 @@ An internal feed of creative experiments. Users post titled cards with body copy
 - **Motion** (formerly framer-motion, `motion/react`) — all animations. `layoutId` FLIPs, `useScroll`/`useTransform` for scroll-linked motion, springs everywhere.
 - **Tailwind v4** + **shadcn/ui** (components in `src/components/ui/`). Custom tokens in `src/app/globals.css` (`--page-bg`, `--text-dark`, `--text-caption`). Heading font = `parabolica` (loaded via Typekit in root layout); body = Geist.
 - **Tiptap** (comment editor with mentions), **react-markdown** (post body), **GSAP** (horizontal loop utility), **cmdk**, **base-ui**.
+- **Sentry** (`@sentry/nextjs`) for error tracking. Configs at repo root (`sentry.{server,edge}.config.ts`) + `src/instrumentation{,-client}.ts`. Client events tunnel through `/monitoring` to bypass ad blockers. DSN in `NEXT_PUBLIC_SENTRY_DSN`; build-time source-map uploads use `SENTRY_AUTH_TOKEN`. All provisioned by the Vercel Marketplace integration. The Sentry MCP server is registered in `.mcp.json` — coding agents can query issues directly.
 
 ### Routing
 
@@ -29,7 +30,7 @@ Two route groups under `src/app/`:
 - Parallel `@modal` slot + intercepting route `(.)post/[id]` gives card → overlay transitions with shareable URLs. The intercepted page is a no-op (`return null`) — the actual overlay is rendered by `OverlayPortal` reading from `ExpansionContext`, so the card hide and overlay appear are truly zero-gap within the same React tree.
 - `/` redirects to `/feed`. The route `post/[id]/page.tsx` exists only for OG metadata (`generateMetadata`) — its page body client-redirects to `/feed`. There is no full-page post view; all post viewing happens through the expanded card overlay.
 - Public OG image route at `src/app/api/og/[id]/route.tsx` returns a 1200×630 `ImageResponse` for unfurls. It falls back to generic branding when RLS denies (no service role yet).
-- Middleware (`src/middleware.ts`) runs Supabase session refresh on every non-static request and redirects unauthed users to `/login`. **Exempted paths:** `/login`, `/auth`, and `/api/og/*` (so OG crawlers can fetch the unfurl image without a session).
+- Middleware (`src/middleware.ts`) runs Supabase session refresh on every non-static request and redirects unauthed users to `/login`. **Exempted paths:** `/login`, `/auth`, `/api/og/*` (so OG crawlers can fetch the unfurl image without a session), and `/monitoring` (Sentry's browser-event tunnel — auth middleware would reject unauthed client errors).
 
 ### The feed (the visually complex part)
 
@@ -112,6 +113,7 @@ Two route groups under `src/app/`:
 - **Posts must be created via the RPC, not direct inserts.** Atomicity matters; `createPost` is the only call site, keep it the only one.
 - **Video autoplay is visibility-gated.** `FeedVideo` pauses videos when <50% visible and releases buffers on unmount. If you add more video elements, use `FeedVideo` (feed/overlay, no controls) or `LazyVideo` (detail panel, native controls) — never bare `<video>` tags. The expanded overlay also autoplays video via `FeedVideo`.
 - **Test on Vercel, not localhost** (per `feedback_test_on_vercel.md` memory).
+- **Sentry configs have `sendDefaultPii: false` for a reason.** Supabase auth cookies carry session tokens. Never flip that flag to `true` — it would ship session tokens to a third party. Same for adding `Sentry.setUser({...})` with raw emails; use `profiles.id` only.
 
 ---
 
