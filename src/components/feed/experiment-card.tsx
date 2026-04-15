@@ -8,7 +8,7 @@ import { MessageCircleIcon } from "lucide-react";
 import { getAuthorColor } from "@/lib/utils";
 import { useExpansion, type ExpandedPostData } from "@/components/expanded/expansion-context";
 import { thumbHashToPlaceholderURL } from "@/lib/thumb-hash";
-import { FeedVideo } from "./feed-video";
+import { FeedVideo, type FeedVideoHandle } from "./feed-video";
 
 export interface FeedPost {
   id: string;
@@ -97,6 +97,7 @@ export function ExperimentCard({
   spring = defaultSpring,
 }: ExperimentCardProps) {
   const preloaded = useRef(false);
+  const feedVideoRef = useRef<FeedVideoHandle>(null);
   const reducedMotion = useReducedMotion();
   const { expand, prefetchComments, postData } = useExpansion();
 
@@ -141,6 +142,7 @@ export function ExperimentCard({
       imageUrl: thumbnailUrl ?? null,
       videoUrl: videoUrl ?? null,
       videoPosterUrl: firstVideoAsset?.poster_signed_url ?? null,
+      videoStartTime: feedVideoRef.current?.getCurrentTime(),
       imageAspect: orientation === "portrait" ? 2 / 3 : 3 / 2,
       layoutSource: `card-${post.id}`,
       thumbHash: thumbHash ?? undefined,
@@ -224,6 +226,7 @@ export function ExperimentCard({
               style={{ aspectRatio, backgroundColor: dominantColor || "#fff" }}
             >
               <FeedVideo
+                ref={feedVideoRef}
                 src={videoUrl}
                 posterUrl={firstVideoAsset?.poster_signed_url}
                 className="absolute inset-0 h-full w-full object-cover"

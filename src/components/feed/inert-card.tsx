@@ -7,7 +7,7 @@ import { MessageCircleIcon } from "lucide-react";
 import { getAuthorColor } from "@/lib/utils";
 import { useExpansion, type ExpandedPostData } from "@/components/expanded/expansion-context";
 import { type FeedPost, type Orientation } from "./experiment-card";
-import { FeedVideo } from "./feed-video";
+import { FeedVideo, type FeedVideoHandle } from "./feed-video";
 
 const LAYOUT_SPRING = { type: "spring" as const, mass: 1.2, stiffness: 170, damping: 16 };
 
@@ -23,6 +23,7 @@ interface InertCardProps {
  */
 export function InertCard({ post, orientation }: InertCardProps) {
   const preloaded = useRef(false);
+  const feedVideoRef = useRef<FeedVideoHandle>(null);
   const { expand, prefetchComments, postData } = useExpansion();
 
   const firstImageAsset = post.assets?.find((a) =>
@@ -56,6 +57,7 @@ export function InertCard({ post, orientation }: InertCardProps) {
       imageUrl: thumbnailUrl ?? null,
       videoUrl: videoUrl ?? null,
       videoPosterUrl: firstVideoAsset?.poster_signed_url ?? null,
+      videoStartTime: feedVideoRef.current?.getCurrentTime(),
       imageAspect: orientation === "portrait" ? 2 / 3 : 3 / 2,
       layoutSource: layoutId,
       thumbHash: displayAsset?.thumb_hash ?? undefined,
@@ -92,6 +94,7 @@ export function InertCard({ post, orientation }: InertCardProps) {
             style={{ aspectRatio, backgroundColor: displayAsset?.dominant_color || "#fff" }}
           >
             <FeedVideo
+              ref={feedVideoRef}
               src={videoUrl}
               posterUrl={firstVideoAsset?.poster_signed_url}
               className="absolute inset-0 h-full w-full object-cover"

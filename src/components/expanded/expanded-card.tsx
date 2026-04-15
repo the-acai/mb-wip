@@ -62,6 +62,7 @@ export function ExpandedCard({ postData, style }: ExpandedCardProps) {
           <FeedVideo
             src={postData.videoUrl}
             posterUrl={postData.videoPosterUrl ?? undefined}
+            startTime={postData.videoStartTime}
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : postData.imageUrl ? (

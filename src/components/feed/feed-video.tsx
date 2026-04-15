@@ -1,11 +1,17 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+
+export interface FeedVideoHandle {
+  getCurrentTime: () => number;
+}
 
 interface FeedVideoProps {
   src: string;
   posterUrl?: string;
   className?: string;
+  /** Resume playback from this timecode (seconds) on mount. */
+  startTime?: number;
 }
 
 /**
@@ -15,61 +21,75 @@ interface FeedVideoProps {
  * scrolled away. No controls are rendered — this is a silent ambient preview,
  * similar to Pinterest or Cosmos.
  *
- * Tracks visibility via a ref so the `canplay` event can trigger play() when
- * the video finishes loading while already in the viewport.
+ * Exposes a `FeedVideoHandle` via ref so parents can read the current
+ * timecode (for seamless handoff to the expanded overlay).
  *
  * The video buffer is explicitly released on unmount to free memory.
  */
-export function FeedVideo({ src, posterUrl, className }: FeedVideoProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const visibleRef = useRef(false);
+export const FeedVideo = forwardRef<FeedVideoHandle, FeedVideoProps>(
+  function FeedVideo({ src, posterUrl, className, startTime }, ref) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const visibleRef = useRef(false);
+    const seekedRef = useRef(false);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    useImperativeHandle(ref, () => ({
+      getCurrentTime: () => videoRef.current?.currentTime ?? 0,
+    }));
 
-    const play = () => {
-      if (visibleRef.current && video.readyState >= 2) {
-        video.play().catch(() => {});
-      }
-    };
+    useEffect(() => {
+      const video = videoRef.current;
+      if (!video) return;
+      seekedRef.current = false;
 
-    // When data is ready and we're already visible, start playback
-    video.addEventListener("canplay", play);
+      const play = () => {
+        if (!visibleRef.current || video.readyState < 2) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        visibleRef.current = entry.isIntersecting;
-        if (entry.isIntersecting) {
-          play();
-        } else {
-          video.pause();
+        // Seek to startTime once before first play
+        if (startTime != null && !seekedRef.current) {
+          seekedRef.current = true;
+          video.currentTime = startTime;
         }
-      },
-      { threshold: 0.5 }
+
+        video.play().catch(() => {});
+      };
+
+      // When data is ready and we're already visible, start playback
+      video.addEventListener("canplay", play);
+
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          visibleRef.current = entry.isIntersecting;
+          if (entry.isIntersecting) {
+            play();
+          } else {
+            video.pause();
+          }
+        },
+        { threshold: 0.5 }
+      );
+
+      observer.observe(video);
+
+      return () => {
+        observer.disconnect();
+        video.removeEventListener("canplay", play);
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      };
+    }, [src, startTime]);
+
+    return (
+      <video
+        ref={videoRef}
+        src={src}
+        muted
+        loop
+        playsInline
+        preload="auto"
+        poster={posterUrl}
+        className={className}
+      />
     );
-
-    observer.observe(video);
-
-    return () => {
-      observer.disconnect();
-      video.removeEventListener("canplay", play);
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
-    };
-  }, [src]);
-
-  return (
-    <video
-      ref={videoRef}
-      src={src}
-      muted
-      loop
-      playsInline
-      preload="auto"
-      poster={posterUrl}
-      className={className}
-    />
-  );
-}
+  }
+);

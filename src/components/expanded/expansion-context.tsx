@@ -22,6 +22,8 @@ export interface ExpandedPostData {
   videoUrl?: string | null;
   /** Poster frame URL for the video */
   videoPosterUrl?: string | null;
+  /** Timecode (seconds) to resume video from — captured on card click */
+  videoStartTime?: number;
   /** width / height of the image area (e.g. 1.5 for 3:2, 0.667 for 2:3) */
   imageAspect: number;
   /** layoutId of the source card element — overlay matches this for FLIP. */
