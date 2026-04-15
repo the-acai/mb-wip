@@ -14,7 +14,7 @@ An internal feed of creative experiments. Users post titled cards with body copy
 ### Stack
 
 - **Next.js 16** (App Router, React 19). Note: `AGENTS.md` warns this Next is breaking-changed from training data — **always read `node_modules/next/dist/docs/` before writing Next APIs**.
-- **Supabase** for auth, Postgres, Realtime, Storage. SSR client at `src/lib/supabase/server.ts`, browser client at `src/lib/supabase/client.ts`, middleware session refresh at `src/lib/supabase/middleware.ts` (wired via `src/middleware.ts`).
+- **Supabase** for auth, Postgres, Realtime, Storage. SSR client at `src/lib/supabase/server.ts`, browser client at `src/lib/supabase/client.ts`, proxy session refresh at `src/lib/supabase/proxy.ts` (wired via `src/proxy.ts`).
 - **TanStack Query v5** — client-side cache & infinite queries. Server prefetches via `HydrationBoundary`.
 - **Motion** (formerly framer-motion, `motion/react`) — all animations. `layoutId` FLIPs, `useScroll`/`useTransform` for scroll-linked motion, springs everywhere.
 - **Tailwind v4** + **shadcn/ui** (components in `src/components/ui/`). Custom tokens in `src/app/globals.css` (`--page-bg`, `--text-dark`, `--text-caption`). Heading font = `parabolica` (loaded via Typekit in root layout); body = Geist.
@@ -30,7 +30,7 @@ Two route groups under `src/app/`:
 - Parallel `@modal` slot + intercepting route `(.)post/[id]` gives card → overlay transitions with shareable URLs. The intercepted page is a no-op (`return null`) — the actual overlay is rendered by `OverlayPortal` reading from `ExpansionContext`, so the card hide and overlay appear are truly zero-gap within the same React tree.
 - `/` redirects to `/feed`. The route `post/[id]/page.tsx` exists only for OG metadata (`generateMetadata`) — its page body client-redirects to `/feed`. There is no full-page post view; all post viewing happens through the expanded card overlay.
 - Public OG image route at `src/app/api/og/[id]/route.tsx` returns a 1200×630 `ImageResponse` for unfurls. It falls back to generic branding when RLS denies (no service role yet).
-- Middleware (`src/middleware.ts`) runs Supabase session refresh on every non-static request and redirects unauthed users to `/login`. **Exempted paths:** `/login`, `/auth`, `/api/og/*` (so OG crawlers can fetch the unfurl image without a session), and `/monitoring` (Sentry's browser-event tunnel — auth middleware would reject unauthed client errors).
+- Proxy (`src/proxy.ts`) runs Supabase session refresh on every non-static request and redirects unauthed users to `/login`. **Exempted paths:** `/login`, `/auth`, `/api/og/*` (so OG crawlers can fetch the unfurl image without a session), and `/monitoring` (Sentry's browser-event tunnel — the proxy would reject unauthed client errors).
 
 ### The feed (the visually complex part)
 
