@@ -18,6 +18,10 @@ export interface ExpandedPostData {
     color: string | null;
   };
   imageUrl: string | null;
+  /** Signed URL for the actual video file (for autoplay in overlay) */
+  videoUrl?: string | null;
+  /** Poster frame URL for the video */
+  videoPosterUrl?: string | null;
   /** width / height of the image area (e.g. 1.5 for 3:2, 0.667 for 2:3) */
   imageAspect: number;
   /** layoutId of the source card element — overlay matches this for FLIP. */

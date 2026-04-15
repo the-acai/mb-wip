@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, useReducedMotion } from "motion/react";
 import { getAuthorColor } from "@/lib/utils";
 import { thumbHashToPlaceholderURL } from "@/lib/thumb-hash";
+import { FeedVideo } from "@/components/feed/feed-video";
 import type { ExpandedPostData } from "./expansion-context";
 
 const EXPANSION_SPRING = {
@@ -52,12 +53,18 @@ export function ExpandedCard({ postData, style }: ExpandedCardProps) {
       className="pointer-events-auto flex flex-col gap-4"
       style={{ position: "fixed", zIndex: 1, ...style }}
     >
-      {/* Image — flex-1 fills remaining space after caption */}
+      {/* Media — flex-1 fills remaining space after caption */}
       <div
         className="relative min-h-0 flex-1 overflow-hidden rounded-lg"
         style={{ backgroundColor: postData.dominantColor || "#fff" }}
       >
-        {postData.imageUrl ? (
+        {postData.videoUrl ? (
+          <FeedVideo
+            src={postData.videoUrl}
+            posterUrl={postData.videoPosterUrl ?? undefined}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : postData.imageUrl ? (
           <>
             {placeholderUrl && (
               <img

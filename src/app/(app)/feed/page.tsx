@@ -20,21 +20,20 @@ export default async function FeedPage() {
       const result = await getFeedPosts(supabase, { limit: 20 });
       const posts = result.posts as FeedPost[];
 
-      // Batch-fetch signed URLs for images and video posters
+      // Batch-fetch signed URLs for images, videos, and video posters
       const pathsToSign: string[] = [];
       for (const p of posts) {
         const firstImage = p.assets?.find((a) =>
           a.mime_type?.startsWith("image/")
         );
-        if (firstImage) {
-          pathsToSign.push(firstImage.file_path);
-        } else {
-          const firstVideo = p.assets?.find(
-            (a) => a.mime_type?.startsWith("video/") && a.poster_path
-          );
-          if (firstVideo?.poster_path) {
-            pathsToSign.push(firstVideo.poster_path);
-          }
+        if (firstImage) pathsToSign.push(firstImage.file_path);
+
+        const firstVideo = p.assets?.find((a) =>
+          a.mime_type?.startsWith("video/")
+        );
+        if (firstVideo) {
+          pathsToSign.push(firstVideo.file_path);
+          if (firstVideo.poster_path) pathsToSign.push(firstVideo.poster_path);
         }
       }
 
@@ -42,23 +41,13 @@ export default async function FeedPage() {
         try {
           const urlMap = await getSignedUrls(supabase, pathsToSign);
           for (const post of posts) {
-            const firstImage = post.assets?.find((a) =>
-              a.mime_type?.startsWith("image/")
-            );
-            if (firstImage && urlMap.has(firstImage.file_path)) {
-              firstImage.signed_url = urlMap.get(firstImage.file_path);
-              continue;
-            }
-            const firstVideo = post.assets?.find(
-              (a) => a.mime_type?.startsWith("video/") && a.poster_path
-            );
-            if (
-              firstVideo?.poster_path &&
-              urlMap.has(firstVideo.poster_path)
-            ) {
-              firstVideo.poster_signed_url = urlMap.get(
-                firstVideo.poster_path
-              );
+            for (const asset of post.assets ?? []) {
+              if (!asset.signed_url && urlMap.has(asset.file_path)) {
+                asset.signed_url = urlMap.get(asset.file_path);
+              }
+              if (asset.poster_path && !asset.poster_signed_url && urlMap.has(asset.poster_path)) {
+                asset.poster_signed_url = urlMap.get(asset.poster_path);
+              }
             }
           }
         } catch {

@@ -3,10 +3,11 @@
 import { useRef } from "react";
 import Image from "next/image";
 import { motion } from "motion/react";
-import { MessageCircleIcon, PlayIcon } from "lucide-react";
+import { MessageCircleIcon } from "lucide-react";
 import { getAuthorColor } from "@/lib/utils";
 import { useExpansion, type ExpandedPostData } from "@/components/expanded/expansion-context";
 import { type FeedPost, type Orientation } from "./experiment-card";
+import { FeedVideo } from "./feed-video";
 
 const LAYOUT_SPRING = { type: "spring" as const, mass: 1.2, stiffness: 170, damping: 16 };
 
@@ -27,16 +28,13 @@ export function InertCard({ post, orientation }: InertCardProps) {
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
   );
-  const firstVideoWithPoster = !firstImageAsset
-    ? post.assets?.find(
-        (a) => a.mime_type?.startsWith("video/") && a.poster_signed_url
-      )
-    : null;
-  const displayAsset = firstImageAsset || firstVideoWithPoster;
-  const isVideoDisplay = displayAsset?.mime_type?.startsWith("video/");
-  const thumbnailUrl = isVideoDisplay
-    ? displayAsset?.poster_signed_url
-    : displayAsset?.signed_url;
+  const firstVideoAsset = post.assets?.find((a) =>
+    a.mime_type?.startsWith("video/")
+  );
+  const displayAsset = firstImageAsset || firstVideoAsset;
+  const thumbnailUrl = firstImageAsset?.signed_url
+    ?? firstVideoAsset?.poster_signed_url;
+  const videoUrl = firstVideoAsset?.signed_url;
   const authorName =
     post.author?.full_name || post.author?.email?.split("@")[0] || "Anonymous";
   const badgeColor = getAuthorColor(authorName, post.author?.color);
@@ -56,6 +54,8 @@ export function InertCard({ post, orientation }: InertCardProps) {
       created_at: post.created_at,
       author: post.author,
       imageUrl: thumbnailUrl ?? null,
+      videoUrl: videoUrl ?? null,
+      videoPosterUrl: firstVideoAsset?.poster_signed_url ?? null,
       imageAspect: orientation === "portrait" ? 2 / 3 : 3 / 2,
       layoutSource: layoutId,
       thumbHash: displayAsset?.thumb_hash ?? undefined,
@@ -86,7 +86,18 @@ export function InertCard({ post, orientation }: InertCardProps) {
       transition={{ layout: LAYOUT_SPRING }}
     >
       <div className="flex flex-col gap-4">
-        {thumbnailUrl ? (
+        {videoUrl ? (
+          <div
+            className="relative overflow-hidden rounded-lg"
+            style={{ aspectRatio, backgroundColor: displayAsset?.dominant_color || "#fff" }}
+          >
+            <FeedVideo
+              src={videoUrl}
+              posterUrl={firstVideoAsset?.poster_signed_url}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </div>
+        ) : thumbnailUrl ? (
           <div
             className="relative overflow-hidden rounded-lg bg-white"
             style={{ aspectRatio }}
@@ -98,11 +109,6 @@ export function InertCard({ post, orientation }: InertCardProps) {
               className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
               sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
-            {isVideoDisplay && (
-              <div className="absolute bottom-2 left-2 flex size-7 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm">
-                <PlayIcon className="size-3.5 fill-current" />
-              </div>
-            )}
           </div>
         ) : (
           <div

@@ -31,10 +31,9 @@ async function fetchFeedPage({
 
   const posts = result.posts as FeedPost[];
 
-  // Batch-fetch signed URLs for images and video posters, using cache where possible
+  // Batch-fetch signed URLs for images, videos, and video posters
   const uncachedPaths: string[] = [];
   for (const post of posts) {
-    // Prefer images; fall back to a video's poster for display
     const firstImage = post.assets?.find((a) =>
       a.mime_type?.startsWith("image/")
     );
@@ -45,19 +44,26 @@ async function fetchFeedPage({
       } else {
         uncachedPaths.push(firstImage.file_path);
       }
-      continue;
     }
 
-    // No image — try to find a video with a poster
-    const firstVideo = post.assets?.find(
-      (a) => a.mime_type?.startsWith("video/") && a.poster_path
+    // Always resolve video + poster URLs (for autoplay in feed and overlay)
+    const firstVideo = post.assets?.find((a) =>
+      a.mime_type?.startsWith("video/")
     );
-    if (firstVideo?.poster_path) {
-      const cached = getCachedUrl(firstVideo.poster_path);
-      if (cached) {
-        firstVideo.poster_signed_url = cached;
+    if (firstVideo) {
+      const cachedVideo = getCachedUrl(firstVideo.file_path);
+      if (cachedVideo) {
+        firstVideo.signed_url = cachedVideo;
       } else {
-        uncachedPaths.push(firstVideo.poster_path);
+        uncachedPaths.push(firstVideo.file_path);
+      }
+      if (firstVideo.poster_path) {
+        const cachedPoster = getCachedUrl(firstVideo.poster_path);
+        if (cachedPoster) {
+          firstVideo.poster_signed_url = cachedPoster;
+        } else {
+          uncachedPaths.push(firstVideo.poster_path);
+        }
       }
     }
   }
@@ -67,23 +73,13 @@ async function fetchFeedPage({
       const urlMap = await getSignedUrls(supabase, uncachedPaths);
       setCachedUrls(urlMap);
       for (const post of posts) {
-        const firstImage = post.assets?.find((a) =>
-          a.mime_type?.startsWith("image/")
-        );
-        if (firstImage && !firstImage.signed_url && urlMap.has(firstImage.file_path)) {
-          firstImage.signed_url = urlMap.get(firstImage.file_path);
-          continue;
-        }
-
-        const firstVideo = post.assets?.find(
-          (a) => a.mime_type?.startsWith("video/") && a.poster_path
-        );
-        if (
-          firstVideo?.poster_path &&
-          !firstVideo.poster_signed_url &&
-          urlMap.has(firstVideo.poster_path)
-        ) {
-          firstVideo.poster_signed_url = urlMap.get(firstVideo.poster_path);
+        for (const asset of post.assets ?? []) {
+          if (!asset.signed_url && urlMap.has(asset.file_path)) {
+            asset.signed_url = urlMap.get(asset.file_path);
+          }
+          if (asset.poster_path && !asset.poster_signed_url && urlMap.has(asset.poster_path)) {
+            asset.poster_signed_url = urlMap.get(asset.poster_path);
+          }
         }
       }
     } catch {
