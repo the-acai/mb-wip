@@ -98,6 +98,7 @@ Two route groups under `src/app/`:
 - Path alias `@/*` → `src/*`.
 - shadcn registry configured in `components.json`.
 - Author badge colors: `getAuthorColor(name, profileColor?)` in `src/lib/utils.ts` checks the user's stored `profiles.color` first, falls back to the hash-based palette. All badge call sites pass `author.color` from the joined profile data.
+- **Profile color for focus rings:** `ProfileColorInjector` (rendered in app layout) sets `--ring` and `--profile-color` CSS custom properties on `<html>` to the current user's chosen color. All shadcn `focus-visible:ring-ring/50` classes automatically use this. The server layout passes the color as `serverColor` to prevent flash. Use `useProfileColor()` hook (TanStack Query-cached) instead of fetching `profiles.color` directly — it shares one fetch across all consumers with server-prefilled initial data.
 - Spring configs tend to be co-located or tunable live via `<SpringTuner/>` — check `src/components/feed/spring-tuner.tsx` before guessing spring values.
 
 ### Gotchas

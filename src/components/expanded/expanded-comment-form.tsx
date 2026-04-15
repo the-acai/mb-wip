@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { XIcon } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
+import { useProfileColor } from "@/hooks/use-profile-color";
 import { createClient } from "@/lib/supabase/client";
 import { getAuthorColor } from "@/lib/utils";
 
@@ -64,8 +65,8 @@ export function ExpandedCommentForm({
       });
   }, []);
 
-  const myProfile = allProfiles.find((p) => user && p.id === user.id);
-  const userColor = userName ? getAuthorColor(userName, myProfile?.color) : "#dfe0e0";
+  const profileColor = useProfileColor();
+  const userColor = userName ? getAuthorColor(userName, profileColor) : "#dfe0e0";
 
   // Client-side filter — instant, no debounce needed.
   const mentionResults = useMemo(() => {

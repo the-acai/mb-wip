@@ -145,7 +145,7 @@ export function ExpandedCommentItem({
                   cancelEdit();
                 }
               }}
-              className="w-full resize-y rounded-lg border border-[#dfe0e0] bg-[var(--page-bg)] px-3 py-2 font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-dark)] focus:outline-none"
+              className="w-full resize-y rounded-lg border border-[#dfe0e0] bg-[var(--page-bg)] px-3 py-2 font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-dark)] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             />
             <div className="flex items-center gap-2 text-sm">
               <button

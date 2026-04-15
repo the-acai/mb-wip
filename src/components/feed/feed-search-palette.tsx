@@ -178,7 +178,7 @@ export function FeedSearchPalette() {
               exit={{ opacity: 0, y: 12, scale: 0.98 }}
               transition={SPRING}
             >
-              <div className="relative flex h-14 items-center overflow-hidden rounded-lg border border-[#dfe0e0] bg-[var(--page-bg)] px-4">
+              <div className="relative flex h-14 items-center overflow-hidden rounded-lg border border-[#dfe0e0] bg-[var(--page-bg)] px-4 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
                 <input
                   ref={inputRef}
                   type="text"

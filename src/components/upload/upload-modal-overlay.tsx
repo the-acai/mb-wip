@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CursorCollapseIcon } from "@/components/expanded/cursor-collapse-icon";
 import { useUploadModal } from "./upload-modal-context";
 import { useUser } from "@/hooks/use-user";
+import { useProfileColor } from "@/hooks/use-profile-color";
 import { getAuthorColor } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { uploadFile } from "@/lib/queries/storage";
@@ -61,19 +62,7 @@ export function UploadModalOverlay() {
   const [error, setError] = useState<string | null>(null);
 
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
-  const [profileColor, setProfileColor] = useState<string | null>(null);
-  useEffect(() => {
-    if (!user) return;
-    const supabase = createClient();
-    supabase
-      .from("profiles")
-      .select("color")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (data?.color) setProfileColor(data.color);
-      });
-  }, [user]);
+  const profileColor = useProfileColor();
   const userColor = userName ? getAuthorColor(userName, profileColor) : "#dfe0e0";
 
   /** Track an animation for later cleanup */
@@ -449,7 +438,7 @@ export function UploadModalOverlay() {
             <input type="text" value={caption} onChange={(e) => setCaption(e.target.value)}
               aria-label="Caption"
               placeholder="is designing the greatest thing since sliced bread."
-              className="h-14 w-full rounded-lg border border-[#3d4141] bg-[#222520] px-4 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#f7f8f8] placeholder:text-[#8b8b8b] focus:outline-none" />
+              className="h-14 w-full rounded-lg border border-[#3d4141] bg-[#222520] px-4 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#f7f8f8] placeholder:text-[#8b8b8b] outline-none focus-visible:border-[var(--profile-color,#dfe0e0)] focus-visible:ring-3 focus-visible:ring-[var(--profile-color,#dfe0e0)]/30" />
           </div>
         </div>
 

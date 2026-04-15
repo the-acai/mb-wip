@@ -10,6 +10,7 @@ import { BottomActionGroup } from "@/components/feed/bottom-action-group";
 import { SearchPaletteProvider } from "@/components/feed/search-context";
 import { FeedSearchPalette } from "@/components/feed/feed-search-palette";
 import { OnboardingOverlay } from "@/components/onboarding/onboarding-overlay";
+import { ProfileColorInjector } from "@/components/profile-color-injector";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({
@@ -19,12 +20,13 @@ export default async function AppLayout({
   children: React.ReactNode;
   modal: React.ReactNode;
 }) {
-  // Check if the current user needs onboarding
+  // Check if the current user needs onboarding + fetch their profile color
   let onboardingProps: {
     userName: string;
     userId: string;
     postCount: number;
   } | null = null;
+  let serverProfileColor: string | null = null;
 
   const supabase = await createClient();
   const {
@@ -35,7 +37,7 @@ export default async function AppLayout({
     const [{ data: profile }, { count }] = await Promise.all([
       supabase
         .from("profiles")
-        .select("full_name, email, onboarding_complete")
+        .select("full_name, email, onboarding_complete, color")
         .eq("id", user.id)
         .single(),
       supabase
@@ -43,20 +45,25 @@ export default async function AppLayout({
         .select("id", { count: "exact", head: true }),
     ]);
 
-    if (profile && !profile.onboarding_complete) {
-      onboardingProps = {
-        userName:
-          profile.full_name ||
-          profile.email.split("@")[0] ||
-          "friend",
-        userId: user.id,
-        postCount: count ?? 0,
-      };
+    if (profile) {
+      serverProfileColor = profile.color ?? null;
+
+      if (!profile.onboarding_complete) {
+        onboardingProps = {
+          userName:
+            profile.full_name ||
+            profile.email.split("@")[0] ||
+            "friend",
+          userId: user.id,
+          postCount: count ?? 0,
+        };
+      }
     }
   }
 
   return (
     <Providers>
+    <ProfileColorInjector serverColor={serverProfileColor} />
     <ExpansionProvider>
     <UploadModalProvider>
     <SearchPaletteProvider>
