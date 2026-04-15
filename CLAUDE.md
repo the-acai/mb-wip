@@ -112,7 +112,7 @@ Two route groups under `src/app/`:
 - **Overlay animations must respect `useReducedMotion()`.** `ExpandedPostOverlay` already gates its springs; if you add new Motion components inside the overlay, do the same. The container is a `role="dialog"` with focus trap + restore — don't break the trap by rendering focusable elements outside `containerRef`.
 - **Posts must be created via the RPC, not direct inserts.** Atomicity matters; `createPost` is the only call site, keep it the only one.
 - **Video autoplay is visibility-gated.** `FeedVideo` pauses videos when <50% visible and releases buffers on unmount. If you add more video elements, use `FeedVideo` (feed/overlay, no controls) or `LazyVideo` (detail panel, native controls) — never bare `<video>` tags. The expanded overlay also autoplays video via `FeedVideo`.
-- **Test on Vercel, not localhost** (per `feedback_test_on_vercel.md` memory).
+- **Dev-only auto-login on localhost.** When `NODE_ENV === "development"` and `DEV_AUTO_LOGIN_EMAIL` + `DEV_AUTO_LOGIN_PASSWORD` are set in `.env.local`, `src/lib/supabase/proxy.ts` signs in a real Supabase user before the unauthed-redirect check runs. The branch is unreachable on Vercel (always `NODE_ENV=production`, env vars not provisioned there). Don't move the gate — without it, the dev creds could be exercised in prod.
 - **Sentry configs have `sendDefaultPii: false` for a reason.** Supabase auth cookies carry session tokens. Never flip that flag to `true` — it would ship session tokens to a third party. Same for adding `Sentry.setUser({...})` with raw emails; use `profiles.id` only.
 
 ---

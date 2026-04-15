@@ -26,9 +26,31 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refresh session — MUST happen before any other logic
-  const {
+  let {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Dev-only auto-login. Gated on NODE_ENV (always "production" on Vercel, so
+  // this branch is literally unreachable in any deployed build) AND on the
+  // presence of DEV_AUTO_LOGIN_* env vars in .env.local.
+  if (
+    !user &&
+    process.env.NODE_ENV === "development" &&
+    process.env.DEV_AUTO_LOGIN_EMAIL &&
+    process.env.DEV_AUTO_LOGIN_PASSWORD &&
+    !request.nextUrl.pathname.startsWith("/auth") &&
+    !request.nextUrl.pathname.startsWith("/api/og")
+  ) {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: process.env.DEV_AUTO_LOGIN_EMAIL,
+      password: process.env.DEV_AUTO_LOGIN_PASSWORD,
+    });
+    if (!error) {
+      ({
+        data: { user },
+      } = await supabase.auth.getUser());
+    }
+  }
 
   // Redirect unauthenticated users to /login.
   // /api/og/* is exempt so OG image crawlers (Slack, Twitter, etc.) can generate
