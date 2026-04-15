@@ -37,7 +37,6 @@ export interface ExpandedPostData {
 interface CachedComment {
   id: string;
   created_at: string;
-  [key: string]: unknown;
 }
 
 type CommentData = CachedComment[];
