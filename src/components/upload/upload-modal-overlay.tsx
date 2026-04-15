@@ -466,18 +466,39 @@ export function UploadModalOverlay() {
 
         <div className="flex w-full items-center gap-0.5">
           <div ref={readyBtnRef} className="flex-1" style={{ opacity: 0, transformOrigin: "left center" }}>
-            <button onClick={handleSubmit} disabled={submitting || files.length === 0}
+            <motion.button onClick={handleSubmit} disabled={submitting || files.length === 0}
               aria-busy={submitting}
               aria-label={submitting ? "Sending your post" : "Submit post"}
-              className="flex h-12 w-full items-center justify-center rounded-full bg-[#f7f8f8] px-6 disabled:opacity-50">
-              <span className="font-heading text-base font-bold leading-[1.28] tracking-[-0.16px] text-[#0e1708] whitespace-nowrap">
-                {submitting ? "SENDING..." : "I'M READY"}
+              className="flex h-12 w-full cursor-pointer items-center justify-center rounded-full bg-[#f7f8f8] px-6 disabled:cursor-not-allowed disabled:opacity-50"
+              whileHover={submitting || files.length === 0 ? undefined : "hover"}
+              initial="idle"
+            >
+              <span className="inline-flex font-heading text-base font-bold leading-[1.28] tracking-[-0.16px] text-[#0e1708] whitespace-nowrap">
+                {(submitting ? "SENDING..." : "I'M READY").split("").map((char, i) => (
+                  <motion.span
+                    key={i}
+                    className="inline-block"
+                    variants={{
+                      idle: { y: 0 },
+                      hover: { y: -3 },
+                    }}
+                    transition={{
+                      type: "spring",
+                      mass: 1.2,
+                      stiffness: 170,
+                      damping: 16,
+                      delay: i * 0.02,
+                    }}
+                  >
+                    {char === " " ? "\u00A0" : char}
+                  </motion.span>
+                ))}
               </span>
-            </button>
+            </motion.button>
           </div>
           <div ref={arrowBtnRef} style={{ opacity: 0 }}>
-            <span className="flex size-12 items-center justify-center rounded-full bg-[#f7f8f8]">
-              <ArrowRight className="size-5 text-[#0e1708]" />
+            <span className={`flex size-12 items-center justify-center rounded-full ${files.length === 0 && !submitting ? "bg-[#f7f8f8]/50" : "bg-[#f7f8f8]"}`}>
+              <ArrowRight className={`size-5 ${files.length === 0 && !submitting ? "text-[#0e1708]/30" : "text-[#0e1708]"}`} />
             </span>
           </div>
         </div>
