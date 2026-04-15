@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect } from "react";
 
 interface FeedVideoProps {
   src: string;
@@ -15,26 +15,33 @@ interface FeedVideoProps {
  * scrolled away. No controls are rendered — this is a silent ambient preview,
  * similar to Pinterest or Cosmos.
  *
+ * Tracks visibility via a ref so the `canplay` event can trigger play() when
+ * the video finishes loading while already in the viewport.
+ *
  * The video buffer is explicitly released on unmount to free memory.
  */
 export function FeedVideo({ src, posterUrl, className }: FeedVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-
-  const tryPlay = useCallback(() => {
-    const video = videoRef.current;
-    if (!video || video.readyState < 2) return;
-    video.play().catch(() => {});
-  }, []);
+  const visibleRef = useRef(false);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    observerRef.current = new IntersectionObserver(
+    const play = () => {
+      if (visibleRef.current && video.readyState >= 2) {
+        video.play().catch(() => {});
+      }
+    };
+
+    // When data is ready and we're already visible, start playback
+    video.addEventListener("canplay", play);
+
+    const observer = new IntersectionObserver(
       ([entry]) => {
+        visibleRef.current = entry.isIntersecting;
         if (entry.isIntersecting) {
-          tryPlay();
+          play();
         } else {
           video.pause();
         }
@@ -42,15 +49,16 @@ export function FeedVideo({ src, posterUrl, className }: FeedVideoProps) {
       { threshold: 0.5 }
     );
 
-    observerRef.current.observe(video);
+    observer.observe(video);
 
     return () => {
-      observerRef.current?.disconnect();
+      observer.disconnect();
+      video.removeEventListener("canplay", play);
       video.pause();
       video.removeAttribute("src");
       video.load();
     };
-  }, [tryPlay]);
+  }, [src]);
 
   return (
     <video
