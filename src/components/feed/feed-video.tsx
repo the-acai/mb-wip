@@ -31,6 +31,9 @@ export const FeedVideo = forwardRef<FeedVideoHandle, FeedVideoProps>(
     const videoRef = useRef<HTMLVideoElement>(null);
     const visibleRef = useRef(false);
     const seekedRef = useRef(false);
+    const lastPlaybackTimeRef = useRef(0);
+    const wasPlayingBeforeHideRef = useRef(false);
+    const resumeOnVisibleRef = useRef(false);
 
     useImperativeHandle(ref, () => ({
       getCurrentTime: () => videoRef.current?.currentTime ?? 0,
@@ -39,18 +42,60 @@ export const FeedVideo = forwardRef<FeedVideoHandle, FeedVideoProps>(
     useEffect(() => {
       const video = videoRef.current;
       if (!video) return;
-      seekedRef.current = false;
 
-      const play = () => {
-        if (!visibleRef.current || video.readyState < 2) return;
+      seekedRef.current = false;
+      lastPlaybackTimeRef.current = 0;
+      wasPlayingBeforeHideRef.current = false;
+      resumeOnVisibleRef.current = false;
+
+      const canAutoplay = () =>
+        visibleRef.current && document.visibilityState === "visible";
+
+      const seekBeforePlay = () => {
+        if (resumeOnVisibleRef.current) {
+          video.currentTime = lastPlaybackTimeRef.current;
+          resumeOnVisibleRef.current = false;
+          return;
+        }
 
         // Seek to startTime once before first play
         if (startTime != null && !seekedRef.current) {
           seekedRef.current = true;
           video.currentTime = startTime;
         }
+      };
 
+      const play = () => {
+        if (!canAutoplay() || video.readyState < 2) return;
+
+        seekBeforePlay();
         video.play().catch(() => {});
+      };
+
+      const pauseAndRememberPlayback = () => {
+        lastPlaybackTimeRef.current = video.currentTime;
+        wasPlayingBeforeHideRef.current = !video.paused && !video.ended;
+        resumeOnVisibleRef.current = wasPlayingBeforeHideRef.current;
+        video.pause();
+      };
+
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === "hidden") {
+          pauseAndRememberPlayback();
+          return;
+        }
+
+        if (document.visibilityState === "visible") {
+          play();
+        }
+      };
+
+      const handlePageHide = () => {
+        pauseAndRememberPlayback();
+      };
+
+      const handleReturnToTab = () => {
+        play();
       };
 
       // When data is ready and we're already visible, start playback
@@ -58,10 +103,11 @@ export const FeedVideo = forwardRef<FeedVideoHandle, FeedVideoProps>(
 
       const observer = new IntersectionObserver(
         ([entry]) => {
-          visibleRef.current = entry.isIntersecting;
-          if (entry.isIntersecting) {
+          visibleRef.current = entry.intersectionRatio >= 0.5;
+          if (visibleRef.current) {
             play();
           } else {
+            lastPlaybackTimeRef.current = video.currentTime;
             video.pause();
           }
         },
@@ -69,10 +115,18 @@ export const FeedVideo = forwardRef<FeedVideoHandle, FeedVideoProps>(
       );
 
       observer.observe(video);
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      window.addEventListener("pagehide", handlePageHide);
+      window.addEventListener("pageshow", handleReturnToTab);
+      window.addEventListener("focus", handleReturnToTab);
 
       return () => {
         observer.disconnect();
         video.removeEventListener("canplay", play);
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+        window.removeEventListener("pagehide", handlePageHide);
+        window.removeEventListener("pageshow", handleReturnToTab);
+        window.removeEventListener("focus", handleReturnToTab);
         video.pause();
         video.removeAttribute("src");
         video.load();
