@@ -34,8 +34,30 @@ export interface ExpandedPostData {
   dominantColor?: string | null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type CommentData = any[];
+interface CachedComment {
+  id: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+type CommentData = CachedComment[];
+
+function mergeCommentRows(existing: CommentData, incoming: CommentData): CommentData {
+  const byId = new Map<string, CachedComment>();
+
+  for (const comment of existing) {
+    byId.set(comment.id, comment);
+  }
+
+  for (const comment of incoming) {
+    const previous = byId.get(comment.id);
+    byId.set(comment.id, previous ? { ...previous, ...comment } : comment);
+  }
+
+  return Array.from(byId.values()).sort((a, b) =>
+    a.created_at.localeCompare(b.created_at)
+  );
+}
 
 interface ExpansionContextValue {
   postData: ExpandedPostData | null;
@@ -43,6 +65,8 @@ interface ExpansionContextValue {
   expand: (data: ExpandedPostData) => void;
   collapse: (historyAlreadyBack?: boolean) => void;
   prefetchComments: (postId: string) => void;
+  upsertComment: (postId: string, comment: CachedComment) => void;
+  removeComment: (postId: string, commentId: string) => void;
 }
 
 const ExpansionContext = createContext<ExpansionContextValue>({
@@ -51,6 +75,8 @@ const ExpansionContext = createContext<ExpansionContextValue>({
   expand: () => {},
   collapse: () => {},
   prefetchComments: () => {},
+  upsertComment: () => {},
+  removeComment: () => {},
 });
 
 export function ExpansionProvider({ children }: { children: ReactNode }) {
@@ -65,8 +91,35 @@ export function ExpansionProvider({ children }: { children: ReactNode }) {
     const supabase = createClient();
     getComments(supabase, postId).then((data) => {
       if (data) {
-        setCommentCache((prev) => new Map(prev).set(postId, data));
+        setCommentCache((prev) => {
+          const next = new Map(prev);
+          const current = next.get(postId) ?? [];
+          next.set(postId, mergeCommentRows(current, data as CommentData));
+          return next;
+        });
       }
+    });
+  }, []);
+
+  const upsertComment = useCallback((postId: string, comment: CachedComment) => {
+    setCommentCache((prev) => {
+      const next = new Map(prev);
+      const current = next.get(postId) ?? [];
+      next.set(postId, mergeCommentRows(current, [comment]));
+      return next;
+    });
+  }, []);
+
+  const removeComment = useCallback((postId: string, commentId: string) => {
+    setCommentCache((prev) => {
+      const next = new Map(prev);
+      const current = next.get(postId);
+      if (!current) return prev;
+      next.set(
+        postId,
+        current.filter((comment) => comment.id !== commentId)
+      );
+      return next;
     });
   }, []);
 
@@ -92,6 +145,7 @@ export function ExpansionProvider({ children }: { children: ReactNode }) {
     <ExpansionContext value={{
       postData, commentCache,
       expand, collapse, prefetchComments,
+      upsertComment, removeComment,
     }}>
       {children}
     </ExpansionContext>

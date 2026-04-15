@@ -218,9 +218,9 @@ export function ExpandedCommentForm({
     }
 
     // Default keyboard handling
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+    if (e.key === "Enter") {
       e.preventDefault();
-      handleSubmit();
+      void handleSubmit();
     } else if (e.key === "Escape" && replyingTo) {
       e.preventDefault();
       e.stopPropagation();
@@ -281,8 +281,9 @@ export function ExpandedCommentForm({
                 ? `Reply to @${replyingTo.authorName.toLowerCase()}…`
                 : "@user to reply, or add to the conversation."
             }
-            aria-label="Add a comment (⌘+Enter to send)"
-            aria-keyshortcuts="Meta+Enter Control+Enter"
+            aria-label="Add a comment (Enter to send)"
+            aria-keyshortcuts={replyingTo ? "Enter Escape" : "Enter"}
+            aria-controls={popoverOpen ? "expanded-comment-mention-listbox" : undefined}
             aria-expanded={popoverOpen}
             aria-autocomplete="list"
             aria-activedescendant={
@@ -310,6 +311,7 @@ export function ExpandedCommentForm({
                   width: popoverPos.width,
                   boxShadow: MENTION_SHADOW,
                 }}
+                id="expanded-comment-mention-listbox"
                 role="listbox"
                 aria-label="Mention suggestions"
                 initial={{ opacity: 0, y: -4 }}

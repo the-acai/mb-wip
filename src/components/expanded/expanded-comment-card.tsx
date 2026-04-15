@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createComment, deleteComment, updateComment } from "@/lib/queries/comments";
 import { useRealtimeComments } from "@/hooks/use-realtime-comments";
 import { useUser } from "@/hooks/use-user";
+import { useExpansion } from "./expansion-context";
 import { ExpandedCommentItem } from "./expanded-comment-item";
 import { ExpandedCommentForm } from "./expanded-comment-form";
 import { ThreadLine } from "./thread-line";
@@ -21,6 +22,23 @@ interface Comment {
   created_at: string;
   author: { full_name: string | null; email: string; avatar_url: string | null; color: string | null };
   reactions: { emoji: string; user_id: string }[];
+}
+
+function mergeComments(existing: Comment[], incoming: Comment[]): Comment[] {
+  const byId = new Map<string, Comment>();
+
+  for (const comment of existing) {
+    byId.set(comment.id, comment);
+  }
+
+  for (const comment of incoming) {
+    const previous = byId.get(comment.id);
+    byId.set(comment.id, previous ? { ...previous, ...comment } : comment);
+  }
+
+  return Array.from(byId.values()).sort((a, b) =>
+    a.created_at.localeCompare(b.created_at)
+  );
 }
 
 const COMMENT_SPRING = {
@@ -52,26 +70,24 @@ export function ExpandedCommentCard({
   const [replyingTo, setReplyingTo] = useState<{ id: string; authorName: string } | null>(null);
   const supabase = createClient();
   const { user } = useUser();
+  const { upsertComment, removeComment } = useExpansion();
   const commentListRef = useRef<HTMLDivElement>(null);
 
   // Sync when initialComments arrives asynchronously
   useEffect(() => {
-    if (initialComments.length > 0) {
-      setComments(initialComments);
-    }
+    setComments((prev) => mergeComments(prev, initialComments));
   }, [initialComments]);
 
   const handleInsert = useCallback((newComment: Record<string, unknown>) => {
     const comment = newComment as unknown as Comment;
-    setComments((prev) => {
-      if (prev.some((c) => c.id === comment.id)) return prev;
-      return [...prev, comment];
-    });
-  }, []);
+    setComments((prev) => mergeComments(prev, [comment]));
+    upsertComment(postId, comment);
+  }, [postId, upsertComment]);
 
   const handleDelete = useCallback((commentId: string) => {
     setComments((prev) => prev.filter((c) => c.id !== commentId));
-  }, []);
+    removeComment(postId, commentId);
+  }, [postId, removeComment]);
 
   useRealtimeComments(postId, handleInsert, handleDelete);
 
@@ -93,12 +109,18 @@ export function ExpandedCommentCard({
   }, [comments]);
 
   const handleSubmit = async (body: string, parentId?: string, mentions?: string[]) => {
-    await createComment(supabase, {
+    const created = (await createComment(supabase, {
       post_id: postId,
       body,
       parent_comment_id: parentId,
       mentions,
-    });
+    })) as Comment;
+    const nextComment = {
+      ...created,
+      reactions: created.reactions ?? [],
+    };
+    setComments((prev) => mergeComments(prev, [nextComment]));
+    upsertComment(postId, nextComment);
   };
 
   const resolveParentFromMention = (body: string): { parentId?: string; cleanBody: string } => {
@@ -138,25 +160,33 @@ export function ExpandedCommentCard({
   const handleDeleteComment = useCallback(
     async (commentId: string) => {
       // Optimistic remove; realtime DELETE will confirm or correct.
+      const deletedComment = comments.find((comment) => comment.id === commentId);
       setComments((prev) => prev.filter((c) => c.id !== commentId));
+      removeComment(postId, commentId);
       try {
         await deleteComment(supabase, commentId);
       } catch (err) {
-        // Reload from server on failure — simplest recovery
         console.error("Failed to delete comment", err);
+        if (deletedComment) {
+          setComments((prev) => mergeComments(prev, [deletedComment]));
+          upsertComment(postId, deletedComment);
+        }
       }
     },
-    [supabase]
+    [comments, postId, removeComment, supabase, upsertComment]
   );
 
   const handleEditComment = useCallback(
     async (commentId: string, body: string) => {
       const updated = (await updateComment(supabase, commentId, body)) as Comment;
-      setComments((prev) =>
-        prev.map((c) => (c.id === commentId ? { ...c, ...updated } : c))
-      );
+      const nextComment = {
+        ...updated,
+        reactions: updated.reactions ?? [],
+      };
+      setComments((prev) => mergeComments(prev, [nextComment]));
+      upsertComment(postId, nextComment);
     },
-    [supabase]
+    [postId, supabase, upsertComment]
   );
 
   const getAuthorName = (c: Comment) =>

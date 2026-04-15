@@ -39,7 +39,7 @@ export async function createComment(
       body: comment.body,
       parent_comment_id: comment.parent_comment_id || null,
     })
-    .select("*, author:profiles!author_id(*)")
+    .select("*, author:profiles!author_id(*), reactions(*)")
     .single();
 
   if (error) throw error;
