@@ -6,6 +6,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { getAuthorColor } from "@/lib/utils";
 import { thumbHashToPlaceholderURL } from "@/lib/thumb-hash";
 import { FeedVideo } from "@/components/feed/feed-video";
+import { AuthorPill } from "@/components/shared/author-pill";
 import type { ExpandedPostData } from "./expansion-context";
 
 const EXPANSION_SPRING = {
@@ -101,14 +102,7 @@ export function ExpandedCard({ postData, style }: ExpandedCardProps) {
 
       {/* Caption */}
       <div className="flex shrink-0 items-baseline gap-2">
-        <span
-          className="flex h-8 shrink-0 items-center rounded-lg px-2"
-          style={{ backgroundColor: badgeColor }}
-        >
-          <span className="font-heading text-base tracking-[-0.16px] text-[var(--page-bg)]">
-            @{authorName.toLowerCase()}
-          </span>
-        </span>
+        <AuthorPill authorName={authorName} backgroundColor={badgeColor} />
         <p className="min-w-0 flex-1 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[var(--text-caption)]">
           {caption}
         </p>

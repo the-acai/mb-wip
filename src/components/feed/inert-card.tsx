@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import { MessageCircleIcon } from "lucide-react";
 import { getAuthorColor } from "@/lib/utils";
 import { useExpansion, type ExpandedPostData } from "@/components/expanded/expansion-context";
+import { AuthorPill } from "@/components/shared/author-pill";
 import { type FeedPost, type Orientation } from "./experiment-card";
 import { FeedVideo, type FeedVideoHandle } from "./feed-video";
 
@@ -123,14 +124,7 @@ export function InertCard({ post, orientation }: InertCardProps) {
         )}
 
         <div className="flex items-baseline gap-2">
-          <span
-            className="flex h-8 shrink-0 items-center rounded-lg px-2"
-            style={{ backgroundColor: badgeColor }}
-          >
-            <span className="font-heading text-base tracking-[-0.16px] text-[var(--page-bg)]">
-              @{authorName.toLowerCase()}
-            </span>
-          </span>
+          <AuthorPill authorName={authorName} backgroundColor={badgeColor} />
           <p className="min-w-0 flex-1 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[var(--text-caption)]">
             {caption}
           </p>

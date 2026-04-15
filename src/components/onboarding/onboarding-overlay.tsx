@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
 import { getAuthorColor } from "@/lib/utils";
+import { AuthorPill } from "@/components/shared/author-pill";
 import { ColorPicker } from "./color-picker";
 
 type Phase =
@@ -173,16 +174,12 @@ export function OnboardingOverlay({
                 Howdy,
               </motion.span>
 
-              <motion.span
+              <AuthorPill
+                authorName={userName}
+                backgroundColor={selectedColor}
                 layoutId={LAYOUT_ID}
-                className="flex h-8 shrink-0 items-center rounded-lg px-2"
-                style={{ backgroundColor: selectedColor }}
                 transition={{ layout: FLIP_SPRING }}
-              >
-                <span className="font-heading text-base tracking-[-0.16px] text-[#F7F8F8]">
-                  @{userName.toLowerCase()}
-                </span>
-              </motion.span>
+              />
             </div>
 
             {/* "There are N works in progress." */}
