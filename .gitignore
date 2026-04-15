@@ -42,3 +42,7 @@ yarn-error.log*
 next-env.d.ts
 .playwright-mcp/
 .superpowers/
+.claude/worktrees/
+
+# Sentry Config File
+.env.sentry-build-plugin
