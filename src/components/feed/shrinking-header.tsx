@@ -32,6 +32,18 @@ export function ShrinkingHeader() {
   // so a late-loading TypeKit parabolica doesn't wreck the math.
   const maxFontSize = useMotionValue(HEADLINE_DEFAULT_MAX);
 
+  // Client-side viewport height. Starts at 0 so the scroll transform below
+  // returns 0 on server + pre-hydration (no SSR/client mismatch). Populated
+  // in a layout effect so the real value is in place before first paint.
+  const viewportHeight = useMotionValue(0);
+
+  useEffect(() => {
+    viewportHeight.set(window.innerHeight);
+    const onResize = () => viewportHeight.set(window.innerHeight);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [viewportHeight]);
+
   useEffect(() => {
     const measure = () => {
       // Render the headline once at a known size off-screen to learn the
@@ -78,11 +90,13 @@ export function ShrinkingHeader() {
   );
   const scrollOpacity = useTransform(scrollYProgress, [0, 0.6, 1], [1, 0.8, 1]);
 
-  // Start centered in the 40svh space, translate up to top-4 as user scrolls
+  // Start centered in the 40svh space, translate up to top-4 as user scrolls.
+  // Returns 0 until viewportHeight is populated (server + pre-hydration) so
+  // SSR markup matches the first client render.
   const scrollY = useTransform(
-    [scrollYProgress, maxFontSize],
-    ([v, max]: number[]) => {
-      const vh = typeof window !== "undefined" ? window.innerHeight : 900;
+    [scrollYProgress, maxFontSize, viewportHeight],
+    ([v, max, vh]: number[]) => {
+      if (!vh) return 0;
       const center = vh * 0.2; // middle of 40svh
       const fs = max - v * (max - HEADLINE_MIN); // current interpolated font size
       const halfText = (fs * 1.18) / 2; // half the line height

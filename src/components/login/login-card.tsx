@@ -160,14 +160,13 @@ export function LoginCard({
   }, [phase]);
 
   const isDraggable = phase === "idle" || phase === "dragging";
-  const windowH = typeof window !== "undefined" ? window.innerHeight : 900;
 
   return (
     <motion.div
-      initial={{ y: windowH * 0.6, scale: 0.9, opacity: 0 }}
+      initial={{ y: "60vh", scale: 0.9, opacity: 0 }}
       animate={
         phase === "consuming"
-          ? { y: windowH / 2 + CARD_HEIGHT / 2 + 40, scale: 0.95, opacity: 0 }
+          ? { y: window.innerHeight / 2 + CARD_HEIGHT / 2 + 40, scale: 0.95, opacity: 0 }
           : { y: 0, scale: 1, opacity: 1 }
       }
       transition={phase === "consuming" ? CONSUME_SPRING : ENTRANCE_SPRING}
