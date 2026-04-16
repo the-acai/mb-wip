@@ -98,9 +98,12 @@ Two route groups under `src/app/`:
 - `"use client"` only where needed; server components fetch via `createClient()` from `@/lib/supabase/server`.
 - Path alias `@/*` → `src/*`.
 - shadcn registry configured in `components.json`.
-- Author badge colors: `getAuthorColor(name, profileColor?)` in `src/lib/utils.ts` checks the user's stored `profiles.color` first, falls back to the hash-based palette. All badge call sites pass `author.color` from the joined profile data.
+- **Author helpers:** `getAuthorName(author)` and `getAuthorColor(name, profileColor?)` in `src/lib/utils.ts`. Use `getAuthorName` for the display name everywhere (it handles `full_name → email prefix → "Anonymous"` fallback). `getAuthorColor` checks `profiles.color` first, then the hash-based palette. All badge call sites pass `author.color` from the joined profile data.
 - **Profile color for focus rings:** `ProfileColorInjector` (rendered in app layout) sets `--ring` and `--profile-color` CSS custom properties on `<html>` to the current user's chosen color. All shadcn `focus-visible:ring-ring/50` classes automatically use this. The server layout passes the color as `serverColor` to prevent flash. Use `useProfileColor()` hook (TanStack Query-cached) instead of fetching `profiles.color` directly — it shares one fetch across all consumers with server-prefilled initial data.
-- Spring configs tend to be co-located or tunable live via `<SpringTuner/>` — check `src/components/feed/spring-tuner.tsx` before guessing spring values.
+- **Spring constants:** `src/lib/motion.ts` exports named springs (`SPRING.default`, `.soft`, `.cardSoft`, etc.), `INSTANT` (for `useReducedMotion` branches), and `EASE_OUT_EXPO`. Don't re-declare inline springs — import from here. `<SpringTuner/>` (`src/components/feed/spring-tuner.tsx`) is still available for live tweaking of the send-it button hover spring in dev.
+- **Typography utilities:** `text-heading-base` and `text-heading-lg` (defined in `globals.css` via `@utility`) bundle `font-heading` + the matching `leading-[1.28]` + `tracking` into one class. Use these instead of the four-part stanza.
+- **PostMedia component:** `src/components/shared/post-media.tsx` renders the video/image/fallback media block with progressive ThumbHash reveal. All three card types (`ExperimentCard`, `InertCard`, `ExpandedCard`) use it. If you add a new card surface, use `<PostMedia>` — don't hand-roll the three-way switch.
+- **Color tokens:** `globals.css` defines `--page-bg`, `--text-dark`, `--text-caption`, `--border-subtle`, `--row-hover-bg`, plus the upload-modal dark palette (`--modal-bg`, `--modal-surface`, `--modal-border`, `--modal-active-bg`, `--modal-placeholder`, `--modal-text-secondary`). Use these instead of raw hex. The z-index scale (1/40/50/60/70) is documented in a comment block in `globals.css`.
 
 ### Gotchas
 
