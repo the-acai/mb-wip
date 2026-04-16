@@ -115,26 +115,6 @@ async function uploadVideoFile(
   };
 }
 
-export async function getFileUrl(supabase: SupabaseClient, filePath: string) {
-  const { data } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(filePath, 3600);
-
-  return data;
-}
-
-export async function getSignedUrl(
-  supabase: SupabaseClient,
-  filePath: string
-) {
-  const { data, error } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(filePath, 3600);
-
-  if (error) throw error;
-  return data.signedUrl;
-}
-
 /**
  * Batch-fetch signed URLs for multiple file paths in a single request.
  * Returns a Map of filePath -> signedUrl.
@@ -158,12 +138,4 @@ export async function getSignedUrls(
     }
   }
   return urlMap;
-}
-
-export async function deleteFile(
-  supabase: SupabaseClient,
-  filePath: string
-) {
-  const { error } = await supabase.storage.from(BUCKET).remove([filePath]);
-  if (error) throw error;
 }

@@ -18,7 +18,7 @@ An internal feed of creative experiments. Users post titled cards with body copy
 - **TanStack Query v5** — client-side cache & infinite queries. Server prefetches via `HydrationBoundary`.
 - **Motion** (formerly framer-motion, `motion/react`) — all animations. `layoutId` FLIPs, `useScroll`/`useTransform` for scroll-linked motion, springs everywhere.
 - **Tailwind v4** + **shadcn/ui** (components in `src/components/ui/`). Custom tokens in `src/app/globals.css` (`--page-bg`, `--text-dark`, `--text-caption`). Heading font = `parabolica` (loaded via Typekit in root layout); body = Geist.
-- **Tiptap** (comment editor with mentions), **react-markdown** (post body), **GSAP** (horizontal loop utility), **cmdk**, **base-ui**.
+- **GSAP** (horizontal loop utility in the upload modal marquee), **base-ui** (command palette, primitives).
 - **Sentry** (`@sentry/nextjs`) for error tracking. Configs at repo root (`sentry.{server,edge}.config.ts`) + `src/instrumentation{,-client}.ts`. Client events tunnel through `/monitoring` to bypass ad blockers. DSN in `NEXT_PUBLIC_SENTRY_DSN`; build-time source-map uploads use `SENTRY_AUTH_TOKEN`. All provisioned by the Vercel Marketplace integration. The Sentry MCP server is registered in `.mcp.json` — coding agents can query issues directly.
 
 ### Routing
@@ -58,7 +58,7 @@ Two route groups under `src/app/`:
 `ExperimentCard`:
 - `motion.div` with `layoutId={`card-${post.id}`}` — this is the FLIP source. Entrance animates `y/z/scale/opacity/blur` springs (tunable via `CardSpringConfig`).
 - **Image loading:** Three-layer progressive reveal — dominant color bg (instant) → ThumbHash blurry preview (decoded from `thumb_hash` via `thumbHashToPlaceholderURL`) → full image crossfade (500ms `onLoad` transition). Both the card and expanded overlay share this pattern. Assets without `thumb_hash` fall back to white bg + fade-in.
-- **Video in feed cards:** Videos autoplay muted and looping via `FeedVideo` (`src/components/feed/feed-video.tsx`), which uses IntersectionObserver (50% threshold) to play/pause based on visibility and releases the buffer on unmount. No player controls are shown. Poster frames (extracted at upload time by `src/lib/video-thumbnail.ts`) serve as the `poster` attribute for instant visual before playback starts. The poster WebP is stored in `assets.poster_path`. `LazyVideo` (`src/components/post/lazy-video.tsx`) is a separate component for the `MediaGallery` detail panel (IO-based lazy mount with native controls).
+- **Video in feed cards:** Videos autoplay muted and looping via `FeedVideo` (`src/components/feed/feed-video.tsx`), which uses IntersectionObserver (50% threshold) to play/pause based on visibility and releases the buffer on unmount. No player controls are shown. Poster frames (extracted at upload time by `src/lib/video-thumbnail.ts`) serve as the `poster` attribute for instant visual before playback starts. The poster WebP is stored in `assets.poster_path`.
 - On hover, preloads the image + prefetches comments (`prefetchComments(post.id)`).
 - On click, calls `expand(data)` from `ExpansionContext`, which `setPostData(...)` + `window.history.pushState` to `/post/{id}` (URL changes without re-render).
 - When this card is the lifted one, sets `opacity: 0` but keeps grid space (so the overlay's `layoutId` flies from this position).
@@ -86,7 +86,7 @@ Two route groups under `src/app/`:
 - `createPost` calls the `create_post_with_relations` RPC (migration `00014`) so post + tag upserts + asset inserts run in a single transaction. **Don't reintroduce the sequential-insert pattern** — failures used to leave orphan posts.
 - `createComment` validates the `mentions[]` array against real `profiles.id` rows before insert, then writes through the `mentions` table whose RLS only allows the comment author to write/delete (also from `00014`).
 - Realtime: `use-realtime-comments.ts`, `use-realtime-notifications.ts` subscribe to Supabase Realtime channels.
-- Comment editor uses Tiptap + a mention plugin backed by `/api/mentions/search/route.ts`.
+- Comment UI lives in `src/components/expanded/expanded-comment-*` (card, form, item, plus `thread-line`, `reply-connector`) — a single-line input, not a rich-text editor. The form fetches all profiles once and filters client-side for instant `@mention` autocomplete.
 - Storage: Supabase storage with RLS; `signed-url-cache.ts` caches signed URLs client-side; server batch-fetches with `getSignedUrls`.
 
 ### Data model (supabase/migrations/)
@@ -111,7 +111,7 @@ Two route groups under `src/app/`:
 - **`.in()` doesn't preserve order.** Any time we fetch by a list of IDs, re-sort client-side (see `getFeedPosts`).
 - **Overlay animations must respect `useReducedMotion()`.** `ExpandedPostOverlay` already gates its springs; if you add new Motion components inside the overlay, do the same. The container is a `role="dialog"` with focus trap + restore — don't break the trap by rendering focusable elements outside `containerRef`.
 - **Posts must be created via the RPC, not direct inserts.** Atomicity matters; `createPost` is the only call site, keep it the only one.
-- **Video autoplay is visibility-gated.** `FeedVideo` pauses videos when <50% visible and releases buffers on unmount. If you add more video elements, use `FeedVideo` (feed/overlay, no controls) or `LazyVideo` (detail panel, native controls) — never bare `<video>` tags. The expanded overlay also autoplays video via `FeedVideo`.
+- **Video autoplay is visibility-gated.** `FeedVideo` pauses videos when <50% visible and releases buffers on unmount. Use `FeedVideo` for any video surface — never bare `<video>` tags. The expanded overlay also autoplays video via `FeedVideo`.
 - **Dev-only auto-login on localhost.** When `NODE_ENV === "development"` and `DEV_AUTO_LOGIN_EMAIL` + `DEV_AUTO_LOGIN_PASSWORD` are set in `.env.local`, `src/lib/supabase/proxy.ts` signs in a real Supabase user before the unauthed-redirect check runs. The branch is unreachable on Vercel (always `NODE_ENV=production`, env vars not provisioned there). Don't move the gate — without it, the dev creds could be exercised in prod.
 - **Sentry configs have `sendDefaultPii: false` for a reason.** Supabase auth cookies carry session tokens. Never flip that flag to `true` — it would ship session tokens to a third party. Same for adding `Sentry.setUser({...})` with raw emails; use `profiles.id` only.
 

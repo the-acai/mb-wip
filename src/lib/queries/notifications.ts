@@ -35,15 +35,6 @@ export async function getUnreadCount(supabase: SupabaseClient) {
   return count ?? 0;
 }
 
-export async function markAsRead(supabase: SupabaseClient, id: string) {
-  const { error } = await supabase
-    .from("notifications")
-    .update({ read: true })
-    .eq("id", id);
-
-  if (error) throw error;
-}
-
 export async function markAllAsRead(supabase: SupabaseClient) {
   const { error } = await supabase
     .from("notifications")
