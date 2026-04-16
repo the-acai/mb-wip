@@ -256,6 +256,7 @@ export function ExperimentCard({
                 src={thumbnailUrl}
                 alt={post.title}
                 fill
+                unoptimized
                 className={`object-cover transition-all duration-500 ease-out group-hover:scale-[1.02] ${
                   reducedMotion || imageLoaded ? "opacity-100" : "opacity-0"
                 }`}

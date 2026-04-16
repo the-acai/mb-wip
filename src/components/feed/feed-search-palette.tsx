@@ -263,6 +263,7 @@ export function FeedSearchPalette() {
                               src={firstImage.signed_url}
                               alt=""
                               fill
+                              unoptimized
                               sizes="52px"
                               className="object-cover"
                             />

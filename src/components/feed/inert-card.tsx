@@ -110,6 +110,7 @@ export function InertCard({ post, orientation }: InertCardProps) {
               src={thumbnailUrl}
               alt=""
               fill
+              unoptimized
               className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
               sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />

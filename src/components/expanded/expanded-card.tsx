@@ -85,6 +85,7 @@ export function ExpandedCard({ postData, style }: ExpandedCardProps) {
               src={postData.imageUrl}
               alt={postData.title}
               fill
+              unoptimized
               sizes="(max-width: 767px) 100vw, 40vw"
               className={`object-cover transition-opacity duration-500 ease-out ${
                 reducedMotion || imageLoaded ? "opacity-100" : "opacity-0"
