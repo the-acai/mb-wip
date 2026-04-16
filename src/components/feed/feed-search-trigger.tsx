@@ -3,13 +3,7 @@
 import { motion } from "motion/react";
 import { SearchIcon } from "lucide-react";
 import { useSearchPalette } from "./search-context";
-
-const ENTRANCE = {
-  type: "spring" as const,
-  mass: 1.2,
-  stiffness: 170,
-  damping: 16,
-};
+import { SPRING } from "@/lib/motion";
 
 export function FeedSearchTrigger() {
   const { open } = useSearchPalette();
@@ -23,7 +17,7 @@ export function FeedSearchTrigger() {
       className="pointer-events-auto flex size-12 cursor-pointer items-center justify-center rounded-full bg-[var(--text-dark)]"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={ENTRANCE}
+      transition={SPRING.default}
     >
       <SearchIcon className="size-5 text-[var(--page-bg)]" aria-hidden="true" />
     </motion.button>

@@ -1,15 +1,15 @@
 "use client";
 
-import { useRef, useState, useMemo } from "react";
-import Image from "next/image";
+import { useRef } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { MessageCircleIcon } from "lucide-react";
 
-import { getAuthorColor } from "@/lib/utils";
+import { getAuthorColor, getAuthorName } from "@/lib/utils";
+import { SPRING } from "@/lib/motion";
 import { useExpansion, type ExpandedPostData } from "@/components/expanded/expansion-context";
-import { thumbHashToPlaceholderURL } from "@/lib/thumb-hash";
 import { AuthorPill } from "@/components/shared/author-pill";
-import { FeedVideo, type FeedVideoHandle } from "./feed-video";
+import { PostMedia } from "@/components/shared/post-media";
+import { type FeedVideoHandle } from "./feed-video";
 
 export interface FeedPost {
   id: string;
@@ -102,27 +102,17 @@ export function ExperimentCard({
   const reducedMotion = useReducedMotion();
   const { expand, prefetchComments, postData } = useExpansion();
 
-  const [imageLoaded, setImageLoaded] = useState(false);
-
   const firstImageAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("image/")
   );
   const firstVideoAsset = post.assets?.find((a) =>
     a.mime_type?.startsWith("video/")
   );
-  // For the thumbnail/poster: image takes priority, then video poster
   const displayAsset = firstImageAsset || firstVideoAsset;
   const thumbnailUrl = firstImageAsset?.signed_url
     ?? firstVideoAsset?.poster_signed_url;
   const videoUrl = firstVideoAsset?.signed_url;
-  const thumbHash = displayAsset?.thumb_hash;
-  const dominantColor = displayAsset?.dominant_color;
-  const placeholderUrl = useMemo(
-    () => (thumbHash ? thumbHashToPlaceholderURL(thumbHash) : null),
-    [thumbHash]
-  );
-  const authorName =
-    post.author?.full_name || post.author?.email?.split("@")[0] || "Anonymous";
+  const authorName = getAuthorName(post.author);
   const badgeColor = getAuthorColor(authorName, post.author?.color);
   const caption = post.body?.slice(0, 120) || post.title;
   const commentCount = post.comments?.[0]?.count ?? 0;
@@ -146,8 +136,8 @@ export function ExperimentCard({
       videoStartTime: feedVideoRef.current?.getCurrentTime(),
       imageAspect: orientation === "portrait" ? 2 / 3 : 3 / 2,
       layoutSource: `card-${post.id}`,
-      thumbHash: thumbHash ?? undefined,
-      dominantColor: dominantColor ?? undefined,
+      thumbHash: displayAsset?.thumb_hash ?? undefined,
+      dominantColor: displayAsset?.dominant_color ?? undefined,
     };
     expand(data);
   };
@@ -217,66 +207,25 @@ export function ExperimentCard({
         onClick={handleClick}
         className="group block cursor-pointer !rounded-none !overflow-visible"
         style={{ opacity: isLifted ? 0 : 1 }}
-        transition={{ layout: { type: "spring", mass: 1.2, stiffness: 170, damping: 16 } }}
+        transition={{ layout: SPRING.default }}
       >
         <div className="flex flex-col gap-4">
-          {/* Media — video autoplay or image with progressive reveal */}
-          {videoUrl ? (
-            <div
-              className="relative overflow-hidden rounded-lg"
-              style={{ aspectRatio, backgroundColor: dominantColor || "#fff" }}
-            >
-              <FeedVideo
-                ref={feedVideoRef}
-                src={videoUrl}
-                posterUrl={firstVideoAsset?.poster_signed_url}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            </div>
-          ) : thumbnailUrl ? (
-            <div
-              className="relative overflow-hidden rounded-lg"
-              style={{ aspectRatio, backgroundColor: dominantColor || "#fff" }}
-            >
-              {/* ThumbHash blurry placeholder */}
-              {placeholderUrl && (
-                <img
-                  src={placeholderUrl}
-                  alt=""
-                  aria-hidden
-                  className="absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ease-out"
-                  style={{
-                    filter: "blur(4px)",
-                    transform: "scale(1.1)",
-                    opacity: imageLoaded ? 0 : 1,
-                  }}
-                />
-              )}
-              <Image
-                src={thumbnailUrl}
-                alt={post.title}
-                fill
-                unoptimized
-                className={`object-cover transition-all duration-500 ease-out group-hover:scale-[1.02] ${
-                  reducedMotion || imageLoaded ? "opacity-100" : "opacity-0"
-                }`}
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                onLoad={() => setImageLoaded(true)}
-              />
-            </div>
-          ) : (
-            <div
-              className="flex items-center justify-center overflow-hidden rounded-lg bg-white text-[var(--text-caption)]"
-              style={{ aspectRatio }}
-            >
-              <span className="font-heading text-sm">No image</span>
-            </div>
-          )}
+          <PostMedia
+            videoUrl={videoUrl}
+            thumbnailUrl={thumbnailUrl}
+            videoPosterUrl={firstVideoAsset?.poster_signed_url}
+            videoRef={feedVideoRef}
+            thumbHash={displayAsset?.thumb_hash}
+            dominantColor={displayAsset?.dominant_color}
+            aspectRatio={aspectRatio}
+            alt={post.title}
+            imageClassName="transition-all duration-500 ease-out group-hover:scale-[1.02]"
+          />
 
           {/* Caption row */}
           <div className="flex items-baseline gap-2">
             <AuthorPill authorName={authorName} backgroundColor={badgeColor} />
-            <p className="min-w-0 flex-1 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[var(--text-caption)]">
+            <p className="min-w-0 flex-1 text-heading-base text-[var(--text-caption)]">
               {caption}
             </p>
             {commentCount > 0 && (

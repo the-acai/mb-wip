@@ -48,10 +48,28 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * Z-index scale (document for clarity; components use Tailwind arbitrary values):
+ *   1   — expanded card (above overlay backdrop)
+ *  40   — overlay roots, shrinking header, search palette, upload backdrop
+ *  50   — bottom action group, modal panels, shadcn dialog/popover/tooltip
+ *  60   — onboarding overlay, upload modal hero source
+ *  70   — mention popover (above onboarding)
+ */
+
 :root {
   --page-bg: #f7f8f8;
   --text-dark: #0e1708;
   --text-caption: #5f5f5f;
+  --border-subtle: #dfe0e0;
+  --row-hover-bg: #eceded;
+  /* Upload modal dark palette */
+  --modal-bg: #0e1708;
+  --modal-surface: #222520;
+  --modal-border: #3d4141;
+  --modal-active-bg: #2a2d28;
+  --modal-placeholder: #8b8b8b;
+  --modal-text-secondary: #d3d3d3;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -146,4 +164,16 @@ html.loop-active::-webkit-scrollbar {
   100% { transform: translateY(0); }
 }
 
+@utility text-heading-base {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  line-height: 1.28;
+  letter-spacing: -0.16px;
+}
 
+@utility text-heading-lg {
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  line-height: 1.28;
+  letter-spacing: -0.18px;
+}

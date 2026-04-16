@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
 import { getAuthorColor } from "@/lib/utils";
+import { SPRING, EASE_OUT_EXPO } from "@/lib/motion";
 import { AuthorPill } from "@/components/shared/author-pill";
 import { ColorPicker } from "./color-picker";
 
@@ -20,22 +21,6 @@ interface OnboardingOverlayProps {
   userId: string;
   postCount: number;
 }
-
-const CARD_SPRING = {
-  type: "spring" as const,
-  mass: 1.2,
-  stiffness: 140,
-  damping: 18,
-};
-
-const FLIP_SPRING = {
-  type: "spring" as const,
-  mass: 1.2,
-  stiffness: 170,
-  damping: 16,
-};
-
-const EASE_OUT_EXPO: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 const LAYOUT_ID = "onboarding-badge";
 
@@ -125,7 +110,7 @@ export function OnboardingOverlay({
     phase === "confirm-visible";
 
   // Viewport bg only fills with the selected color once the user starts dragging
-  const overlayBg = phase === "confirm-visible" ? selectedColor : "#F7F8F8";
+  const overlayBg = phase === "confirm-visible" ? selectedColor : "var(--page-bg)";
 
   return (
     <LayoutGroup id="onboarding">
@@ -169,7 +154,7 @@ export function OnboardingOverlay({
                   duration: reducedMotion ? 0 : 0.8,
                   ease: EASE_OUT_EXPO,
                 }}
-                className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[var(--text-dark)]"
+                className="text-heading-base text-[var(--text-dark)]"
               >
                 Howdy,
               </motion.span>
@@ -178,7 +163,7 @@ export function OnboardingOverlay({
                 authorName={userName}
                 backgroundColor={selectedColor}
                 layoutId={LAYOUT_ID}
-                transition={{ layout: FLIP_SPRING }}
+                transition={{ layout: SPRING.default }}
               />
             </div>
 
@@ -191,7 +176,7 @@ export function OnboardingOverlay({
                 ease: EASE_OUT_EXPO,
                 delay: reducedMotion ? 0 : 0.4,
               }}
-              className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[var(--text-dark)] text-center"
+              className="text-heading-base text-[var(--text-dark)] text-center"
             >
               There are {postCount} works in progress.
             </motion.p>
@@ -203,11 +188,11 @@ export function OnboardingOverlay({
           {phase === "confirm-visible" && (
             <motion.p
               key="hint"
-              className="fixed bottom-[59px] left-1/2 -translate-x-1/2 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#F7F8F8] text-center"
+              className="fixed bottom-[59px] left-1/2 -translate-x-1/2 text-heading-base text-[var(--page-bg)] text-center"
               initial={{ y: "100%", opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 60, opacity: 0 }}
-              transition={CARD_SPRING}
+              transition={SPRING.onboardingCard}
             >
               ⏎ to select
             </motion.p>

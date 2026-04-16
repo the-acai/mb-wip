@@ -11,7 +11,8 @@ import { ExpandedCommentItem } from "./expanded-comment-item";
 import { ExpandedCommentForm } from "./expanded-comment-form";
 import { ThreadLine } from "./thread-line";
 import { ReplyConnector } from "./reply-connector";
-import { getAuthorColor } from "@/lib/utils";
+import { getAuthorColor, getAuthorName } from "@/lib/utils";
+import { SPRING } from "@/lib/motion";
 
 interface Comment {
   id: string;
@@ -40,13 +41,6 @@ function mergeComments(existing: Comment[], incoming: Comment[]): Comment[] {
     a.created_at.localeCompare(b.created_at)
   );
 }
-
-const COMMENT_SPRING = {
-  type: "spring" as const,
-  mass: 1.2,
-  stiffness: 170,
-  damping: 16,
-};
 
 const STAGGER_MS = 80;
 
@@ -129,7 +123,7 @@ export function ExpandedCommentCard({
     // Build a set of known author display names from existing comments
     const authorNames = new Map<string, Comment>();
     for (const c of [...comments].reverse()) {
-      const name = getAuthorName(c).toLowerCase();
+      const name = getAuthorName(c.author).toLowerCase();
       if (!authorNames.has(name)) {
         authorNames.set(name, c);
       }
@@ -189,9 +183,6 @@ export function ExpandedCommentCard({
     [postId, supabase, upsertComment]
   );
 
-  const getAuthorName = (c: Comment) =>
-    c.author.full_name || c.author.email.split("@")[0] || "Anonymous";
-
   return (
     <motion.div
       className={
@@ -200,7 +191,7 @@ export function ExpandedCommentCard({
           : "flex max-h-[calc(100vh-120px)] flex-col rounded-2xl bg-white overflow-y-auto overflow-x-hidden"
       }
       layout
-      transition={COMMENT_SPRING}
+      transition={SPRING.default}
     >
       {/* Comment list — no inner overflow so entrance animations clip at card edge */}
       <div ref={commentListRef} className="relative flex flex-col gap-8 p-6">
@@ -221,7 +212,7 @@ export function ExpandedCommentCard({
           ): React.ReactNode => {
             const myIndex = staggerIndex++;
             const children = repliesByParent.get(comment.id) ?? [];
-            const currentColor = getAuthorColor(getAuthorName(comment), comment.author?.color);
+            const currentColor = getAuthorColor(getAuthorName(comment.author), comment.author?.color);
 
             return (
               <motion.div
@@ -231,8 +222,8 @@ export function ExpandedCommentCard({
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{
-                  default: COMMENT_SPRING,
-                  layout: COMMENT_SPRING,
+                  default: SPRING.default,
+                  layout: SPRING.default,
                   delay: (myIndex * STAGGER_MS) / 1000,
                 }}
               >
@@ -244,7 +235,7 @@ export function ExpandedCommentCard({
                   onReply={() =>
                     setReplyingTo({
                       id: comment.id,
-                      authorName: getAuthorName(comment),
+                      authorName: getAuthorName(comment.author),
                     })
                   }
                 />
@@ -254,7 +245,7 @@ export function ExpandedCommentCard({
                       parentColor={currentColor}
                       childEntries={children.map((child) => ({
                         id: child.id,
-                        color: getAuthorColor(getAuthorName(child), child.author?.color),
+                        color: getAuthorColor(getAuthorName(child.author), child.author?.color),
                       }))}
                       delay={(myIndex * STAGGER_MS) / 1000 + 0.15}
                     />
@@ -262,7 +253,7 @@ export function ExpandedCommentCard({
                       {children.map((child, ci) => {
                         const nextChild = children[ci + 1];
                         const nextChildColor = nextChild
-                          ? getAuthorColor(getAuthorName(nextChild), nextChild.author?.color)
+                          ? getAuthorColor(getAuthorName(nextChild.author), nextChild.author?.color)
                           : null;
                         return renderComment(child, false, nextChildColor);
                       })}
@@ -283,7 +274,7 @@ export function ExpandedCommentCard({
           return topLevel.map((comment, i) => {
             const next = topLevel[i + 1];
             const nextColor = next
-              ? getAuthorColor(getAuthorName(next), next.author?.color)
+              ? getAuthorColor(getAuthorName(next.author), next.author?.color)
               : null;
             return renderComment(comment, true, nextColor);
           });

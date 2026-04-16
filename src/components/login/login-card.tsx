@@ -15,13 +15,10 @@ import {
   type UniformState,
 } from "./holographic-shader";
 import { generateTextMask } from "./text-mask";
+import { SPRING } from "@/lib/motion";
 
 type Phase = "entering" | "idle" | "dragging" | "consuming";
 
-const ENTRANCE_SPRING = { type: "spring" as const, mass: 1.2, stiffness: 170, damping: 16 };
-const CONSUME_SPRING = { type: "spring" as const, mass: 0.75, stiffness: 200, damping: 16 };
-const TILT_SPRING = { mass: 0.3, stiffness: 200, damping: 20 };
-const HOVER_TILT_SPRING = { mass: 0.5, stiffness: 150, damping: 18 };
 const MAX_HOVER_TILT = 6; // degrees
 
 const CARD_WIDTH = 216;
@@ -58,19 +55,19 @@ export function LoginCard({
   // --- Hover-based tilt (position-based, works without dragging) ---
   const hoverTiltX = useMotionValue(0);
   const hoverTiltY = useMotionValue(0);
-  const smoothHoverTiltX = useSpring(hoverTiltX, HOVER_TILT_SPRING);
-  const smoothHoverTiltY = useSpring(hoverTiltY, HOVER_TILT_SPRING);
+  const smoothHoverTiltX = useSpring(hoverTiltX, SPRING.hoverTilt);
+  const smoothHoverTiltY = useSpring(hoverTiltY, SPRING.hoverTilt);
 
   // --- Velocity-based tilt (from drag movement) ---
   const vx = useVelocity(x);
   const vy = useVelocity(y);
   const dragTiltY = useSpring(
     useTransform(vx, [-1500, 0, 1500], [10, 0, -10]),
-    TILT_SPRING
+    SPRING.tilt
   );
   const dragTiltX = useSpring(
     useTransform(vy, [-1500, 0, 1500], [-10, 0, 10]),
-    TILT_SPRING
+    SPRING.tilt
   );
 
   // --- Combine hover + drag tilt ---
@@ -169,7 +166,7 @@ export function LoginCard({
           ? { y: window.innerHeight / 2 + CARD_HEIGHT / 2 + 40, scale: 0.95, opacity: 0 }
           : { y: 0, scale: 1, opacity: 1 }
       }
-      transition={phase === "consuming" ? CONSUME_SPRING : ENTRANCE_SPRING}
+      transition={phase === "consuming" ? SPRING.consume : SPRING.default}
       onAnimationComplete={() => {
         if (phase === "entering") onPhaseChange("idle");
       }}
@@ -199,9 +196,8 @@ export function LoginCard({
         onDragEnd={() => {
           if (phase === "dragging") {
             onPhaseChange("idle");
-            // Spring back to origin with the same spring as site transitions
-            animate(x, 0, { type: "spring", mass: 1.2, stiffness: 170, damping: 16 });
-            animate(y, 0, { type: "spring", mass: 1.2, stiffness: 170, damping: 16 });
+            animate(x, 0, SPRING.default);
+            animate(y, 0, SPRING.default);
           }
         }}
         onPointerMove={handlePointerMove}

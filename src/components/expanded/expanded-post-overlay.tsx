@@ -8,6 +8,7 @@ import { ExpandedCommentCard } from "./expanded-comment-card";
 import { CursorCollapseIcon } from "./cursor-collapse-icon";
 import { useExpansion } from "./expansion-context";
 import { useIsMobile } from "@/hooks/use-media-query";
+import { SPRING, INSTANT } from "@/lib/motion";
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -23,21 +24,11 @@ interface Comment {
   reactions: { emoji: string; user_id: string }[];
 }
 
-// Same spring as the card expansion
-const EXPANSION_SPRING = {
-  type: "spring" as const,
-  mass: 1.2,
-  stiffness: 170,
-  damping: 16,
-};
-
-const INSTANT_TRANSITION = { duration: 0 };
-
 export function ExpandedPostOverlay() {
   const { postData, commentCache, prefetchComments, collapse } = useExpansion();
   const reducedMotion = useReducedMotion();
   const isMobile = useIsMobile();
-  const expansionTransition = reducedMotion ? INSTANT_TRANSITION : EXPANSION_SPRING;
+  const expansionTransition = reducedMotion ? INSTANT : SPRING.default;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
@@ -189,7 +180,7 @@ export function ExpandedPostOverlay() {
       tabIndex={-1}
       className="fixed inset-0 z-40 outline-none"
       exit={{ opacity: 0 }}
-      transition={reducedMotion ? INSTANT_TRANSITION : { duration: 0.2 }}
+      transition={reducedMotion ? INSTANT : { duration: 0.2 }}
     >
       {/* Backdrop */}
       <CursorCollapseIcon onDismiss={dismiss}>
@@ -199,7 +190,7 @@ export function ExpandedPostOverlay() {
             hidden: {
               opacity: 0,
               transition: reducedMotion
-                ? INSTANT_TRANSITION
+                ? INSTANT
                 : { duration: 0.2, ease: "easeOut" },
             },
             visible: { opacity: 0.96, transition: expansionTransition },
@@ -243,7 +234,7 @@ export function ExpandedPostOverlay() {
               transition={{
                 default: expansionTransition,
                 opacity: reducedMotion
-                  ? INSTANT_TRANSITION
+                  ? INSTANT
                   : { duration: 0.25, ease: "easeOut" },
               }}
             >
@@ -281,7 +272,7 @@ export function ExpandedPostOverlay() {
             transition={{
               default: expansionTransition,
               opacity: reducedMotion
-                ? INSTANT_TRANSITION
+                ? INSTANT
                 : { duration: 0.25, ease: "easeOut" },
             }}
           >

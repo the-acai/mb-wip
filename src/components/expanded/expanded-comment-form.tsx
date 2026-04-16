@@ -8,6 +8,7 @@ import { useUser } from "@/hooks/use-user";
 import { useProfileColor } from "@/hooks/use-profile-color";
 import { createClient } from "@/lib/supabase/client";
 import { getAuthorColor } from "@/lib/utils";
+import { SPRING } from "@/lib/motion";
 
 interface Profile {
   id: string;
@@ -66,7 +67,7 @@ export function ExpandedCommentForm({
   }, []);
 
   const profileColor = useProfileColor();
-  const userColor = userName ? getAuthorColor(userName, profileColor) : "#dfe0e0";
+  const userColor = userName ? getAuthorColor(userName, profileColor) : "var(--border-subtle)";
 
   // Client-side filter — instant, no debounce needed.
   const mentionResults = useMemo(() => {
@@ -264,8 +265,8 @@ export function ExpandedCommentForm({
       <div ref={inputWrapperRef}>
         <motion.div
           className="flex h-14 items-center overflow-hidden rounded-lg border bg-[var(--page-bg)] px-4"
-          animate={{ borderColor: focused ? userColor : "#dfe0e0" }}
-          transition={{ type: "spring", mass: 1.2, stiffness: 170, damping: 16 }}
+          animate={{ borderColor: focused ? userColor : "var(--border-subtle)" }}
+          transition={SPRING.default}
           aria-busy={submitting}
         >
           <input
@@ -292,13 +293,13 @@ export function ExpandedCommentForm({
             role="combobox"
             disabled={submitting}
             data-overlay-autofocus
-            className="min-w-0 flex-1 bg-transparent font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-dark)] placeholder:text-[var(--text-caption)] focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-heading-lg text-[var(--text-dark)] placeholder:text-[var(--text-caption)] focus:outline-none"
           />
           <AnimatePresence initial={false}>
             {body.length > 0 && (
               <motion.span
                 key="send-helper"
-                className="pointer-events-none shrink-0 font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-caption)] whitespace-nowrap"
+                className="pointer-events-none shrink-0 text-heading-lg text-[var(--text-caption)] whitespace-nowrap"
                 initial={{ opacity: 0, x: 8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 8 }}
@@ -319,7 +320,7 @@ export function ExpandedCommentForm({
           <AnimatePresence>
             {popoverOpen && popoverPos && (
               <motion.div
-                className="pointer-events-auto fixed z-[9999] flex flex-col bg-white p-2 rounded-2xl"
+                className="pointer-events-auto fixed z-[70] flex flex-col bg-white p-2 rounded-2xl"
                 style={{
                   top: popoverPos.top,
                   left: popoverPos.left,
@@ -349,7 +350,7 @@ export function ExpandedCommentForm({
                       role="option"
                       aria-selected={isActive}
                       className={`flex cursor-pointer items-center gap-3 p-2 rounded-lg transition-colors ${
-                        isActive ? "bg-[#eceded]" : ""
+                        isActive ? "bg-[var(--row-hover-bg)]" : ""
                       }`}
                       onMouseEnter={() => setActiveIndex(i)}
                       onMouseDown={(e) => {

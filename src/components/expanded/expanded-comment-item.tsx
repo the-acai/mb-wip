@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Trash2Icon, CornerDownRightIcon, PencilIcon } from "lucide-react";
-import { getAuthorColor } from "@/lib/utils";
+import { getAuthorColor, getAuthorName } from "@/lib/utils";
 
 interface Comment {
   id: string;
@@ -31,8 +31,7 @@ export function ExpandedCommentItem({
   onReply,
   onEdit,
 }: ExpandedCommentItemProps) {
-  const authorName =
-    comment.author.full_name || comment.author.email.split("@")[0] || "Anonymous";
+  const authorName = getAuthorName(comment.author);
   const color = getAuthorColor(authorName, comment.author?.color);
   const timeAgo = formatDistanceToNow(new Date(comment.created_at), {
     addSuffix: false,
@@ -83,7 +82,7 @@ export function ExpandedCommentItem({
           data-reply-avatar={comment.id}
         />
         {/* Name + time */}
-        <div className="flex flex-1 items-center gap-1 font-heading text-lg leading-[1.28] tracking-[-0.18px]">
+        <div className="flex flex-1 items-center gap-1 text-heading-lg">
           <span className="font-bold text-[var(--text-dark)]">
             @{authorName.toLowerCase()}
           </span>
@@ -145,7 +144,7 @@ export function ExpandedCommentItem({
                   cancelEdit();
                 }
               }}
-              className="w-full resize-y rounded-lg border border-[#dfe0e0] bg-[var(--page-bg)] px-3 py-2 font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-dark)] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="w-full resize-y rounded-lg border border-[var(--border-subtle)] bg-[var(--page-bg)] px-3 py-2 text-heading-lg text-[var(--text-dark)] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             />
             <div className="flex items-center gap-2 text-sm">
               <button
@@ -170,7 +169,7 @@ export function ExpandedCommentItem({
             </div>
           </div>
         ) : (
-          <p className="font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-dark)]">
+          <p className="text-heading-lg text-[var(--text-dark)]">
             {comment.body}
           </p>
         )}

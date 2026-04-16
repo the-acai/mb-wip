@@ -52,7 +52,7 @@ export default function LoginPage() {
   }, []);
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[#f7f8f8] flex items-center justify-center">
+    <div className="fixed inset-0 overflow-hidden bg-[var(--page-bg)] flex items-center justify-center">
       <GradientBlobs proximity={proximity} />
       <LoginCard
         x={x}

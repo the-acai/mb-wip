@@ -8,8 +8,8 @@ import {
   useReducedMotion,
   useMotionValue,
 } from "motion/react";
+import { SPRING } from "@/lib/motion";
 
-const CARD_SPRING = { type: "spring" as const, mass: 2, stiffness: 100, damping: 16 };
 const HEADLINE_TEXT = "WORKS IN PROGRESS";
 const HEADLINE_DEFAULT_MAX = 64;
 const HEADLINE_MIN = 24;
@@ -128,7 +128,7 @@ export function ShrinkingHeader() {
         transition={
           reducedMotion
             ? { duration: 0 }
-            : { default: CARD_SPRING, opacity: { duration: 0.4, ease: "easeOut" } }
+            : { default: SPRING.cardSoft, opacity: { duration: 0.4, ease: "easeOut" } }
         }
       >
         <motion.h1

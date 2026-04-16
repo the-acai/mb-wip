@@ -11,15 +11,9 @@ import {
   useExpansion,
   type ExpandedPostData,
 } from "@/components/expanded/expansion-context";
-import { getAuthorColor } from "@/lib/utils";
+import { getAuthorColor, getAuthorName } from "@/lib/utils";
+import { SPRING } from "@/lib/motion";
 import type { FeedPost } from "./experiment-card";
-
-const SPRING = {
-  type: "spring" as const,
-  mass: 1.2,
-  stiffness: 170,
-  damping: 16,
-};
 
 export function FeedSearchPalette() {
   const { isOpen, close } = useSearchPalette();
@@ -164,7 +158,7 @@ export function FeedSearchPalette() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.96 }}
               exit={{ opacity: 0 }}
-              transition={SPRING}
+              transition={SPRING.default}
             />
           </CursorCollapseIcon>
 
@@ -176,9 +170,9 @@ export function FeedSearchPalette() {
               initial={{ opacity: 0, y: 12, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.98 }}
-              transition={SPRING}
+              transition={SPRING.default}
             >
-              <div className="relative flex h-14 items-center overflow-hidden rounded-lg border border-[#dfe0e0] bg-[var(--page-bg)] px-4 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+              <div className="relative flex h-14 items-center overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--page-bg)] px-4 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
                 <input
                   ref={inputRef}
                   type="text"
@@ -196,11 +190,11 @@ export function FeedSearchPalette() {
                       : undefined
                   }
                   role="combobox"
-                  className="flex-1 bg-transparent font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-dark)] focus:outline-none"
+                  className="flex-1 bg-transparent text-heading-lg text-[var(--text-dark)] focus:outline-none"
                 />
                 {/* Custom placeholder — fades out on focus */}
                 <motion.span
-                  className="pointer-events-none absolute left-4 font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-caption)]"
+                  className="pointer-events-none absolute left-4 text-heading-lg text-[var(--text-caption)]"
                   animate={{ opacity: showPlaceholder ? 1 : 0 }}
                   transition={{ duration: 0.15 }}
                   aria-hidden
@@ -208,7 +202,7 @@ export function FeedSearchPalette() {
                   Search for a work in progress
                 </motion.span>
                 <motion.span
-                  className="pointer-events-none shrink-0 font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-caption)]"
+                  className="pointer-events-none shrink-0 text-heading-lg text-[var(--text-caption)]"
                   animate={{ opacity: showPlaceholder ? 1 : 0 }}
                   transition={{ duration: 0.15 }}
                   aria-hidden
@@ -234,10 +228,7 @@ export function FeedSearchPalette() {
                     const firstImage = post.assets?.find((a) =>
                       a.mime_type?.startsWith("image/")
                     );
-                    const authorName =
-                      post.author?.full_name ||
-                      post.author?.email?.split("@")[0] ||
-                      "Anonymous";
+                    const authorName = getAuthorName(post.author);
                     const badgeColor = getAuthorColor(authorName, post.author?.color);
                     const isActive = i === activeIndex;
 
@@ -248,7 +239,7 @@ export function FeedSearchPalette() {
                         role="option"
                         aria-selected={isActive}
                         className={`flex cursor-pointer items-center gap-3 p-2 rounded-lg transition-colors ${
-                          isActive ? "bg-[#eceded]" : ""
+                          isActive ? "bg-[var(--row-hover-bg)]" : ""
                         }`}
                         onMouseEnter={() => setActiveIndex(i)}
                         onMouseDown={(e) => {
@@ -279,10 +270,10 @@ export function FeedSearchPalette() {
 
                         {/* Title + author */}
                         <div className="flex min-w-0 flex-1 flex-col gap-2">
-                          <span className="truncate font-heading text-lg font-bold leading-[1.28] tracking-[-0.18px] text-[var(--text-dark)]">
+                          <span className="truncate text-heading-lg font-bold text-[var(--text-dark)]">
                             {post.title}
                           </span>
-                          <span className="font-heading text-lg leading-[1.28] tracking-[-0.18px] text-[var(--text-caption)]">
+                          <span className="text-heading-lg text-[var(--text-caption)]">
                             @{authorName.toLowerCase()}
                           </span>
                         </div>

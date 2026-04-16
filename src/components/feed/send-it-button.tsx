@@ -10,13 +10,7 @@ import {
   DEFAULT_HOVER_SPRING,
   type HoverSpringConfig,
 } from "./spring-tuner";
-
-const ENTRANCE_SPRING = {
-  type: "spring" as const,
-  mass: 1.2,
-  stiffness: 170,
-  damping: 16,
-};
+import { SPRING, INSTANT } from "@/lib/motion";
 
 const BREATH_DELAY_MS = 140;
 
@@ -33,7 +27,7 @@ export function SendItButton() {
   useEffect(() => setMounted(true), []);
 
   const springTransition = reducedMotion
-    ? { duration: 0 }
+    ? INSTANT
     : {
         type: "spring" as const,
         mass: hoverSpring.mass,
@@ -61,7 +55,7 @@ export function SendItButton() {
       el.style.opacity = "0";
       el.style.transform = "translateY(12px)";
       setTimeout(() => {
-        animate(el, { opacity: 1, y: 0 }, ENTRANCE_SPRING);
+        animate(el, { opacity: 1, y: 0 }, SPRING.default);
       }, BREATH_DELAY_MS + i * 30);
     });
 
@@ -70,7 +64,7 @@ export function SendItButton() {
       arrowWrap.style.opacity = "0";
       arrowWrap.style.transform = "translateX(-8px)";
       setTimeout(() => {
-        animate(arrowWrap, { opacity: 1, x: 0 }, ENTRANCE_SPRING);
+        animate(arrowWrap, { opacity: 1, x: 0 }, SPRING.default);
       }, BREATH_DELAY_MS + chars.length * 30);
     }
   }, [reducedMotion]);

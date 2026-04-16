@@ -5,6 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function getAuthorName(author?: {
+  full_name?: string | null;
+  email?: string | null;
+} | null): string {
+  return author?.full_name || author?.email?.split("@")[0] || "Anonymous";
+}
+
 const AUTHOR_COLORS = ["#f84f11", "#9011f8", "#11a8f8", "#f811a8", "#11f84f", "#f8c811"];
 const KNOWN_AUTHOR_COLORS: Record<string, string> = { kai: "#f84f11", brandon: "#9011f8" };
 

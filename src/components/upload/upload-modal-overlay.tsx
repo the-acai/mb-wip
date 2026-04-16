@@ -16,13 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 import { uploadFile } from "@/lib/queries/storage";
 import { createPost } from "@/lib/queries/posts";
 import { horizontalLoop } from "@/lib/gsap-horizontal-loop";
-
-const SPRING = {
-  type: "spring" as const,
-  mass: 1.2,
-  stiffness: 170,
-  damping: 16,
-};
+import { SPRING } from "@/lib/motion";
 
 const ROW_BREATH_MS = 60;
 
@@ -63,7 +57,7 @@ export function UploadModalOverlay() {
 
   const userName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
   const profileColor = useProfileColor();
-  const userColor = userName ? getAuthorColor(userName, profileColor) : "#dfe0e0";
+  const userColor = userName ? getAuthorColor(userName, profileColor) : "var(--border-subtle)";
 
   /** Track an animation for later cleanup */
   const track = useCallback((ctrl: AnimationPlaybackControls) => {
@@ -186,13 +180,13 @@ export function UploadModalOverlay() {
       left: `${finalLeft}px`, top: `${finalTop}px`,
       width: `${modalWidth}px`, height: `${finalHeight}px`,
       borderRadius: "40px", padding: `${modalPadding}px`,
-    }, SPRING));
+    }, SPRING.default));
 
     // 2. Hero flies from button center → marquee center (spring)
     track(animate(hero, {
       left: `${heroTargetX}px`, top: `${heroTargetY}px`,
       width: `${heroWidth}px`, height: "48px",
-    }, SPRING));
+    }, SPRING.default));
 
     // 3. Marquee + hero crossfade (hero flies over, then swaps with marquee)
     loop.play();
@@ -220,7 +214,7 @@ export function UploadModalOverlay() {
     delay(() => {
       interiorEntries.forEach(({ ref, to }, i) => {
         delay(() => {
-          if (ref.current) track(animate(ref.current, to, SPRING));
+          if (ref.current) track(animate(ref.current, to, SPRING.default));
         }, i * ROW_BREATH_MS);
       });
     }, 200);
@@ -266,7 +260,7 @@ export function UploadModalOverlay() {
       { ref: userRowRef, to: { opacity: 0, y: 16 } },
     ];
     reverseEntries.forEach(({ ref, to }) => {
-      if (ref.current) anims.push(animate(ref.current, to, { ...SPRING, mass: 0.8 }));
+      if (ref.current) anims.push(animate(ref.current, to, { ...SPRING.default, mass: 0.8 }));
     });
 
     // 3. After brief moment: hero flies back, marquee fades, modal morphs
@@ -276,7 +270,7 @@ export function UploadModalOverlay() {
         left: `${btnRect.left}px`, top: `${btnRect.top}px`,
         width: `${btnRect.width}px`, height: `${btnRect.height}px`,
         justifyContent: "center",
-      }, SPRING));
+      }, SPRING.default));
 
       // Marquee fades out while hero is leaving
       anims.push(animate(marqueeRow, { opacity: 0 }, { duration: 0.15 }));
@@ -291,7 +285,7 @@ export function UploadModalOverlay() {
         borderRadius: `${btnRect.height / 2}px`,
         padding: "0px",
       }, {
-        ...SPRING,
+        ...SPRING.default,
         onComplete: () => {
           const buttonContainer = buttonPillRef.current?.closest("[data-send-it-container]") as HTMLElement | null;
           const pill = buttonPillRef.current as HTMLElement | null;
@@ -319,7 +313,7 @@ export function UploadModalOverlay() {
         if (pill) pill.style.opacity = "0"; // hide text, hero covers it
         if (arrowEl) {
           arrowEl.style.visibility = "visible";
-          animate(arrowEl, { x: [-16, 0], opacity: [0, 1] }, SPRING);
+          animate(arrowEl, { x: [-16, 0], opacity: [0, 1] }, SPRING.default);
         }
       }, 390);
     }, 100);
@@ -397,7 +391,7 @@ export function UploadModalOverlay() {
           className="absolute inset-0 bg-[var(--page-bg)]"
           initial={{ opacity: 0 }}
           animate={{ opacity: closing ? 0 : 0.96 }}
-          transition={closing ? { duration: 0.2, ease: "easeOut" } : SPRING}
+          transition={closing ? { duration: 0.2, ease: "easeOut" } : SPRING.default}
         />
       </CursorCollapseIcon>
 
@@ -415,7 +409,7 @@ export function UploadModalOverlay() {
       {/* Modal */}
       <div
         ref={modalRef}
-        className="z-50 flex flex-col gap-8 bg-[#0e1708]"
+        className="z-50 flex flex-col gap-8 bg-[var(--modal-bg)]"
         style={{ visibility: "hidden" }}
       >
         {/* Marquee — GSAP horizontalLoop */}
@@ -432,13 +426,13 @@ export function UploadModalOverlay() {
 
         <div ref={userRowRef} className="flex w-full items-center gap-2" style={{ opacity: 0 }}>
           <div className="flex h-14 shrink-0 items-center justify-center rounded-lg px-4" style={{ backgroundColor: userColor }}>
-            <span className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#f7f8f8] whitespace-nowrap">@{userName}</span>
+            <span className="text-heading-base text-[var(--page-bg)] whitespace-nowrap">@{userName}</span>
           </div>
           <div ref={captionRef} className="flex-1" style={{ opacity: 0, transformOrigin: "left center" }}>
             <input type="text" value={caption} onChange={(e) => setCaption(e.target.value)}
               aria-label="Caption"
               placeholder="is designing the greatest thing since sliced bread."
-              className="h-14 w-full rounded-lg border border-[#3d4141] bg-[#222520] px-4 font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#f7f8f8] placeholder:text-[#8b8b8b] outline-none focus-visible:border-[var(--profile-color,#dfe0e0)] focus-visible:ring-3 focus-visible:ring-[var(--profile-color,#dfe0e0)]/30" />
+              className="h-14 w-full rounded-lg border border-[var(--modal-border)] bg-[var(--modal-surface)] px-4 text-heading-base text-[var(--page-bg)] placeholder:text-[var(--modal-placeholder)] outline-none focus-visible:border-[var(--profile-color,var(--border-subtle))] focus-visible:ring-3 focus-visible:ring-[var(--profile-color,var(--border-subtle))]/30" />
           </div>
         </div>
 
@@ -447,18 +441,18 @@ export function UploadModalOverlay() {
               "aria-label": "Drop, paste, or click to upload images and video",
             })}
             className={`flex h-[240px] cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border transition-colors ${
-              isDragActive ? "border-[#f7f8f8] bg-[#2a2d28]" : "border-[#3d4141] bg-[#222520]"}`}>
+              isDragActive ? "border-[var(--page-bg)] bg-[var(--modal-active-bg)]" : "border-[var(--modal-border)] bg-[var(--modal-surface)]"}`}>
             <input {...getInputProps({ "aria-label": "Choose files to upload" })} />
             {files.length > 0 ? (
               <div className="flex flex-col items-center gap-2">
-                <p className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#d3d3d3]">{files.length} file{files.length > 1 ? "s" : ""} selected</p>
-                <p className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#8b8b8b]">Drop more or click to add.</p>
+                <p className="text-heading-base text-[var(--modal-text-secondary)]">{files.length} file{files.length > 1 ? "s" : ""} selected</p>
+                <p className="text-heading-base text-[var(--modal-placeholder)]">Drop more or click to add.</p>
               </div>
             ) : (
               <>
-                <p className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#d3d3d3] text-center">Drag and drop your work. Or &#8984;V.</p>
-                <p className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#8b8b8b]">Max size 10MB.</p>
-                <p className="font-heading text-base leading-[1.28] tracking-[-0.16px] text-[#8b8b8b]">png, jpg, gif, webp, webm, svg</p>
+                <p className="text-heading-base text-[var(--modal-text-secondary)] text-center">Drag and drop your work. Or &#8984;V.</p>
+                <p className="text-heading-base text-[var(--modal-placeholder)]">Max size 10MB.</p>
+                <p className="text-heading-base text-[var(--modal-placeholder)]">png, jpg, gif, webp, webm, svg</p>
               </>
             )}
           </div>
@@ -469,11 +463,11 @@ export function UploadModalOverlay() {
             <motion.button onClick={handleSubmit} disabled={submitting || files.length === 0}
               aria-busy={submitting}
               aria-label={submitting ? "Sending your post" : "Submit post"}
-              className="flex h-12 w-full cursor-pointer items-center justify-center rounded-full bg-[#f7f8f8] px-6 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-12 w-full cursor-pointer items-center justify-center rounded-full bg-[var(--page-bg)] px-6 disabled:cursor-not-allowed disabled:opacity-50"
               whileHover={submitting || files.length === 0 ? undefined : "hover"}
               initial="idle"
             >
-              <span className="inline-flex font-heading text-base font-bold leading-[1.28] tracking-[-0.16px] text-[#0e1708] whitespace-nowrap">
+              <span className="inline-flex text-heading-base font-bold text-[var(--text-dark)] whitespace-nowrap">
                 {(submitting ? "SENDING..." : "I'M READY").split("").map((char, i) => (
                   <motion.span
                     key={i}
@@ -497,8 +491,8 @@ export function UploadModalOverlay() {
             </motion.button>
           </div>
           <div ref={arrowBtnRef} style={{ opacity: 0 }}>
-            <span className={`flex size-12 items-center justify-center rounded-full ${files.length === 0 && !submitting ? "bg-[#f7f8f8]/50" : "bg-[#f7f8f8]"}`}>
-              <ArrowRight className={`size-5 ${files.length === 0 && !submitting ? "text-[#0e1708]/30" : "text-[#0e1708]"}`} />
+            <span className={`flex size-12 items-center justify-center rounded-full ${files.length === 0 && !submitting ? "bg-[var(--page-bg)]/50" : "bg-[var(--page-bg)]"}`}>
+              <ArrowRight className={`size-5 ${files.length === 0 && !submitting ? "text-[var(--text-dark)]/30" : "text-[var(--text-dark)]"}`} />
             </span>
           </div>
         </div>
