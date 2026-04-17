@@ -126,18 +126,13 @@ const BufferGrid = forwardRef<HTMLDivElement, BufferGridProps>(
         className={`grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3${className ? ` ${className}` : ""}`}
         style={{ gridAutoFlow: "dense", perspective: "1000px" }}
       >
-        {posts.map((post) => {
-          const orientation = getPostOrientation(post);
-          const isPortrait = orientation === "portrait";
-          return (
-            <div
-              key={`${keyPrefix}-${post.id}`}
-              style={isPortrait ? { gridRow: "span 2" } : undefined}
-            >
-              <InertCard post={post} orientation={orientation} />
-            </div>
-          );
-        })}
+        {posts.map((post) => (
+          <InertCard
+            key={`${keyPrefix}-${post.id}`}
+            post={post}
+            orientation={getPostOrientation(post)}
+          />
+        ))}
       </div>
     );
   }

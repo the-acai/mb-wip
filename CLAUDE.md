@@ -51,7 +51,8 @@ Two route groups under `src/app/`:
 - See `docs/solutions/ui-bugs/` and `docs/brainstorms/2026-04-10-infinite-loop-scroll-brainstorm.md` for prior work on this.
 
 `FeedGrid`:
-- 3-column dense grid, `perspective: 1000px`. Portrait posts (`height > width`) span 2 rows.
+- 3-column dense grid, `perspective: 1000px`. Each card is a subgrid — landscapes span 2 parent rows (media + caption track), portraits span 4 (2 media tracks + 2 caption tracks, with the portrait's media spanning rows 1–3). This makes the portrait media bottom align exactly with the media bottom of the landscape stacked next to it, regardless of caption wrap.
+- Because of subgrid, each card's motion.div is the direct grid child (no wrapper `<div>`), and media↔caption gap = parent `gap-6` (24px), not `gap-4`.
 - Stagger delays computed by `computeStaggerDelays` (80ms within row, 60ms extra between rows).
 - IntersectionObserver sentinel (`rootMargin: 400px`) drives infinite-scroll fetch.
 

@@ -86,25 +86,14 @@ export function FeedGrid({ posts, hasMore, loading, onLoadMore }: FeedGridProps)
           transformStyle: "preserve-3d",
         }}
       >
-        {posts.map((post, i) => {
-          const orientation = orientations[i];
-          const isPortrait = orientation === "portrait";
-          return (
-            <div
-              key={post.id}
-              style={{
-                ...(isPortrait ? { gridRow: "span 2" } : {}),
-                transformStyle: "preserve-3d",
-              }}
-            >
-              <ExperimentCard
-                post={post}
-                orientation={orientation}
-                delay={delays[i]}
-              />
-            </div>
-          );
-        })}
+        {posts.map((post, i) => (
+          <ExperimentCard
+            key={post.id}
+            post={post}
+            orientation={orientations[i]}
+            delay={delays[i]}
+          />
+        ))}
 
         {loading &&
           Array.from({ length: 3 }).map((_, i) => (
