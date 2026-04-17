@@ -40,7 +40,7 @@ export function InertCard({ post, orientation }: InertCardProps) {
   const badgeColor = getAuthorColor(authorName, post.author?.color);
   const caption = post.body?.slice(0, 120) || post.title;
   const commentCount = post.comments?.[0]?.count ?? 0;
-  const aspectRatio = orientation === "portrait" ? "2/3" : "3/2";
+  const isPortrait = orientation === "portrait";
 
   const layoutId = `buffer-${post.id}`;
   const isLifted = postData?.id === post.id;
@@ -82,36 +82,38 @@ export function InertCard({ post, orientation }: InertCardProps) {
       onClick={handleClick}
       onMouseEnter={handlePreloadIntent}
       onPointerDown={handlePreloadIntent}
-      className="group block cursor-pointer !rounded-none !overflow-visible"
-      style={{ opacity: isLifted ? 0 : 1 }}
+      className="group cursor-pointer !rounded-none !overflow-visible grid grid-rows-[subgrid]"
+      style={{
+        opacity: isLifted ? 0 : 1,
+        gridRow: isPortrait ? "span 4" : "span 2",
+      }}
       transition={{ layout: SPRING.default }}
     >
-      <div className="flex flex-col gap-4">
-        <PostMedia
-          videoUrl={videoUrl}
-          thumbnailUrl={thumbnailUrl}
-          videoPosterUrl={firstVideoAsset?.poster_signed_url}
-          videoRef={feedVideoRef}
-          dominantColor={displayAsset?.dominant_color}
-          aspectRatio={aspectRatio}
-          imageClassName="transition-transform duration-300 group-hover:scale-[1.02]"
-        />
+      <PostMedia
+        videoUrl={videoUrl}
+        thumbnailUrl={thumbnailUrl}
+        videoPosterUrl={firstVideoAsset?.poster_signed_url}
+        videoRef={feedVideoRef}
+        dominantColor={displayAsset?.dominant_color}
+        aspectRatio={isPortrait ? undefined : "3/2"}
+        containerClassName={isPortrait ? "row-[span_3] min-h-0" : undefined}
+        imageClassName="transition-transform duration-300 group-hover:scale-[1.02]"
+      />
 
-        <div className="flex items-baseline gap-2">
-          <AuthorPill authorName={authorName} backgroundColor={badgeColor} />
-          <p className="min-w-0 flex-1 text-heading-base text-[var(--text-caption)]">
-            {caption}
-          </p>
-          {commentCount > 0 && (
-            <span
-              className="inline-flex shrink-0 items-center gap-1 font-heading text-sm tracking-[-0.14px] text-[var(--text-caption)]"
-              aria-label={`${commentCount} comment${commentCount === 1 ? "" : "s"}`}
-            >
-              <MessageCircleIcon className="size-3.5" aria-hidden="true" />
-              {commentCount}
-            </span>
-          )}
-        </div>
+      <div className="flex items-baseline gap-2">
+        <AuthorPill authorName={authorName} backgroundColor={badgeColor} />
+        <p className="min-w-0 flex-1 text-heading-base text-[var(--text-caption)]">
+          {caption}
+        </p>
+        {commentCount > 0 && (
+          <span
+            className="inline-flex shrink-0 items-center gap-1 font-heading text-sm tracking-[-0.14px] text-[var(--text-caption)]"
+            aria-label={`${commentCount} comment${commentCount === 1 ? "" : "s"}`}
+          >
+            <MessageCircleIcon className="size-3.5" aria-hidden="true" />
+            {commentCount}
+          </span>
+        )}
       </div>
     </motion.div>
   );
