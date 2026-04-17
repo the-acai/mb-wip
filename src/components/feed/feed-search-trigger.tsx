@@ -1,33 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 import { SearchIcon } from "lucide-react";
 import { useSearchPalette } from "./search-context";
 import { useUploadModal } from "@/components/upload/upload-modal-context";
+import { SPRING } from "@/lib/motion";
+
+// Hidden state tucks the search button behind the SEND IT pill so the
+// reveal reads as "emerging out from under" send-it.
+const HIDDEN_OFFSET_X = 32;
+// Return delay so send-it's own collapse animation lands before search
+// starts springing out from behind it.
+const RETURN_DELAY_S = 0.45;
 
 export function FeedSearchTrigger() {
   const { open } = useSearchPalette();
   const { isOpen: uploadOpen } = useUploadModal();
-  const [entered, setEntered] = useState(false);
-
-  useEffect(() => setEntered(true), []);
-
-  const hidden = !entered || uploadOpen;
 
   return (
-    <button
+    <motion.button
       type="button"
       onClick={open}
       aria-label="Search experiments (⌘K)"
       aria-keyshortcuts="Meta+K Control+K"
-      className={`flex size-12 cursor-pointer items-center justify-center rounded-full bg-[var(--text-dark)] transition-[opacity,transform] duration-500 ease-out ${
-        hidden
-          ? "pointer-events-none translate-y-3 opacity-0"
-          : "pointer-events-auto translate-y-0 opacity-100"
+      className={`relative z-[-1] flex size-12 cursor-pointer items-center justify-center rounded-full bg-[var(--text-dark)] ${
+        uploadOpen ? "pointer-events-none" : "pointer-events-auto"
       }`}
-      aria-hidden={hidden}
+      initial={{ opacity: 0, x: HIDDEN_OFFSET_X }}
+      animate={uploadOpen ? "hidden" : "visible"}
+      variants={{
+        visible: { opacity: 1, x: 0 },
+        hidden: { opacity: 0, x: HIDDEN_OFFSET_X },
+      }}
+      transition={{
+        ...SPRING.default,
+        delay: uploadOpen ? 0 : RETURN_DELAY_S,
+      }}
+      aria-hidden={uploadOpen}
     >
       <SearchIcon className="size-5 text-[var(--page-bg)]" aria-hidden="true" />
-    </button>
+    </motion.button>
   );
 }
