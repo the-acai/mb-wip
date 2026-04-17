@@ -3,6 +3,7 @@ import { ErrorCode, type FileRejection } from "react-dropzone";
 
 import {
   getUploadRejectionMessage,
+  getSearchTriggerState,
   isUploadReady,
 } from "@/components/upload/upload-modal-state";
 
@@ -74,5 +75,46 @@ describe("getUploadRejectionMessage", () => {
     expect(
       getUploadRejectionMessage([createRejection(ErrorCode.FileTooLarge)])
     ).toContain("10MB");
+  });
+});
+
+describe("getSearchTriggerState", () => {
+  it("keeps search visible and interactive when the modal is closed", () => {
+    expect(
+      getSearchTriggerState({
+        isOpen: false,
+        isReturningEarly: false,
+      })
+    ).toEqual({
+      visible: true,
+      interactive: true,
+      ariaHidden: false,
+    });
+  });
+
+  it("keeps search hidden and non-interactive while the modal is open", () => {
+    expect(
+      getSearchTriggerState({
+        isOpen: true,
+        isReturningEarly: false,
+      })
+    ).toEqual({
+      visible: false,
+      interactive: false,
+      ariaHidden: true,
+    });
+  });
+
+  it("shows search early during close while keeping it non-interactive", () => {
+    expect(
+      getSearchTriggerState({
+        isOpen: true,
+        isReturningEarly: true,
+      })
+    ).toEqual({
+      visible: true,
+      interactive: false,
+      ariaHidden: true,
+    });
   });
 });

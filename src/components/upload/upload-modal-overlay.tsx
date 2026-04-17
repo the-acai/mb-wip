@@ -29,6 +29,7 @@ import {
 } from "@/components/upload/upload-modal-state";
 
 const ROW_BREATH_MS = 60;
+const EARLY_RETURN_MS = 390;
 
 const MAX_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES: Record<string, string[]> = {
@@ -42,7 +43,7 @@ const MARQUEE_COUNT = 12;
 const INNER_RADIUS = "rounded-[16px]";
 
 export function UploadModalOverlay() {
-  const { close, buttonPillRef } = useUploadModal();
+  const { close, buttonPillRef, startSearchReturn } = useUploadModal();
   const { user } = useUser();
   const queryClient = useQueryClient();
 
@@ -365,6 +366,8 @@ export function UploadModalOverlay() {
       );
 
       delay(() => {
+        startSearchReturn();
+
         const buttonContainer = buttonPillRef.current?.closest(
           "[data-send-it-container]"
         ) as HTMLElement | null;
@@ -379,12 +382,12 @@ export function UploadModalOverlay() {
           arrowEl.style.visibility = "visible";
           animate(arrowEl, { x: [-16, 0], opacity: [0, 1] }, SPRING.default);
         }
-      }, 390);
+      }, EARLY_RETURN_MS);
     }, 100);
 
     timersRef.current.push(closeTimer);
     animsRef.current.push(...anims);
-  }, [buttonPillRef, close, delay, stopAll]);
+  }, [buttonPillRef, close, delay, startSearchReturn, stopAll]);
 
   const isReady = !closing && (submitting || hasCaptionAndFiles);
 

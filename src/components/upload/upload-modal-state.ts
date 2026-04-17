@@ -12,6 +12,19 @@ export function isUploadReady(options: {
   );
 }
 
+export function getSearchTriggerState(options: {
+  isOpen: boolean;
+  isReturningEarly: boolean;
+}) {
+  const visible = !options.isOpen || options.isReturningEarly;
+
+  return {
+    visible,
+    interactive: !options.isOpen,
+    ariaHidden: options.isOpen,
+  };
+}
+
 export function getUploadRejectionMessage(
   fileRejections: readonly FileRejection[]
 ) {
