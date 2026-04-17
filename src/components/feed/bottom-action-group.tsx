@@ -2,7 +2,6 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { useExpansion } from "@/components/expanded/expansion-context";
-import { useUploadModal } from "@/components/upload/upload-modal-context";
 import { SPRING, INSTANT } from "@/lib/motion";
 import { FeedSearchTrigger } from "./feed-search-trigger";
 import { SendItButton } from "./send-it-button";
@@ -18,9 +17,8 @@ const HIDE_OFFSET_PX = 200;
  */
 export function BottomActionGroup() {
   const { postData } = useExpansion();
-  const { isOpen: uploadOpen } = useUploadModal();
   const reducedMotion = useReducedMotion();
-  const hidden = !!postData || uploadOpen;
+  const hidden = !!postData;
 
   return (
     <motion.div
