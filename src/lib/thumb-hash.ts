@@ -26,7 +26,14 @@ export async function extractPlaceholderData(
     h = Math.round(h * scale);
   }
 
-  const canvas = new OffscreenCanvas(w, h);
+  let canvas: OffscreenCanvas;
+  try {
+    canvas = new OffscreenCanvas(w, h);
+  } catch {
+    bitmap.close();
+    return null;
+  }
+
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     bitmap.close();

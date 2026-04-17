@@ -17,7 +17,13 @@ export async function convertToWebp(file: File): Promise<File> {
     return file;
   }
 
-  const bitmap = await createImageBitmap(file);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    return file;
+  }
+
   let { width, height } = bitmap;
 
   if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
@@ -26,7 +32,14 @@ export async function convertToWebp(file: File): Promise<File> {
     height = Math.round(height * scale);
   }
 
-  const canvas = new OffscreenCanvas(width, height);
+  let canvas: OffscreenCanvas;
+  try {
+    canvas = new OffscreenCanvas(width, height);
+  } catch {
+    bitmap.close();
+    return file;
+  }
+
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     bitmap.close();
