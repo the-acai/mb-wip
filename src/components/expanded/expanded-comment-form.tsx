@@ -51,8 +51,6 @@ export function ExpandedCommentForm({
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const { user } = useUser();
-  const userName =
-    user?.user_metadata?.full_name || user?.email?.split("@")[0] || "";
   // Prefetch all profiles on mount — small team, so load once and filter
   // client-side for instant autocomplete (no network per keystroke).
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
@@ -67,7 +65,10 @@ export function ExpandedCommentForm({
   }, []);
 
   const profileColor = useProfileColor();
-  const userColor = userName ? getAuthorColor(userName, profileColor) : "var(--border-subtle)";
+  // Use the resolved profile color directly. Routing through getAuthorColor
+  // here would fall back to the hash/KNOWN map (e.g. "kai" → #f84f11) whenever
+  // the cache was cold, flashing the wrong color on focus.
+  const userColor = profileColor ?? "var(--border-subtle)";
 
   // Client-side filter — instant, no debounce needed.
   const mentionResults = useMemo(() => {
