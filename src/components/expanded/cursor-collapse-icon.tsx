@@ -28,6 +28,10 @@ export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconPr
   const isPresent = useIsPresent();
   const hidden = !isPresent;
   const [hovering, setHovering] = useState(false);
+  // Flips synchronously on click so the icon starts exiting the moment the
+  // dismiss animation begins — we can't wait for isPresent to flip, since the
+  // parent stays mounted for the full close duration.
+  const [dismissed, setDismissed] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   // Captured at the moment hovering starts — read in motion.div initial,
   // which must come from state (not refs) per react-compiler rules.
@@ -38,20 +42,26 @@ export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconPr
   }, []);
 
   const handleMouseEnter = useCallback((e: React.MouseEvent) => {
+    if (dismissed) return;
     const pos = { x: e.clientX + ICON_OFFSET, y: e.clientY + ICON_OFFSET };
     setOrigin(pos);
     setMousePos(pos);
     setHovering(true);
-  }, []);
+  }, [dismissed]);
 
   const handleMouseLeave = useCallback(() => {
     setHovering(false);
   }, []);
 
+  const handleClick = useCallback(() => {
+    setDismissed(true);
+    onDismiss();
+  }, [onDismiss]);
+
   return (
     <div
       className={`absolute inset-0 ${hidden ? "pointer-events-none" : "cursor-pointer"}`}
-      onClick={hidden ? undefined : onDismiss}
+      onClick={hidden ? undefined : handleClick}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -59,7 +69,7 @@ export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconPr
       {children}
 
       <AnimatePresence>
-        {hovering && !hidden && (
+        {hovering && !hidden && !dismissed && (
           <motion.div
             className="pointer-events-none fixed z-50"
             initial={{
@@ -75,6 +85,8 @@ export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconPr
               opacity: 1,
             }}
             exit={{
+              x: origin.x,
+              y: origin.y,
               scale: 0,
               opacity: 0,
             }}
