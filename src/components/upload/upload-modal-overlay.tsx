@@ -316,7 +316,22 @@ export function UploadModalOverlay() {
       });
     if (closestItem) (closestItem as HTMLElement).style.opacity = "0";
 
-    anims.push(animate(hero, { opacity: 1 }, { duration: 0.1 }));
+    // Fade the clone in with a softer, eased ramp and start the descent
+    // in the same tick — no 100ms pause between appearance and motion.
+    anims.push(animate(hero, { opacity: 1 }, { duration: 0.2, ease: "easeOut" }));
+    anims.push(
+      animate(
+        hero,
+        {
+          left: `${btnRect.left}px`,
+          top: `${btnRect.top}px`,
+          width: `${btnRect.width}px`,
+          height: `${btnRect.height}px`,
+          justifyContent: "center",
+        },
+        SPRING.default
+      )
+    );
 
     const reverseEntries: {
       ref: React.RefObject<HTMLElement | null>;
@@ -332,78 +347,62 @@ export function UploadModalOverlay() {
       }
     });
 
-    const closeTimer = setTimeout(() => {
-      anims.push(
-        animate(
-          hero,
-          {
-            left: `${btnRect.left}px`,
-            top: `${btnRect.top}px`,
-            width: `${btnRect.width}px`,
-            height: `${btnRect.height}px`,
-            justifyContent: "center",
+    anims.push(animate(marqueeRow, { opacity: 0 }, { duration: 0.15 }));
+    const pauseLoopTimer = setTimeout(() => {
+      loopRef.current?.pause();
+    }, 200);
+    timersRef.current.push(pauseLoopTimer);
+
+    anims.push(
+      animate(
+        modal,
+        {
+          left: `${btnRect.left}px`,
+          top: `${btnRect.top}px`,
+          width: `${btnRect.width}px`,
+          height: `${btnRect.height}px`,
+          borderRadius: `${btnRect.height / 2}px`,
+          padding: "0px",
+        },
+        {
+          ...SPRING.default,
+          onComplete: () => {
+            const buttonContainer = buttonPillRef.current?.closest(
+              "[data-send-it-container]"
+            ) as HTMLElement | null;
+            const currentPill = buttonPillRef.current as HTMLElement | null;
+            if (buttonContainer) buttonContainer.style.opacity = "1";
+
+            modal.style.visibility = "hidden";
+            if (currentPill) currentPill.style.opacity = "";
+
+            animate(hero, { opacity: 0 }, { duration: 0.08 });
+
+            setTimeout(() => close(), 300);
           },
-          SPRING.default
-        )
-      );
-
-      anims.push(animate(marqueeRow, { opacity: 0 }, { duration: 0.15 }));
-      setTimeout(() => {
-        loopRef.current?.pause();
-      }, 200);
-
-      anims.push(
-        animate(
-          modal,
-          {
-            left: `${btnRect.left}px`,
-            top: `${btnRect.top}px`,
-            width: `${btnRect.width}px`,
-            height: `${btnRect.height}px`,
-            borderRadius: `${btnRect.height / 2}px`,
-            padding: "0px",
-          },
-          {
-            ...SPRING.default,
-            onComplete: () => {
-              const buttonContainer = buttonPillRef.current?.closest(
-                "[data-send-it-container]"
-              ) as HTMLElement | null;
-              const currentPill = buttonPillRef.current as HTMLElement | null;
-              if (buttonContainer) buttonContainer.style.opacity = "1";
-
-              modal.style.visibility = "hidden";
-              if (currentPill) currentPill.style.opacity = "";
-
-              animate(hero, { opacity: 0 }, { duration: 0.08 });
-
-              setTimeout(() => close(), 300);
-            },
-          }
-        )
-      );
-
-      delay(() => {
-        startSearchReturn();
-
-        const buttonContainer = buttonPillRef.current?.closest(
-          "[data-send-it-container]"
-        ) as HTMLElement | null;
-        const currentPill = buttonPillRef.current as HTMLElement | null;
-        const arrowEl = buttonPillRef.current?.parentElement?.querySelector(
-          "[data-arrow-wrap]"
-        ) as HTMLElement | null;
-
-        if (buttonContainer) buttonContainer.style.opacity = "1";
-        if (currentPill) currentPill.style.opacity = "0";
-        if (arrowEl) {
-          arrowEl.style.visibility = "visible";
-          animate(arrowEl, { x: [-16, 0], opacity: [0, 1] }, SPRING.default);
         }
-      }, EARLY_RETURN_MS);
-    }, 100);
+      )
+    );
 
-    timersRef.current.push(closeTimer);
+    delay(() => {
+      startSearchReturn();
+
+      const buttonContainer = buttonPillRef.current?.closest(
+        "[data-send-it-container]"
+      ) as HTMLElement | null;
+      const currentPill = buttonPillRef.current as HTMLElement | null;
+      const arrowEl = buttonPillRef.current?.parentElement?.querySelector(
+        "[data-arrow-wrap]"
+      ) as HTMLElement | null;
+
+      if (buttonContainer) buttonContainer.style.opacity = "1";
+      if (currentPill) currentPill.style.opacity = "0";
+      if (arrowEl) {
+        arrowEl.style.visibility = "visible";
+        animate(arrowEl, { x: [-16, 0], opacity: [0, 1] }, SPRING.default);
+      }
+    }, EARLY_RETURN_MS);
+
     animsRef.current.push(...anims);
   }, [buttonPillRef, close, delay, startSearchReturn, stopAll]);
 
