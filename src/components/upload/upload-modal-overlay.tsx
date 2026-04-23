@@ -298,9 +298,6 @@ export function UploadModalOverlay() {
 
     const anims: AnimationPlaybackControls[] = [];
 
-    // Swap the marquee text for the hero clone before the descent starts —
-    // otherwise the marquee is still visible while the clone flies down.
-    anims.push(animate(marqueeRow, { opacity: 0 }, { duration: 0.1 }));
     anims.push(animate(hero, { opacity: 1 }, { duration: 0.1 }));
 
     const reverseEntries: {
@@ -332,6 +329,7 @@ export function UploadModalOverlay() {
         )
       );
 
+      anims.push(animate(marqueeRow, { opacity: 0 }, { duration: 0.15 }));
       setTimeout(() => {
         loopRef.current?.pause();
       }, 200);
