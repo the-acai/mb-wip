@@ -292,7 +292,6 @@ export function ExpandedCommentForm({
             }
             role="combobox"
             disabled={submitting}
-            data-overlay-autofocus
             className="min-w-0 flex-1 bg-transparent text-heading-lg text-[var(--text-dark)] placeholder:text-[var(--text-caption)] focus:outline-none"
           />
           <AnimatePresence initial={false}>
