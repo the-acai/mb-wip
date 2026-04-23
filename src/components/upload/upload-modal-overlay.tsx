@@ -298,6 +298,24 @@ export function UploadModalOverlay() {
 
     const anims: AnimationPlaybackControls[] = [];
 
+    // Hide the marquee item nearest the clone's center so it looks like
+    // that item has detached and become the descending "SEND IT" clone.
+    const heroRect = hero.getBoundingClientRect();
+    const heroCenterX = heroRect.left + heroRect.width / 2;
+    let closestItem: HTMLElement | null = null;
+    let closestDist = Infinity;
+    marqueeRow
+      .querySelectorAll<HTMLElement>("[data-marquee-item]")
+      .forEach((item) => {
+        const r = item.getBoundingClientRect();
+        const d = Math.abs(r.left + r.width / 2 - heroCenterX);
+        if (d < closestDist) {
+          closestDist = d;
+          closestItem = item;
+        }
+      });
+    if (closestItem) (closestItem as HTMLElement).style.opacity = "0";
+
     anims.push(animate(hero, { opacity: 1 }, { duration: 0.1 }));
 
     const reverseEntries: {
