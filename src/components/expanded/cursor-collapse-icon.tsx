@@ -88,8 +88,8 @@ export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconPr
               scale: 0,
               opacity: 0,
               transition: {
-                scale: { duration: 0.15, ease: "easeOut" },
-                opacity: { duration: 0.15, ease: "easeOut" },
+                scale: ENTRANCE_SPRING,
+                opacity: { duration: 0.15 },
               },
             }}
             transition={{
