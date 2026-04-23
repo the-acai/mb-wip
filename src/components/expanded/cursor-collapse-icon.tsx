@@ -85,10 +85,12 @@ export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconPr
               opacity: 1,
             }}
             exit={{
-              x: origin.x,
-              y: origin.y,
               scale: 0,
               opacity: 0,
+              transition: {
+                scale: { duration: 0.15, ease: "easeOut" },
+                opacity: { duration: 0.15, ease: "easeOut" },
+              },
             }}
             transition={{
               x: CURSOR_SPRING,
