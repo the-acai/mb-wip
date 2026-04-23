@@ -180,7 +180,9 @@ export function ExpandedPostOverlay() {
       tabIndex={-1}
       className="fixed inset-0 z-40 outline-none"
       exit={{ opacity: 0 }}
-      transition={reducedMotion ? INSTANT : { duration: 0.2 }}
+      // Hold the overlay mounted long enough for the CursorCollapseIcon's
+      // exit spring (ENTRANCE_SPRING, ~0.4s settle) to play.
+      transition={reducedMotion ? INSTANT : { duration: 0.4 }}
     >
       {/* Backdrop */}
       <CursorCollapseIcon onDismiss={dismiss}>

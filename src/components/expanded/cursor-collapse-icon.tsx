@@ -89,7 +89,10 @@ export function CursorCollapseIcon({ onDismiss, children }: CursorCollapseIconPr
               opacity: 0,
               transition: {
                 scale: ENTRANCE_SPRING,
-                opacity: { duration: 0.15 },
+                // Mirror the entry: fade opacity during the last 0.15s of
+                // the spring instead of the first, so the shrink stays
+                // visible for most of the exit.
+                opacity: { duration: 0.15, delay: 0.25 },
               },
             }}
             transition={{
